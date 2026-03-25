@@ -694,12 +694,11 @@ export default function PdfDocument({ doc }: PdfDocumentProps) {
           )}
         </View>
 
-        {/* Proposal: 하단 우측 로고 + 날짜 */}
+        {/* Proposal: 하단 우측 로고 (날짜 제거) */}
         {isProposal && (
           <>
             <View style={s.proposalFooterWrap}>
               <Image src={PDF_LOGO_URL} style={s.proposalLogo} />
-              <Text style={s.proposalDate}>{formatDate(doc.date)}</Text>
             </View>
             <View style={s.proposalDisclaimer}>
               <Text style={s.disclaimerText}>

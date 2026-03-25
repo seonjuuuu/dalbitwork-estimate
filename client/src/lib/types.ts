@@ -6,6 +6,7 @@ export interface DocumentItem {
   quantity: string;
   originalPrice: string; // 정가 (필수)
   discountPrice: string; // 할인가 (선택, 비어있으면 정가가 최종 금액)
+  discountAmount: string; // 할인금액 (선택, 입력 시 할인가 자동 계산)
 }
 
 export type NotesMode = 'list' | 'freeform';
@@ -26,6 +27,8 @@ export interface DocumentData {
   templateVariables: Record<string, string> | null;
   totalMin: number;
   totalMax: number;
+  contactPhone: string; // 담당자 번호
+  businessType: string; // 업종
   createdAt?: string;
   updatedAt?: string;
 }
@@ -103,15 +106,13 @@ export function hasAnyDiscount(items: DocumentItem[]): boolean {
 
 export const proposalNotes = [
   '본 견적은 대략적인 예상 금액이며, 상세 기획 협의 후 확정됩니다.',
-  '아임웹 글로벌 결제 비용은 고객사 별도 결제 사항입니다.',
-  '영문 번역본은 고객사에서 제공, 당사는 텍스트 배치 및 레이아웃 조정을 진행합니다.',
+  '아임웹 결제 비용은 고객사 별도 결제 사항입니다.',
   '이미지 및 콘텐츠 소스(텍스트, 로고, 제품사진 등)는 고객사 제공 기준입니다.',
 ];
 
 export const estimateNotes = [
   '본 견적서의 금액은 확정 금액이며, 추가 작업 발생 시 별도 협의합니다.',
-  '아임웹 글로벌 결제 비용은 고객사 별도 결제 사항입니다.',
-  '영문 번역본은 고객사에서 제공, 당사는 텍스트 배치 및 레이아웃 조정을 진행합니다.',
+  '아임웹 결제 비용은 고객사 별도 결제 사항입니다.',
   '이미지 및 콘텐츠 소스(텍스트, 로고, 제품사진 등)는 고객사 제공 기준입니다.',
   '매출증빙: 현금영수증 발행',
 ];
@@ -125,9 +126,8 @@ export const defaultProposal: DocumentData = {
   platform: "아임웹(I'mweb)",
   date: new Date().toISOString().split('T')[0],
   items: [
-    { id: '1', name: '메인 페이지 (국문, 5섹션 기준)', quantity: '1페이지', originalPrice: '900,000', discountPrice: '' },
-    { id: '2', name: '서브 페이지 (국문)', quantity: '4페이지', originalPrice: '600,000', discountPrice: '' },
-    { id: '3', name: '영문 사이트 (셋팅 / 반응형 정리)', quantity: '5페이지', originalPrice: '750,000', discountPrice: '' },
+    { id: '1', name: '메인 페이지 (국문, 5섹션 기준)', quantity: '1페이지', originalPrice: '900,000', discountPrice: '', discountAmount: '' },
+    { id: '2', name: '서브 페이지 (국문)', quantity: '4페이지', originalPrice: '600,000', discountPrice: '', discountAmount: '' },
   ],
   notes: proposalNotes,
   notesMode: 'list',
@@ -135,6 +135,8 @@ export const defaultProposal: DocumentData = {
   templateVariables: null,
   totalMin: 2000000,
   totalMax: 2250000,
+  contactPhone: '',
+  businessType: '',
 };
 
 export const defaultEstimate: DocumentData = {
@@ -146,9 +148,8 @@ export const defaultEstimate: DocumentData = {
   platform: "아임웹(I'mweb)",
   date: new Date().toISOString().split('T')[0],
   items: [
-    { id: '1', name: '메인 페이지 (국문, 5섹션 기준)', quantity: '1페이지', originalPrice: '900,000', discountPrice: '' },
-    { id: '2', name: '서브 페이지 (국문)', quantity: '4페이지', originalPrice: '600,000', discountPrice: '' },
-    { id: '3', name: '영문 사이트 (셋팅 / 반응형 정리)', quantity: '5페이지', originalPrice: '750,000', discountPrice: '' },
+    { id: '1', name: '메인 페이지 (국문, 5섹션 기준)', quantity: '1페이지', originalPrice: '900,000', discountPrice: '', discountAmount: '' },
+    { id: '2', name: '서브 페이지 (국문)', quantity: '4페이지', originalPrice: '600,000', discountPrice: '', discountAmount: '' },
   ],
   notes: estimateNotes,
   notesMode: 'list',
@@ -156,6 +157,8 @@ export const defaultEstimate: DocumentData = {
   templateVariables: null,
   totalMin: 2250000,
   totalMax: 2250000,
+  contactPhone: '',
+  businessType: '',
 };
 
 export function getDocTypeLabel(type: DocumentType): string {

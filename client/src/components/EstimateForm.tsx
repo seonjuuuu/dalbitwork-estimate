@@ -31,7 +31,7 @@ import {
   DialogFooter,
   DialogDescription,
 } from '@/components/ui/dialog';
-import { getDocTypeLabel, autoFormatNumber, calcTotalOriginal, calcTotalFinal, calcTotalDiscount, hasAnyDiscount } from '@/lib/types';
+import { getDocTypeLabel, autoFormatNumber, parseAmount, calcTotalOriginal, calcTotalFinal, calcTotalDiscount, hasAnyDiscount } from '@/lib/types';
 import {
   DndContext,
   closestCenter,
@@ -735,6 +735,24 @@ export default function EstimateForm() {
               className="bg-background"
             />
           </div>
+          <div>
+            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">담당자 번호</label>
+            <Input
+              value={currentDoc.contactPhone}
+              onChange={(e) => updateField('contactPhone', e.target.value)}
+              placeholder="010-0000-0000"
+              className="bg-background"
+            />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">업종</label>
+            <Input
+              value={currentDoc.businessType}
+              onChange={(e) => updateField('businessType', e.target.value)}
+              placeholder="쇼핑몰, 서비스업 등"
+              className="bg-background"
+            />
+          </div>
         </div>
       </div>
 
@@ -749,10 +767,11 @@ export default function EstimateForm() {
         </div>
 
         {/* Table Header */}
-        <div className="grid grid-cols-[2fr_0.8fr_1.2fr_1.2fr_auto] gap-2 mb-2 mt-5">
+        <div className="grid grid-cols-[2fr_0.8fr_1fr_1fr_1fr_auto] gap-2 mb-2 mt-5">
           <span className="text-[11px] font-medium text-muted-foreground px-1">항목명</span>
           <span className="text-[11px] font-medium text-muted-foreground px-1">수량</span>
           <span className="text-[11px] font-medium text-muted-foreground px-1">정가(원)</span>
+          <span className="text-[11px] font-medium text-muted-foreground px-1">할인금액(원)</span>
           <span className="text-[11px] font-medium text-muted-foreground px-1">할인가(원)</span>
           <span className="w-8" />
         </div>
@@ -762,7 +781,7 @@ export default function EstimateForm() {
           {currentDoc.items.map((item) => (
             <div
               key={item.id}
-              className="grid grid-cols-[2fr_0.8fr_1.2fr_1.2fr_auto] gap-2 items-center group"
+              className="grid grid-cols-[2fr_0.8fr_1fr_1fr_1fr_auto] gap-2 items-center group"
             >
               <Input
                 value={item.name}
@@ -783,8 +802,44 @@ export default function EstimateForm() {
                 className="text-sm bg-background h-9 amount"
               />
               <Input
+                value={item.discountAmount || ''}
+                onChange={(e) => {
+                  handleNumberInput(e.target.value, (v) => {
+                    // 할인금액 입력 시 할인가 자동 계산
+                    const orig = parseAmount(item.originalPrice);
+                    const discAmt = parseAmount(v);
+                    const discPrice = orig > 0 && discAmt > 0 ? autoFormatNumber(String(orig - discAmt)) : '';
+                    setCurrentDoc((prev) => ({
+                      ...prev,
+                      items: prev.items.map((it) =>
+                        it.id === item.id
+                          ? { ...it, discountAmount: v, discountPrice: discPrice }
+                          : it
+                      ),
+                    }));
+                  });
+                }}
+                placeholder="할인금액 (선택)"
+                className="text-sm bg-background h-9 amount"
+              />
+              <Input
                 value={item.discountPrice}
-                onChange={(e) => handleNumberInput(e.target.value, (v) => updateItem(item.id, 'discountPrice', v))}
+                onChange={(e) => {
+                  handleNumberInput(e.target.value, (v) => {
+                    // 할인가 입력 시 할인금액 자동 계산
+                    const orig = parseAmount(item.originalPrice);
+                    const discPrice = parseAmount(v);
+                    const discAmt = orig > 0 && discPrice > 0 && orig > discPrice ? autoFormatNumber(String(orig - discPrice)) : '';
+                    setCurrentDoc((prev) => ({
+                      ...prev,
+                      items: prev.items.map((it) =>
+                        it.id === item.id
+                          ? { ...it, discountPrice: v, discountAmount: discAmt }
+                          : it
+                      ),
+                    }));
+                  });
+                }}
                 placeholder="할인가 (선택)"
                 className="text-sm bg-background h-9 amount"
               />

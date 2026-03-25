@@ -13,6 +13,7 @@ const documentItemSchema = z.object({
   quantity: z.string(),
   originalPrice: z.string(),
   discountPrice: z.string(),
+  discountAmount: z.string().optional().default(''),
 });
 
 // Zod schema for creating/updating a document
@@ -31,6 +32,8 @@ const documentInputSchema = z.object({
   templateVariables: z.record(z.string(), z.string()).nullable().default(null),
   totalMin: z.number().default(0),
   totalMax: z.number().default(0),
+  contactPhone: z.string().default(""),
+  businessType: z.string().default(""),
 });
 
 export const appRouter = router({

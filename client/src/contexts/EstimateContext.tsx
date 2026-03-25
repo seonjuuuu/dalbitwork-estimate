@@ -34,12 +34,14 @@ function dbDocToLocal(doc: {
   projectName: string;
   platform: string;
   date: string;
-  items: { id: string; name: string; quantity: string; originalPrice: string; discountPrice: string }[];
+  items: { id: string; name: string; quantity: string; originalPrice: string; discountPrice: string; discountAmount?: string }[];
   notes: string[];
   notesMode: "list" | "freeform";
   freeformNotes: string | null;
   totalMin: number;
   totalMax: number;
+  contactPhone: string;
+  businessType: string;
   createdAt: Date | string;
   updatedAt: Date | string;
 }): DocumentData {
@@ -58,6 +60,7 @@ function dbDocToLocal(doc: {
       quantity: item.quantity || '',
       originalPrice: item.originalPrice || '',
       discountPrice: item.discountPrice || '',
+      discountAmount: item.discountAmount || '',
     })),
     notes: doc.notes || [],
     notesMode: (doc.notesMode as NotesMode) || 'list',
@@ -65,6 +68,8 @@ function dbDocToLocal(doc: {
     templateVariables: (doc as any).templateVariables || null,
     totalMin: doc.totalMin || 0,
     totalMax: doc.totalMax || 0,
+    contactPhone: doc.contactPhone || '',
+    businessType: doc.businessType || '',
     createdAt: typeof doc.createdAt === 'string' ? doc.createdAt : new Date(doc.createdAt).toISOString(),
     updatedAt: typeof doc.updatedAt === 'string' ? doc.updatedAt : new Date(doc.updatedAt).toISOString(),
   };
@@ -146,6 +151,7 @@ export function EstimateProvider({ children }: { children: ReactNode }) {
           quantity: item.quantity,
           originalPrice: item.originalPrice,
           discountPrice: item.discountPrice,
+          discountAmount: item.discountAmount || '',
         })),
         notes: currentDoc.notes,
         notesMode: currentDoc.notesMode,
@@ -153,6 +159,8 @@ export function EstimateProvider({ children }: { children: ReactNode }) {
         templateVariables: currentDoc.templateVariables,
         totalMin: currentDoc.totalMin,
         totalMax: currentDoc.totalMax,
+        contactPhone: currentDoc.contactPhone || '',
+        businessType: currentDoc.businessType || '',
       };
 
       const dbId = currentDoc.id ? parseInt(currentDoc.id) : NaN;
@@ -202,7 +210,7 @@ export function EstimateProvider({ children }: { children: ReactNode }) {
   const addItem = useCallback(() => {
     setCurrentDoc((prev) => ({
       ...prev,
-      items: [...prev.items, { id: nanoid(), name: '', quantity: '', originalPrice: '', discountPrice: '' }],
+      items: [...prev.items, { id: nanoid(), name: '', quantity: '', originalPrice: '', discountPrice: '', discountAmount: '' }],
     }));
   }, []);
 

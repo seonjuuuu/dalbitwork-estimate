@@ -54,6 +54,10 @@ export const documents = mysqlTable("documents", {
   totalMin: int("totalMin").default(0).notNull(),
   /** Total maximum amount */
   totalMax: int("totalMax").default(0).notNull(),
+  /** Contact person phone number */
+  contactPhone: varchar("contactPhone", { length: 50 }).default("").notNull(),
+  /** Business category/type */
+  businessType: varchar("businessType", { length: 100 }).default("").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -65,6 +69,7 @@ export interface DocumentItemRow {
   quantity: string;
   originalPrice: string;
   discountPrice: string;
+  discountAmount?: string; // 할인금액 (선택, 입력 시 할인가 자동 계산)
 }
 
 export type Document = typeof documents.$inferSelect;
