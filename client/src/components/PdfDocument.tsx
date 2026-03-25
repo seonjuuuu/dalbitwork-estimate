@@ -234,8 +234,9 @@ const s = StyleSheet.create({
     textAlign: 'center',
     marginTop: 20,
     marginBottom: 16,
-    fontSize: 11,
+    fontSize: 13,
     color: '#555555',
+    letterSpacing: 1,
   },
   signatureWrap: {
     flexDirection: 'row',
@@ -273,11 +274,11 @@ const s = StyleSheet.create({
     marginLeft: 4,
   },
   signatureImage: {
-    width: 36,
-    height: 36,
+    width: 50,
+    height: 50,
     position: 'absolute',
-    right: -10,
-    top: -20,
+    right: -18,
+    top: -38,
   },
   // Footer logo
   footerLogoWrap: {
@@ -519,7 +520,7 @@ export default function PdfDocument({ doc }: PdfDocumentProps) {
           <>
             {/* 날짜 */}
             <Text style={s.signatureDateLine}>
-              {'      '}년{'    '}월{'    '}일
+              {'            '}년{'          '}월{'          '}일
             </Text>
 
             {/* 의뢰인 / 공급인 */}
