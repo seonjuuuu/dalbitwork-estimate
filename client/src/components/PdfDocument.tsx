@@ -239,14 +239,16 @@ const s = StyleSheet.create({
   },
   thNo: { width: 28, textAlign: 'center', fontSize: 10, fontWeight: 600, color: '#555555' },
   thName: { flex: 1, textAlign: 'left', fontSize: 10, fontWeight: 600, color: '#555555' },
-  thQty: { width: 55, textAlign: 'center', fontSize: 10, fontWeight: 600, color: '#555555' },
-  thOrigPrice: { width: 80, textAlign: 'right', fontSize: 10, fontWeight: 600, color: '#555555' },
-  thPrice: { width: 90, textAlign: 'right', fontSize: 10, fontWeight: 600, color: '#555555' },
+  thQty: { width: 50, textAlign: 'center', fontSize: 10, fontWeight: 600, color: '#555555' },
+  thOrigPrice: { width: 65, textAlign: 'right', fontSize: 10, fontWeight: 600, color: '#555555' },
+  thDiscAmount: { width: 65, textAlign: 'right', fontSize: 10, fontWeight: 600, color: '#555555' },
+  thPrice: { width: 70, textAlign: 'right', fontSize: 10, fontWeight: 600, color: '#555555' },
   tdNo: { width: 28, textAlign: 'center', fontSize: 10, color: '#888888' },
   tdName: { flex: 1, textAlign: 'left', fontSize: 10, color: '#1a1a1a' },
-  tdQty: { width: 55, textAlign: 'center', fontSize: 10, color: '#555555' },
-  tdOrigPrice: { width: 80, textAlign: 'right', fontSize: 10 },
-  tdPrice: { width: 90, textAlign: 'right', fontSize: 10, fontWeight: 500 },
+  tdQty: { width: 50, textAlign: 'center', fontSize: 10, color: '#555555' },
+  tdOrigPrice: { width: 65, textAlign: 'right', fontSize: 10 },
+  tdDiscAmount: { width: 65, textAlign: 'right', fontSize: 10 },
+  tdPrice: { width: 70, textAlign: 'right', fontSize: 10, fontWeight: 500 },
   // Footer total
   footerRow: {
     flexDirection: 'row',
@@ -610,6 +612,7 @@ export default function PdfDocument({ doc }: PdfDocumentProps) {
             <Text style={s.thName}>항목</Text>
             <Text style={s.thQty}>수량</Text>
             {showDiscount && <Text style={s.thOrigPrice}>정가(원)</Text>}
+            {showDiscount && <Text style={s.thDiscAmount}>할인금액(원)</Text>}
             <Text style={s.thPrice}>{showDiscount ? '할인가(원)' : '금액(원)'}</Text>
           </View>
 
@@ -617,6 +620,7 @@ export default function PdfDocument({ doc }: PdfDocumentProps) {
           {doc.items.map((item: DocumentItem, idx: number) => {
             const origAmt = parseAmount(item.originalPrice);
             const discAmt = parseAmount(item.discountPrice);
+            const discountAmountVal = parseAmount(item.discountAmount || '');
             const finalAmt = getItemFinalPrice(item);
             const itemHasDiscount = discAmt > 0 && origAmt > discAmt;
 
@@ -634,6 +638,14 @@ export default function PdfDocument({ doc }: PdfDocumentProps) {
                     }
                   ]}>
                     {formatNumber(origAmt)}
+                  </Text>
+                )}
+                {showDiscount && (
+                  <Text style={[
+                    s.tdDiscAmount,
+                    { color: itemHasDiscount ? GOLD : '#888888' }
+                  ]}>
+                    {discountAmountVal > 0 ? formatNumber(discountAmountVal) : '-'}
                   </Text>
                 )}
                 <Text style={[
