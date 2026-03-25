@@ -1,0 +1,128 @@
+import { COOKIE_NAME } from "@shared/const";
+import { getSessionCookieOptions } from "./_core/cookies";
+import { systemRouter } from "./_core/systemRouter";
+import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
+import { z } from "zod";
+import * as db from "./db";
+import type { DocumentItemRow } from "../drizzle/schema";
+
+// Zod schema for document item validation
+const documentItemSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  quantity: z.string(),
+  originalPrice: z.string(),
+  discountPrice: z.string(),
+});
+
+// Zod schema for creating/updating a document
+const documentInputSchema = z.object({
+  type: z.enum(["proposal", "estimate"]),
+  title: z.string().default(""),
+  memo: z.string().nullable().default(null),
+  clientName: z.string().default(""),
+  projectName: z.string().default(""),
+  platform: z.string().default(""),
+  date: z.string().default(""),
+  items: z.array(documentItemSchema),
+  notes: z.array(z.string()),
+  totalMin: z.number().default(0),
+  totalMax: z.number().default(0),
+});
+
+export const appRouter = router({
+  system: systemRouter,
+  auth: router({
+    me: publicProcedure.query(opts => opts.ctx.user),
+    logout: publicProcedure.mutation(({ ctx }) => {
+      const cookieOptions = getSessionCookieOptions(ctx.req);
+      ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
+      return {
+        success: true,
+      } as const;
+    }),
+  }),
+
+  documents: router({
+    /** List documents for the logged-in user, optionally filtered by type */
+    list: protectedProcedure
+      .input(
+        z.object({
+          type: z.enum(["proposal", "estimate"]).optional(),
+        }).optional()
+      )
+      .query(async ({ ctx, input }) => {
+        return db.listDocuments(ctx.user.id, input?.type);
+      }),
+
+    /** Get a single document by ID */
+    get: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .query(async ({ ctx, input }) => {
+        const doc = await db.getDocument(input.id, ctx.user.id);
+        if (!doc) {
+          throw new Error("Document not found");
+        }
+        return doc;
+      }),
+
+    /** Create a new document */
+    create: protectedProcedure
+      .input(documentInputSchema)
+      .mutation(async ({ ctx, input }) => {
+        const doc = await db.createDocument({
+          userId: ctx.user.id,
+          type: input.type,
+          title: input.title,
+          memo: input.memo,
+          clientName: input.clientName,
+          projectName: input.projectName,
+          platform: input.platform,
+          date: input.date,
+          items: input.items as DocumentItemRow[],
+          notes: input.notes,
+          totalMin: input.totalMin,
+          totalMax: input.totalMax,
+        });
+        return doc;
+      }),
+
+    /** Update an existing document */
+    update: protectedProcedure
+      .input(
+        z.object({
+          id: z.number(),
+          data: documentInputSchema.partial(),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        const updateData: Record<string, unknown> = {};
+        if (input.data.type !== undefined) updateData.type = input.data.type;
+        if (input.data.title !== undefined) updateData.title = input.data.title;
+        if (input.data.memo !== undefined) updateData.memo = input.data.memo;
+        if (input.data.clientName !== undefined) updateData.clientName = input.data.clientName;
+        if (input.data.projectName !== undefined) updateData.projectName = input.data.projectName;
+        if (input.data.platform !== undefined) updateData.platform = input.data.platform;
+        if (input.data.date !== undefined) updateData.date = input.data.date;
+        if (input.data.items !== undefined) updateData.items = input.data.items;
+        if (input.data.notes !== undefined) updateData.notes = input.data.notes;
+        if (input.data.totalMin !== undefined) updateData.totalMin = input.data.totalMin;
+        if (input.data.totalMax !== undefined) updateData.totalMax = input.data.totalMax;
+
+        const doc = await db.updateDocument(input.id, ctx.user.id, updateData);
+        if (!doc) {
+          throw new Error("Document not found or not authorized");
+        }
+        return doc;
+      }),
+
+    /** Delete a document */
+    delete: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        return db.deleteDocument(input.id, ctx.user.id);
+      }),
+  }),
+});
+
+export type AppRouter = typeof appRouter;

@@ -1,8 +1,10 @@
 import { useEstimate } from '@/contexts/EstimateContext';
 import { Button } from '@/components/ui/button';
-import { FileText, Trash2, Edit, FileCheck } from 'lucide-react';
+import { FileText, Trash2, Edit, FileCheck, Loader2 } from 'lucide-react';
 import { useLocation } from 'wouter';
 import { type DocumentType, getDocTypeLabel } from '@/lib/types';
+import { toast } from 'sonner';
+import { useState } from 'react';
 
 interface DocumentListProps {
   type: DocumentType;
@@ -11,6 +13,7 @@ interface DocumentListProps {
 export default function DocumentList({ type }: DocumentListProps) {
   const { proposals, estimates, loadDocument, deleteDocument } = useEstimate();
   const [, navigate] = useLocation();
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const documents = type === 'proposal' ? proposals : estimates;
   const docLabel = getDocTypeLabel(type);
@@ -21,9 +24,16 @@ export default function DocumentList({ type }: DocumentListProps) {
     navigate('/');
   };
 
-  const handleDelete = (id: string) => {
-    if (window.confirm(`이 ${docLabel}를 삭제하시겠습니까?`)) {
-      deleteDocument(id, type);
+  const handleDelete = async (id: string) => {
+    if (!window.confirm(`이 ${docLabel}를 삭제하시겠습니까?`)) return;
+    setDeletingId(id);
+    try {
+      await deleteDocument(id, type);
+      toast.success(`${docLabel}가 삭제되었습니다.`);
+    } catch {
+      toast.error('삭제에 실패했습니다.');
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -88,9 +98,14 @@ export default function DocumentList({ type }: DocumentListProps) {
                     variant="outline"
                     size="sm"
                     onClick={() => handleDelete(doc.id!)}
+                    disabled={deletingId === doc.id}
                     className="text-xs gap-1 text-destructive hover:text-destructive"
                   >
-                    <Trash2 className="w-3.5 h-3.5" />
+                    {deletingId === doc.id ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <Trash2 className="w-3.5 h-3.5" />
+                    )}
                   </Button>
                 </div>
               </div>

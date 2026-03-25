@@ -8,6 +8,30 @@ import { EstimateProvider } from "./contexts/EstimateContext";
 import Home from "./pages/Home";
 import DocumentList from "./pages/DocumentList";
 import Sidebar from "./components/Sidebar";
+import { useAuth } from "@/_core/hooks/useAuth";
+import LoginPage from "./pages/LoginPage";
+import { Loader2 } from "lucide-react";
+
+function AuthGate({ children }: { children: React.ReactNode }) {
+  const { user, loading, isAuthenticated } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-background">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          <p className="text-sm text-muted-foreground">로딩 중...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <LoginPage />;
+  }
+
+  return <>{children}</>;
+}
 
 function Router() {
   return (
@@ -29,17 +53,19 @@ function App() {
   return (
     <ErrorBoundary>
       <ThemeProvider defaultTheme="light">
-        <EstimateProvider>
-          <TooltipProvider>
-            <Toaster />
-            <div className="flex h-screen overflow-hidden">
-              <Sidebar />
-              <main className="flex-1 overflow-y-auto">
-                <Router />
-              </main>
-            </div>
-          </TooltipProvider>
-        </EstimateProvider>
+        <TooltipProvider>
+          <Toaster />
+          <AuthGate>
+            <EstimateProvider>
+              <div className="flex h-screen overflow-hidden">
+                <Sidebar />
+                <main className="flex-1 overflow-y-auto">
+                  <Router />
+                </main>
+              </div>
+            </EstimateProvider>
+          </AuthGate>
+        </TooltipProvider>
       </ThemeProvider>
     </ErrorBoundary>
   );

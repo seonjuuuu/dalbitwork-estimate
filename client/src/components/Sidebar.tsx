@@ -1,7 +1,8 @@
 import { useEstimate } from '@/contexts/EstimateContext';
-import { FilePlus, FileText, List, ChevronLeft, ChevronRight, FileCheck } from 'lucide-react';
+import { FilePlus, FileText, List, ChevronLeft, ChevronRight, FileCheck, LogOut, User } from 'lucide-react';
 import { useState } from 'react';
 import { useLocation } from 'wouter';
+import { useAuth } from '@/_core/hooks/useAuth';
 
 const SYMBOL_LOGO_URL = 'https://d2xsxph8kpxj0f.cloudfront.net/310519663381204565/fPgwdiJ6bkDvqhYoiMKGTH/dalbitwork-symbol_6be6c49b.webp';
 
@@ -9,6 +10,7 @@ export default function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const [location, navigate] = useLocation();
   const { newDocument, currentDoc } = useEstimate();
+  const { user, logout } = useAuth();
 
   // 현재 편집 중인 문서 타입으로 활성 상태 판단
   const isOnHome = location === '/';
@@ -51,6 +53,11 @@ export default function Sidebar() {
       onClick: () => navigate('/estimates'),
     },
   ];
+
+  const handleLogout = async () => {
+    await logout();
+    window.location.href = '/';
+  };
 
   return (
     <aside
@@ -124,8 +131,29 @@ export default function Sidebar() {
         {collapsed ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronLeft className="w-3.5 h-3.5" />}
       </button>
 
-      {/* Footer */}
-      <div className="px-4 py-3 border-t border-border">
+      {/* User & Footer */}
+      <div className="px-3 py-3 border-t border-border space-y-2">
+        {user && (
+          <div className={`flex items-center gap-2 ${collapsed ? 'justify-center' : ''}`}>
+            <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+              <User className="w-3.5 h-3.5 text-primary" />
+            </div>
+            {!collapsed && (
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-medium text-foreground truncate">
+                  {user.name || '사용자'}
+                </p>
+              </div>
+            )}
+            <button
+              onClick={handleLogout}
+              className="p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors flex-shrink-0"
+              title="로그아웃"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
         {!collapsed && (
           <p className="text-[11px] text-muted-foreground">
             DALBIT WORK

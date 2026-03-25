@@ -1,7 +1,7 @@
 import { useEstimate } from '@/contexts/EstimateContext';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Plus, Trash2, Save, GripVertical, Tag, StickyNote } from 'lucide-react';
+import { Plus, Trash2, Save, GripVertical, Tag, StickyNote, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { getDocTypeLabel, autoFormatNumber, calcTotalOriginal, calcTotalFinal, calcTotalDiscount, hasAnyDiscount } from '@/lib/types';
 import {
@@ -95,6 +95,7 @@ export default function EstimateForm() {
     updateNote,
     reorderNotes,
     saveDocument,
+    isSaving,
   } = useEstimate();
 
   const docLabel = getDocTypeLabel(currentDoc.type);
@@ -104,13 +105,17 @@ export default function EstimateForm() {
     setCurrentDoc((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!currentDoc.clientName.trim()) {
       toast.error('수신처(고객사명)를 입력해주세요.');
       return;
     }
-    saveDocument();
-    toast.success(`${docLabel}가 저장되었습니다.`);
+    try {
+      await saveDocument();
+      toast.success(`${docLabel}가 저장되었습니다.`);
+    } catch (err) {
+      toast.error('저장에 실패했습니다. 다시 시도해주세요.');
+    }
   };
 
   // 자동 계산
@@ -293,7 +298,7 @@ export default function EstimateForm() {
         {showDiscount && (
           <div className="mt-4 p-3 bg-[#F7AE00]/5 border border-[#F7AE00]/20 rounded-lg">
             <div className="flex items-center justify-between text-xs">
-              <span className="text-muted-foreground">총 정가</span>
+              <span className="text-muted-foreground">정가 합계</span>
               <span className="line-through text-muted-foreground amount">{totalOriginal.toLocaleString('ko-KR')}원</span>
             </div>
             <div className="flex items-center justify-between text-xs mt-1">
@@ -397,9 +402,17 @@ export default function EstimateForm() {
 
       {/* Save Button */}
       <div className="flex justify-end">
-        <Button onClick={handleSave} className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90">
-          <Save className="w-4 h-4" />
-          저장하기
+        <Button
+          onClick={handleSave}
+          disabled={isSaving}
+          className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
+        >
+          {isSaving ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <Save className="w-4 h-4" />
+          )}
+          {isSaving ? '저장 중...' : '저장하기'}
         </Button>
       </div>
     </div>

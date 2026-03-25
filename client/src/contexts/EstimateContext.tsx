@@ -1,6 +1,7 @@
-import { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react';
 import { type DocumentData, type DocumentItem, type DocumentType, defaultProposal, defaultEstimate } from '@/lib/types';
 import { nanoid } from 'nanoid';
+import { trpc } from '@/lib/trpc';
 
 interface EstimateContextType {
   currentDoc: DocumentData;
@@ -18,41 +19,97 @@ interface EstimateContextType {
   removeNote: (index: number) => void;
   updateNote: (index: number, value: string) => void;
   reorderNotes: (oldIndex: number, newIndex: number) => void;
+  isSaving: boolean;
 }
 
 const EstimateContext = createContext<EstimateContextType | null>(null);
 
-function loadFromStorage(key: string): DocumentData[] {
-  try {
-    const data = localStorage.getItem(key);
-    return data ? JSON.parse(data) : [];
-  } catch {
-    return [];
-  }
-}
-
-function saveToStorage(key: string, data: DocumentData[]) {
-  localStorage.setItem(key, JSON.stringify(data));
+/** Convert a DB document row into the frontend DocumentData shape */
+function dbDocToLocal(doc: {
+  id: number;
+  type: "proposal" | "estimate";
+  title: string;
+  memo: string | null;
+  clientName: string;
+  projectName: string;
+  platform: string;
+  date: string;
+  items: { id: string; name: string; quantity: string; originalPrice: string; discountPrice: string }[];
+  notes: string[];
+  totalMin: number;
+  totalMax: number;
+  createdAt: Date | string;
+  updatedAt: Date | string;
+}): DocumentData {
+  return {
+    id: String(doc.id),
+    type: doc.type,
+    title: doc.title || '',
+    memo: doc.memo || '',
+    clientName: doc.clientName || '',
+    projectName: doc.projectName || '',
+    platform: doc.platform || '',
+    date: doc.date || '',
+    items: (doc.items || []).map((item) => ({
+      id: item.id || nanoid(),
+      name: item.name || '',
+      quantity: item.quantity || '',
+      originalPrice: item.originalPrice || '',
+      discountPrice: item.discountPrice || '',
+    })),
+    notes: doc.notes || [],
+    totalMin: doc.totalMin || 0,
+    totalMax: doc.totalMax || 0,
+    createdAt: typeof doc.createdAt === 'string' ? doc.createdAt : new Date(doc.createdAt).toISOString(),
+    updatedAt: typeof doc.updatedAt === 'string' ? doc.updatedAt : new Date(doc.updatedAt).toISOString(),
+  };
 }
 
 export function EstimateProvider({ children }: { children: ReactNode }) {
   const [currentDoc, setCurrentDoc] = useState<DocumentData>(() => ({
     ...defaultProposal,
-    id: nanoid(),
+    id: '',
     title: '',
     memo: '',
     items: defaultProposal.items.map((item) => ({ ...item, id: nanoid() })),
     notes: [...defaultProposal.notes],
   }));
 
-  const [proposals, setProposals] = useState<DocumentData[]>(() => loadFromStorage('dalbitwork_proposals'));
-  const [estimates, setEstimates] = useState<DocumentData[]>(() => loadFromStorage('dalbitwork_estimates'));
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Fetch documents from DB via tRPC
+  const proposalsQuery = trpc.documents.list.useQuery({ type: 'proposal' });
+  const estimatesQuery = trpc.documents.list.useQuery({ type: 'estimate' });
+  const utils = trpc.useUtils();
+
+  // Convert DB results to local format
+  const proposals: DocumentData[] = (proposalsQuery.data || []).map(dbDocToLocal);
+  const estimates: DocumentData[] = (estimatesQuery.data || []).map(dbDocToLocal);
+
+  // tRPC mutations
+  const createMutation = trpc.documents.create.useMutation({
+    onSuccess: () => {
+      utils.documents.list.invalidate();
+    },
+  });
+
+  const updateMutation = trpc.documents.update.useMutation({
+    onSuccess: () => {
+      utils.documents.list.invalidate();
+    },
+  });
+
+  const deleteMutation = trpc.documents.delete.useMutation({
+    onSuccess: () => {
+      utils.documents.list.invalidate();
+    },
+  });
 
   const newDocument = useCallback((type: DocumentType) => {
     const template = type === 'proposal' ? defaultProposal : defaultEstimate;
     setCurrentDoc({
       ...template,
-      id: nanoid(),
+      id: '', // Empty ID means new document (not yet saved to DB)
       title: '',
       memo: '',
       date: new Date().toISOString().split('T')[0],
@@ -61,37 +118,51 @@ export function EstimateProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  const saveDocument = useCallback(() => {
-    const now = new Date().toISOString();
-    const docToSave: DocumentData = {
-      ...currentDoc,
-      id: currentDoc.id || nanoid(),
-      createdAt: currentDoc.createdAt || now,
-      updatedAt: now,
-    };
+  const saveDocument = useCallback(async () => {
+    setIsSaving(true);
+    try {
+      const payload = {
+        type: currentDoc.type,
+        title: currentDoc.title || '',
+        memo: currentDoc.memo || null,
+        clientName: currentDoc.clientName || '',
+        projectName: currentDoc.projectName || '',
+        platform: currentDoc.platform || '',
+        date: currentDoc.date || '',
+        items: currentDoc.items.map((item) => ({
+          id: item.id,
+          name: item.name,
+          quantity: item.quantity,
+          originalPrice: item.originalPrice,
+          discountPrice: item.discountPrice,
+        })),
+        notes: currentDoc.notes,
+        totalMin: currentDoc.totalMin,
+        totalMax: currentDoc.totalMax,
+      };
 
-    if (currentDoc.type === 'proposal') {
-      setProposals((prev) => {
-        const existing = prev.findIndex((p) => p.id === docToSave.id);
-        const updated = existing >= 0
-          ? prev.map((p) => (p.id === docToSave.id ? docToSave : p))
-          : [docToSave, ...prev];
-        saveToStorage('dalbitwork_proposals', updated);
-        return updated;
-      });
-    } else {
-      setEstimates((prev) => {
-        const existing = prev.findIndex((e) => e.id === docToSave.id);
-        const updated = existing >= 0
-          ? prev.map((e) => (e.id === docToSave.id ? docToSave : e))
-          : [docToSave, ...prev];
-        saveToStorage('dalbitwork_estimates', updated);
-        return updated;
-      });
+      const dbId = currentDoc.id ? parseInt(currentDoc.id) : NaN;
+
+      if (!isNaN(dbId) && dbId > 0) {
+        // Update existing document
+        const result = await updateMutation.mutateAsync({
+          id: dbId,
+          data: payload,
+        });
+        if (result) {
+          setCurrentDoc(dbDocToLocal(result));
+        }
+      } else {
+        // Create new document
+        const result = await createMutation.mutateAsync(payload);
+        if (result) {
+          setCurrentDoc(dbDocToLocal(result));
+        }
+      }
+    } finally {
+      setIsSaving(false);
     }
-
-    setCurrentDoc(docToSave);
-  }, [currentDoc]);
+  }, [currentDoc, createMutation, updateMutation]);
 
   const loadDocument = useCallback((id: string, type: DocumentType) => {
     const list = type === 'proposal' ? proposals : estimates;
@@ -105,21 +176,11 @@ export function EstimateProvider({ children }: { children: ReactNode }) {
     }
   }, [proposals, estimates]);
 
-  const deleteDocument = useCallback((id: string, type: DocumentType) => {
-    if (type === 'proposal') {
-      setProposals((prev) => {
-        const updated = prev.filter((p) => p.id !== id);
-        saveToStorage('dalbitwork_proposals', updated);
-        return updated;
-      });
-    } else {
-      setEstimates((prev) => {
-        const updated = prev.filter((e) => e.id !== id);
-        saveToStorage('dalbitwork_estimates', updated);
-        return updated;
-      });
-    }
-  }, []);
+  const deleteDocument = useCallback(async (id: string, type: DocumentType) => {
+    const dbId = parseInt(id);
+    if (isNaN(dbId)) return;
+    await deleteMutation.mutateAsync({ id: dbId });
+  }, [deleteMutation]);
 
   const addItem = useCallback(() => {
     setCurrentDoc((prev) => ({
@@ -190,6 +251,7 @@ export function EstimateProvider({ children }: { children: ReactNode }) {
         removeNote,
         updateNote,
         reorderNotes,
+        isSaving,
       }}
     >
       {children}
