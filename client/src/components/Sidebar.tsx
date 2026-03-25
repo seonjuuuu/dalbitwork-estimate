@@ -1,0 +1,137 @@
+import { useEstimate } from '@/contexts/EstimateContext';
+import { FilePlus, FileText, List, ChevronLeft, ChevronRight, FileCheck } from 'lucide-react';
+import { useState } from 'react';
+import { useLocation } from 'wouter';
+
+const SYMBOL_LOGO_URL = 'https://d2xsxph8kpxj0f.cloudfront.net/310519663381204565/fPgwdiJ6bkDvqhYoiMKGTH/dalbitwork-symbol_6be6c49b.webp';
+
+export default function Sidebar() {
+  const [collapsed, setCollapsed] = useState(false);
+  const [location, navigate] = useLocation();
+  const { newDocument, currentDoc } = useEstimate();
+
+  // 현재 편집 중인 문서 타입으로 활성 상태 판단
+  const isOnHome = location === '/';
+  const isProposalActive = isOnHome && currentDoc.type === 'proposal';
+  const isEstimateActive = isOnHome && currentDoc.type === 'estimate';
+
+  const navItems = [
+    {
+      icon: FilePlus,
+      label: '새 제안서',
+      id: 'new-proposal',
+      active: isProposalActive,
+      onClick: () => {
+        newDocument('proposal');
+        navigate('/');
+      },
+    },
+    {
+      icon: FileCheck,
+      label: '새 견적서',
+      id: 'new-estimate',
+      active: isEstimateActive,
+      onClick: () => {
+        newDocument('estimate');
+        navigate('/');
+      },
+    },
+    {
+      icon: FileText,
+      label: '제안서 목록',
+      id: 'proposal-list',
+      active: location === '/proposals',
+      onClick: () => navigate('/proposals'),
+    },
+    {
+      icon: List,
+      label: '견적서 목록',
+      id: 'estimate-list',
+      active: location === '/estimates',
+      onClick: () => navigate('/estimates'),
+    },
+  ];
+
+  return (
+    <aside
+      className={`relative flex flex-col border-r border-border bg-sidebar transition-all duration-300 ${
+        collapsed ? 'w-16' : 'w-60'
+      }`}
+    >
+      {/* Logo */}
+      <div className="flex items-center gap-3 px-4 py-5 border-b border-border">
+        <img src={SYMBOL_LOGO_URL} alt="달빛워크" className="w-8 h-8 object-contain flex-shrink-0" />
+        {!collapsed && (
+          <span className="text-sm font-semibold text-foreground whitespace-nowrap">
+            달빛워크
+          </span>
+        )}
+      </div>
+
+      {/* Navigation */}
+      <nav className="flex-1 py-3 px-2 space-y-1">
+        {/* Section: 작성 */}
+        {!collapsed && (
+          <p className="px-3 pt-2 pb-1 text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider">
+            작성
+          </p>
+        )}
+        {navItems.slice(0, 2).map((item) => (
+          <button
+            key={item.id}
+            onClick={item.onClick}
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-sm transition-colors ${
+              item.active
+                ? 'bg-primary/10 text-primary font-medium'
+                : 'text-muted-foreground hover:bg-accent hover:text-foreground'
+            } ${collapsed ? 'justify-center' : ''}`}
+          >
+            <item.icon className="w-4.5 h-4.5 flex-shrink-0" />
+            {!collapsed && <span>{item.label}</span>}
+          </button>
+        ))}
+
+        {/* Divider */}
+        <div className="my-2 border-t border-border" />
+
+        {/* Section: 관리 */}
+        {!collapsed && (
+          <p className="px-3 pt-2 pb-1 text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider">
+            관리
+          </p>
+        )}
+        {navItems.slice(2).map((item) => (
+          <button
+            key={item.id}
+            onClick={item.onClick}
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-sm transition-colors ${
+              item.active
+                ? 'bg-primary/10 text-primary font-medium'
+                : 'text-muted-foreground hover:bg-accent hover:text-foreground'
+            } ${collapsed ? 'justify-center' : ''}`}
+          >
+            <item.icon className="w-4.5 h-4.5 flex-shrink-0" />
+            {!collapsed && <span>{item.label}</span>}
+          </button>
+        ))}
+      </nav>
+
+      {/* Collapse toggle */}
+      <button
+        onClick={() => setCollapsed(!collapsed)}
+        className="absolute -right-3 top-20 w-6 h-6 rounded-full border border-border bg-card flex items-center justify-center text-muted-foreground hover:text-foreground shadow-sm transition-colors"
+      >
+        {collapsed ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronLeft className="w-3.5 h-3.5" />}
+      </button>
+
+      {/* Footer */}
+      <div className="px-4 py-3 border-t border-border">
+        {!collapsed && (
+          <p className="text-[11px] text-muted-foreground">
+            DALBIT WORK
+          </p>
+        )}
+      </div>
+    </aside>
+  );
+}
