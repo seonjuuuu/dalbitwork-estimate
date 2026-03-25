@@ -1,4 +1,10 @@
 import { trpc } from "@/lib/trpc";
+// Buffer polyfill for @react-pdf/renderer
+import { Buffer } from 'buffer';
+if (typeof window !== 'undefined' && !window.Buffer) {
+  (window as unknown as Record<string, unknown>).Buffer = Buffer;
+}
+
 import { UNAUTHED_ERR_MSG } from '@shared/const';
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { httpBatchLink, TRPCClientError } from "@trpc/client";

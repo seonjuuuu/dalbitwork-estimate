@@ -5,64 +5,30 @@ import { pdf } from '@react-pdf/renderer';
 import PdfDocument from './PdfDocument';
 import { getDocTypeLabel } from '@/lib/types';
 import { useEstimate } from '@/contexts/EstimateContext';
-import * as pdfjsLib from 'pdfjs-dist';
-
-// PDF.js worker 설정
-pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
-  'pdfjs-dist/build/pdf.worker.min.mjs',
-  import.meta.url,
-).toString();
 
 export default function EstimatePreview() {
   const { currentDoc } = useEstimate();
-  const canvasContainerRef = useRef<HTMLDivElement>(null);
-  const [pageImages, setPageImages] = useState<string[]>([]);
   const [isRendering, setIsRendering] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const [pdfBlobUrl, setPdfBlobUrl] = useState<string | null>(null);
   const renderTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const prevBlobUrlRef = useRef<string | null>(null);
 
   const docLabel = getDocTypeLabel(currentDoc.type);
 
-  // PDF blob 생성 및 페이지 이미지 렌더링
+  // PDF blob 생성 및 iframe 미리보기 갱신
   const renderPreview = useCallback(async () => {
     setIsRendering(true);
     try {
-      // @react-pdf/renderer로 PDF blob 생성
       const blob = await pdf(<PdfDocument doc={currentDoc} />).toBlob();
       const url = URL.createObjectURL(blob);
-      
+
       // 이전 URL 해제
-      if (pdfBlobUrl) {
-        URL.revokeObjectURL(pdfBlobUrl);
+      if (prevBlobUrlRef.current) {
+        URL.revokeObjectURL(prevBlobUrlRef.current);
       }
+      prevBlobUrlRef.current = url;
       setPdfBlobUrl(url);
-
-      // pdfjs로 PDF를 canvas에 렌더링하여 이미지로 변환
-      const arrayBuffer = await blob.arrayBuffer();
-      const pdfDoc = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-      const numPages = pdfDoc.numPages;
-      const images: string[] = [];
-
-      for (let i = 1; i <= numPages; i++) {
-        const page = await pdfDoc.getPage(i);
-        const scale = 2; // 고해상도 렌더링
-        const viewport = page.getViewport({ scale });
-
-        const canvas = document.createElement('canvas');
-        canvas.width = viewport.width;
-        canvas.height = viewport.height;
-        const ctx = canvas.getContext('2d')!;
-
-        await page.render({
-          canvasContext: ctx,
-          viewport,
-        }).promise;
-
-        images.push(canvas.toDataURL('image/png'));
-      }
-
-      setPageImages(images);
     } catch (err) {
       console.error('미리보기 렌더링 오류:', err);
     } finally {
@@ -77,7 +43,7 @@ export default function EstimatePreview() {
     }
     renderTimeoutRef.current = setTimeout(() => {
       renderPreview();
-    }, 500); // 500ms debounce
+    }, 600);
 
     return () => {
       if (renderTimeoutRef.current) {
@@ -89,11 +55,11 @@ export default function EstimatePreview() {
   // cleanup
   useEffect(() => {
     return () => {
-      if (pdfBlobUrl) {
-        URL.revokeObjectURL(pdfBlobUrl);
+      if (prevBlobUrlRef.current) {
+        URL.revokeObjectURL(prevBlobUrlRef.current);
       }
     };
-  }, [pdfBlobUrl]);
+  }, []);
 
   // PDF 다운로드
   const handleDownload = useCallback(async () => {
@@ -125,11 +91,6 @@ export default function EstimatePreview() {
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Eye className="w-4 h-4" />
           미리보기
-          {pageImages.length > 1 && (
-            <span style={{ fontSize: '11px', color: '#888', marginLeft: '4px' }}>
-              ({pageImages.length}페이지)
-            </span>
-          )}
           {isRendering && (
             <Loader2 className="w-3 h-3 animate-spin ml-1" />
           )}
@@ -144,70 +105,70 @@ export default function EstimatePreview() {
         </Button>
       </div>
 
-      {/* Preview Container - 실제 PDF 렌더링 결과를 이미지로 표시 */}
+      {/* Preview Container - iframe으로 PDF 직접 표시 */}
       <div
-        ref={canvasContainerRef}
         style={{
           background: '#e8e8e4',
           borderRadius: '8px',
-          padding: '24px 16px',
-          overflow: 'auto',
-          maxHeight: '80vh',
+          padding: '16px',
+          overflow: 'hidden',
+          height: '80vh',
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
-          gap: '16px',
+          justifyContent: 'center',
+          position: 'relative',
         }}
       >
-        {pageImages.length === 0 && isRendering && (
+        {/* 로딩 오버레이 */}
+        {isRendering && (
           <div style={{
-            width: '420px',
-            height: '594px',
-            background: '#ffffff',
-            borderRadius: '4px',
-            boxShadow: '0 4px 24px rgba(0,0,0,0.12)',
+            position: 'absolute',
+            inset: 0,
+            background: 'rgba(232,232,228,0.8)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             flexDirection: 'column',
             gap: '8px',
+            zIndex: 10,
+            borderRadius: '8px',
           }}>
             <Loader2 className="w-6 h-6 animate-spin" style={{ color: '#F7AE00' }} />
             <span style={{ fontSize: '12px', color: '#888' }}>미리보기 생성 중...</span>
           </div>
         )}
 
-        {pageImages.map((imgSrc, idx) => (
-          <div key={idx} style={{ position: 'relative' }}>
-            {/* 페이지 번호 표시 */}
-            {pageImages.length > 1 && (
-              <div style={{
-                position: 'absolute',
-                top: '8px',
-                right: '8px',
-                background: 'rgba(0,0,0,0.5)',
-                color: '#fff',
-                fontSize: '10px',
-                padding: '2px 8px',
-                borderRadius: '4px',
-                zIndex: 10,
-              }}>
-                {idx + 1} / {pageImages.length}
-              </div>
-            )}
-            <img
-              src={imgSrc}
-              alt={`페이지 ${idx + 1}`}
-              style={{
-                width: '420px',
-                height: 'auto',
-                boxShadow: '0 4px 24px rgba(0,0,0,0.12), 0 1px 4px rgba(0,0,0,0.06)',
-                borderRadius: '2px',
-                display: 'block',
-              }}
-            />
+        {/* 초기 로딩 전 플레이스홀더 */}
+        {!pdfBlobUrl && !isRendering && (
+          <div style={{
+            width: '100%',
+            height: '100%',
+            background: '#ffffff',
+            borderRadius: '4px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}>
+            <span style={{ fontSize: '13px', color: '#aaa' }}>미리보기 준비 중...</span>
           </div>
-        ))}
+        )}
+
+        {/* PDF iframe */}
+        {pdfBlobUrl && (
+          <iframe
+            key={pdfBlobUrl}
+            src={pdfBlobUrl}
+            style={{
+              width: '100%',
+              height: '100%',
+              border: 'none',
+              borderRadius: '4px',
+              boxShadow: '0 4px 24px rgba(0,0,0,0.12)',
+            }}
+            title="PDF 미리보기"
+          />
+        )}
       </div>
     </div>
   );
