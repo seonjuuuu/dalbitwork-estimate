@@ -104,9 +104,14 @@ const s = StyleSheet.create({
     fontWeight: 500,
     color: '#1a1a1a',
   },
-  // Supplier info table (견적서 전용)
-  supplierTable: {
+  // Supplier info - 2열 레이아웃 (견적서 전용)
+  supplierWrap: {
+    flexDirection: 'row',
     marginBottom: 18,
+    gap: 16,
+  },
+  supplierTable: {
+    flex: 1,
     borderWidth: 1,
     borderColor: '#dddddd',
   },
@@ -116,26 +121,33 @@ const s = StyleSheet.create({
     borderBottomColor: '#dddddd',
   },
   supplierLabelCell: {
-    width: 80,
+    width: 70,
     backgroundColor: '#323232',
-    paddingVertical: 6,
-    paddingHorizontal: 10,
+    paddingVertical: 5,
+    paddingHorizontal: 8,
+    justifyContent: 'center',
+  },
+  supplierLabelCellGold: {
+    width: 70,
+    backgroundColor: GOLD,
+    paddingVertical: 5,
+    paddingHorizontal: 8,
     justifyContent: 'center',
   },
   supplierLabelText: {
-    fontSize: 9,
+    fontSize: 8,
     fontWeight: 600,
     color: '#ffffff',
     textAlign: 'center',
   },
   supplierValueCell: {
     flex: 1,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
+    paddingVertical: 5,
+    paddingHorizontal: 10,
     justifyContent: 'center',
   },
   supplierValueText: {
-    fontSize: 9,
+    fontSize: 8,
     color: '#1a1a1a',
   },
   // Discount banner
@@ -397,47 +409,78 @@ export default function PdfDocument({ doc }: PdfDocumentProps) {
           <Text style={s.subtitle}>{docSubtitle}</Text>
         </View>
 
-        {/* 견적서: 공급자 정보 테이블 */}
+        {/* 견적서: 좌우 2열 정보 테이블 */}
         {!isProposal && (
-          <View style={s.supplierTable}>
-            <View style={s.supplierRow}>
-              <View style={s.supplierLabelCell}>
-                <Text style={s.supplierLabelText}>공급자</Text>
+          <View style={s.supplierWrap}>
+            {/* 왼쪽: 고객사 정보 */}
+            <View style={s.supplierTable}>
+              <View style={s.supplierRow}>
+                <View style={s.supplierLabelCellGold}>
+                  <Text style={s.supplierLabelText}>업체명</Text>
+                </View>
+                <View style={s.supplierValueCell}>
+                  <Text style={s.supplierValueText}>{doc.clientName || ''}</Text>
+                </View>
               </View>
-              <View style={s.supplierValueCell}>
-                <Text style={s.supplierValueText}>달빛워크</Text>
+              <View style={s.supplierRow}>
+                <View style={s.supplierLabelCellGold}>
+                  <Text style={s.supplierLabelText}>대표자</Text>
+                </View>
+                <View style={s.supplierValueCell}>
+                  <Text style={s.supplierValueText}></Text>
+                </View>
               </View>
-            </View>
-            <View style={s.supplierRow}>
-              <View style={s.supplierLabelCell}>
-                <Text style={s.supplierLabelText}>대표자</Text>
-              </View>
-              <View style={s.supplierValueCell}>
-                <Text style={s.supplierValueText}>문선주</Text>
-              </View>
-            </View>
-            <View style={s.supplierRow}>
-              <View style={s.supplierLabelCell}>
-                <Text style={s.supplierLabelText}>사업자번호</Text>
-              </View>
-              <View style={s.supplierValueCell}>
-                <Text style={s.supplierValueText}>350-14-02666</Text>
-              </View>
-            </View>
-            <View style={s.supplierRow}>
-              <View style={s.supplierLabelCell}>
-                <Text style={s.supplierLabelText}>연락처</Text>
-              </View>
-              <View style={s.supplierValueCell}>
-                <Text style={s.supplierValueText}>010-2757-9116</Text>
+              <View style={[s.supplierRow, { borderBottomWidth: 0 }]}>
+                <View style={s.supplierLabelCellGold}>
+                  <Text style={s.supplierLabelText}>연락처</Text>
+                </View>
+                <View style={s.supplierValueCell}>
+                  <Text style={s.supplierValueText}></Text>
+                </View>
               </View>
             </View>
-            <View style={[s.supplierRow, { borderBottomWidth: 0 }]}>
-              <View style={s.supplierLabelCell}>
-                <Text style={s.supplierLabelText}>업태</Text>
+
+            {/* 오른쪽: 공급자(달빛워크) 정보 */}
+            <View style={s.supplierTable}>
+              <View style={s.supplierRow}>
+                <View style={s.supplierLabelCell}>
+                  <Text style={s.supplierLabelText}>공급자</Text>
+                </View>
+                <View style={s.supplierValueCell}>
+                  <Text style={s.supplierValueText}>달빛워크</Text>
+                </View>
               </View>
-              <View style={s.supplierValueCell}>
-                <Text style={s.supplierValueText}>정보통신업 / 컴퓨터 프로그래밍 서비스업</Text>
+              <View style={s.supplierRow}>
+                <View style={s.supplierLabelCell}>
+                  <Text style={s.supplierLabelText}>대표자</Text>
+                </View>
+                <View style={s.supplierValueCell}>
+                  <Text style={s.supplierValueText}>문선주</Text>
+                </View>
+              </View>
+              <View style={s.supplierRow}>
+                <View style={s.supplierLabelCell}>
+                  <Text style={s.supplierLabelText}>사업자번호</Text>
+                </View>
+                <View style={s.supplierValueCell}>
+                  <Text style={s.supplierValueText}>350-14-02666</Text>
+                </View>
+              </View>
+              <View style={s.supplierRow}>
+                <View style={s.supplierLabelCell}>
+                  <Text style={s.supplierLabelText}>연락처</Text>
+                </View>
+                <View style={s.supplierValueCell}>
+                  <Text style={s.supplierValueText}>010-2757-9116</Text>
+                </View>
+              </View>
+              <View style={[s.supplierRow, { borderBottomWidth: 0 }]}>
+                <View style={s.supplierLabelCell}>
+                  <Text style={s.supplierLabelText}>업태</Text>
+                </View>
+                <View style={s.supplierValueCell}>
+                  <Text style={s.supplierValueText}>정보통신업 / 컴퓨터 프로그래밍 서비스업</Text>
+                </View>
               </View>
             </View>
           </View>
