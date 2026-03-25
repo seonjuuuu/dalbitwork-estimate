@@ -409,83 +409,6 @@ export default function PdfDocument({ doc }: PdfDocumentProps) {
           <Text style={s.subtitle}>{docSubtitle}</Text>
         </View>
 
-        {/* 견적서: 좌우 2열 정보 테이블 */}
-        {!isProposal && (
-          <View style={s.supplierWrap}>
-            {/* 왼쪽: 고객사 정보 */}
-            <View style={s.supplierTable}>
-              <View style={s.supplierRow}>
-                <View style={s.supplierLabelCellGold}>
-                  <Text style={s.supplierLabelText}>업체명</Text>
-                </View>
-                <View style={s.supplierValueCell}>
-                  <Text style={s.supplierValueText}>{doc.clientName || ''}</Text>
-                </View>
-              </View>
-              <View style={s.supplierRow}>
-                <View style={s.supplierLabelCellGold}>
-                  <Text style={s.supplierLabelText}>대표자</Text>
-                </View>
-                <View style={s.supplierValueCell}>
-                  <Text style={s.supplierValueText}></Text>
-                </View>
-              </View>
-              <View style={[s.supplierRow, { borderBottomWidth: 0 }]}>
-                <View style={s.supplierLabelCellGold}>
-                  <Text style={s.supplierLabelText}>연락처</Text>
-                </View>
-                <View style={s.supplierValueCell}>
-                  <Text style={s.supplierValueText}></Text>
-                </View>
-              </View>
-            </View>
-
-            {/* 오른쪽: 공급자(달빛워크) 정보 */}
-            <View style={s.supplierTable}>
-              <View style={s.supplierRow}>
-                <View style={s.supplierLabelCell}>
-                  <Text style={s.supplierLabelText}>공급자</Text>
-                </View>
-                <View style={s.supplierValueCell}>
-                  <Text style={s.supplierValueText}>달빛워크</Text>
-                </View>
-              </View>
-              <View style={s.supplierRow}>
-                <View style={s.supplierLabelCell}>
-                  <Text style={s.supplierLabelText}>대표자</Text>
-                </View>
-                <View style={s.supplierValueCell}>
-                  <Text style={s.supplierValueText}>문선주</Text>
-                </View>
-              </View>
-              <View style={s.supplierRow}>
-                <View style={s.supplierLabelCell}>
-                  <Text style={s.supplierLabelText}>사업자번호</Text>
-                </View>
-                <View style={s.supplierValueCell}>
-                  <Text style={s.supplierValueText}>350-14-02666</Text>
-                </View>
-              </View>
-              <View style={s.supplierRow}>
-                <View style={s.supplierLabelCell}>
-                  <Text style={s.supplierLabelText}>연락처</Text>
-                </View>
-                <View style={s.supplierValueCell}>
-                  <Text style={s.supplierValueText}>010-2757-9116</Text>
-                </View>
-              </View>
-              <View style={[s.supplierRow, { borderBottomWidth: 0 }]}>
-                <View style={s.supplierLabelCell}>
-                  <Text style={s.supplierLabelText}>업태</Text>
-                </View>
-                <View style={s.supplierValueCell}>
-                  <Text style={s.supplierValueText}>정보통신업 / 컴퓨터 프로그래밍 서비스업</Text>
-                </View>
-              </View>
-            </View>
-          </View>
-        )}
-
         {/* Info */}
         <View style={s.infoRow}>
           <View style={s.infoLeft}>
@@ -510,6 +433,22 @@ export default function PdfDocument({ doc }: PdfDocumentProps) {
             <View style={s.infoLine}>
               <Text style={s.infoLabelRight}>발 행 처</Text>
               <Text style={s.infoValue}>달빛워크</Text>
+            </View>
+            <View style={s.infoLine}>
+              <Text style={s.infoLabelRight}>대 표 자</Text>
+              <Text style={s.infoValue}>문선주</Text>
+            </View>
+            <View style={s.infoLine}>
+              <Text style={s.infoLabelRight}>사업자번호</Text>
+              <Text style={s.infoValue}>350-14-02666</Text>
+            </View>
+            <View style={s.infoLine}>
+              <Text style={s.infoLabelRight}>연 락 처</Text>
+              <Text style={s.infoValue}>010-2757-9116</Text>
+            </View>
+            <View style={s.infoLine}>
+              <Text style={s.infoLabelRight}>업    태</Text>
+              <Text style={s.infoValue}>정보통신업 / 컴퓨터 프로그래밍 서비스업</Text>
             </View>
           </View>
         </View>
