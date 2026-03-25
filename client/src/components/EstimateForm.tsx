@@ -1,8 +1,26 @@
 import { useEstimate } from '@/contexts/EstimateContext';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Plus, Trash2, Save, GripVertical, Tag, StickyNote, Loader2 } from 'lucide-react';
+import { Plus, Trash2, Save, GripVertical, Tag, StickyNote, Loader2, BookOpen, BookmarkPlus, Download, Replace } from 'lucide-react';
+import { trpc } from '@/lib/trpc';
+import { useState, useRef, useEffect } from 'react';
 import { toast } from 'sonner';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+  DropdownMenuLabel,
+} from '@/components/ui/dropdown-menu';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogDescription,
+} from '@/components/ui/dialog';
 import { getDocTypeLabel, autoFormatNumber, calcTotalOriginal, calcTotalFinal, calcTotalDiscount, hasAnyDiscount } from '@/lib/types';
 import {
   DndContext,
@@ -80,6 +98,205 @@ function SortableNoteItem({
         <Trash2 className="w-3.5 h-3.5" />
       </button>
     </div>
+  );
+}
+
+// 참고사항 템플릿 불러오기/저장 컴포넌트
+function NoteTemplateActions({
+  currentNotes,
+  onApplyTemplate,
+}: {
+  currentNotes: string[];
+  onApplyTemplate: (notes: string[], mode: 'replace' | 'append') => void;
+}) {
+  const [saveDialogOpen, setSaveDialogOpen] = useState(false);
+  const [templateName, setTemplateName] = useState('');
+  const [selectedTemplate, setSelectedTemplate] = useState<{ id: number; name: string; notes: string[] } | null>(null);
+  const [applyMode, setApplyMode] = useState<'replace' | 'append'>('replace');
+  const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
+
+  const templatesQuery = trpc.noteTemplates.list.useQuery();
+  const utils = trpc.useUtils();
+
+  const saveMutation = trpc.noteTemplates.saveFromDocument.useMutation({
+    onSuccess: () => {
+      utils.noteTemplates.list.invalidate();
+      setSaveDialogOpen(false);
+      setTemplateName('');
+      toast.success('템플릿이 저장되었습니다.');
+    },
+    onError: () => toast.error('저장에 실패했습니다.'),
+  });
+
+  const templates = templatesQuery.data || [];
+
+  const handleSaveAsTemplate = () => {
+    const filteredNotes = currentNotes.filter((n) => n.trim() !== '');
+    if (filteredNotes.length === 0) {
+      toast.error('저장할 참고사항이 없습니다.');
+      return;
+    }
+    setSaveDialogOpen(true);
+  };
+
+  const handleConfirmSave = () => {
+    if (!templateName.trim()) {
+      toast.error('템플릿 이름을 입력해주세요.');
+      return;
+    }
+    const filteredNotes = currentNotes.filter((n) => n.trim() !== '');
+    saveMutation.mutate({ name: templateName.trim(), notes: filteredNotes });
+  };
+
+  const handleSelectTemplate = (tmpl: { id: number; name: string; notes: string[] }) => {
+    setSelectedTemplate(tmpl);
+    // If there are existing notes, ask for replace/append
+    if (currentNotes.filter((n) => n.trim() !== '').length > 0) {
+      setConfirmDialogOpen(true);
+    } else {
+      onApplyTemplate(tmpl.notes, 'replace');
+      toast.success(`"${tmpl.name}" 템플릿이 적용되었습니다.`);
+    }
+  };
+
+  const handleConfirmApply = (mode: 'replace' | 'append') => {
+    if (selectedTemplate) {
+      onApplyTemplate(selectedTemplate.notes, mode);
+      toast.success(
+        mode === 'replace'
+          ? `"${selectedTemplate.name}" 템플릿으로 교체되었습니다.`
+          : `"${selectedTemplate.name}" 템플릿이 추가되었습니다.`
+      );
+    }
+    setConfirmDialogOpen(false);
+    setSelectedTemplate(null);
+  };
+
+  return (
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="outline" size="sm" className="text-xs gap-1.5">
+            <BookOpen className="w-3.5 h-3.5" />
+            템플릿
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-64">
+          <DropdownMenuLabel className="text-xs font-semibold">템플릿 불러오기</DropdownMenuLabel>
+          {templates.length === 0 ? (
+            <div className="px-2 py-3 text-xs text-muted-foreground text-center">
+              저장된 템플릿이 없습니다.
+            </div>
+          ) : (
+            templates.map((tmpl) => (
+              <DropdownMenuItem
+                key={tmpl.id}
+                onClick={() => handleSelectTemplate(tmpl)}
+                className="flex items-center gap-2 cursor-pointer"
+              >
+                <BookOpen className="w-3.5 h-3.5 text-primary flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm truncate">{tmpl.name}</p>
+                  <p className="text-[10px] text-muted-foreground">{tmpl.notes.length}개 항목</p>
+                </div>
+              </DropdownMenuItem>
+            ))
+          )}
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            onClick={handleSaveAsTemplate}
+            className="flex items-center gap-2 cursor-pointer text-primary"
+          >
+            <BookmarkPlus className="w-3.5 h-3.5" />
+            <span className="text-sm">현재 참고사항을 템플릿으로 저장</span>
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      {/* Save as Template Dialog */}
+      <Dialog open={saveDialogOpen} onOpenChange={setSaveDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>템플릿으로 저장</DialogTitle>
+            <DialogDescription>
+              현재 참고사항을 템플릿으로 저장합니다.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">템플릿 이름</label>
+              <Input
+                value={templateName}
+                onChange={(e) => setTemplateName(e.target.value)}
+                placeholder="예: 기본 계약 조항, 아임웹 제작 약관"
+                className="bg-background"
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleConfirmSave();
+                }}
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {currentNotes.filter((n) => n.trim() !== '').length}개의 참고사항이 저장됩니다.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" size="sm" onClick={() => setSaveDialogOpen(false)}>
+              취소
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleConfirmSave}
+              disabled={saveMutation.isPending}
+              className="gap-1.5"
+            >
+              {saveMutation.isPending ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <Save className="w-3.5 h-3.5" />
+              )}
+              저장
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Apply Mode Confirm Dialog */}
+      <Dialog open={confirmDialogOpen} onOpenChange={setConfirmDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>템플릿 적용 방식</DialogTitle>
+            <DialogDescription>
+              현재 참고사항이 있습니다. 어떻게 적용하시겠습니까?
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-3 py-2">
+            <Button
+              variant="outline"
+              onClick={() => handleConfirmApply('replace')}
+              className="justify-start gap-3 h-auto py-3 px-4"
+            >
+              <Replace className="w-4 h-4 text-primary flex-shrink-0" />
+              <div className="text-left">
+                <p className="text-sm font-medium">교체하기</p>
+                <p className="text-xs text-muted-foreground">현재 참고사항을 삭제하고 템플릿으로 교체합니다</p>
+              </div>
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => handleConfirmApply('append')}
+              className="justify-start gap-3 h-auto py-3 px-4"
+            >
+              <Download className="w-4 h-4 text-primary flex-shrink-0" />
+              <div className="text-left">
+                <p className="text-sm font-medium">추가하기</p>
+                <p className="text-xs text-muted-foreground">현재 참고사항 뒤에 템플릿을 추가합니다</p>
+              </div>
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 
@@ -370,10 +587,22 @@ export default function EstimateForm() {
       <div className="bg-card rounded-lg border border-border p-5">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-sm font-semibold text-foreground section-title">참고 사항</h3>
-          <Button variant="outline" size="sm" onClick={addNote} className="text-xs gap-1.5">
-            <Plus className="w-3.5 h-3.5" />
-            추가
-          </Button>
+          <div className="flex items-center gap-2">
+            <NoteTemplateActions
+              currentNotes={currentDoc.notes}
+              onApplyTemplate={(notes, mode) => {
+                if (mode === 'replace') {
+                  setCurrentDoc((prev) => ({ ...prev, notes }));
+                } else {
+                  setCurrentDoc((prev) => ({ ...prev, notes: [...prev.notes, ...notes] }));
+                }
+              }}
+            />
+            <Button variant="outline" size="sm" onClick={addNote} className="text-xs gap-1.5">
+              <Plus className="w-3.5 h-3.5" />
+              추가
+            </Button>
+          </div>
         </div>
         <p className="text-[11px] text-muted-foreground mb-3 mt-2">
           드래그하여 순서를 변경할 수 있습니다. 계약 조항, 작업 범위, 결제 조건 등을 자유롭게 입력하세요.

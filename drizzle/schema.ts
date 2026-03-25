@@ -63,3 +63,24 @@ export interface DocumentItemRow {
 
 export type Document = typeof documents.$inferSelect;
 export type InsertDocument = typeof documents.$inferInsert;
+
+/**
+ * Note templates table for storing reusable reference notes.
+ * Each template has a name and an array of note strings.
+ */
+export const noteTemplates = mysqlTable("note_templates", {
+  id: int("id").autoincrement().primaryKey(),
+  /** Owner user ID (FK to users.id) */
+  userId: int("userId").notNull(),
+  /** Template name for identification */
+  name: varchar("name", { length: 500 }).notNull(),
+  /** Notes content as JSON array of strings */
+  notes: json("notes").$type<string[]>().notNull(),
+  /** Display order for sorting */
+  sortOrder: int("sortOrder").default(0).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type NoteTemplate = typeof noteTemplates.$inferSelect;
+export type InsertNoteTemplate = typeof noteTemplates.$inferInsert;

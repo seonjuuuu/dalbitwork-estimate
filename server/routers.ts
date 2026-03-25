@@ -43,6 +43,87 @@ export const appRouter = router({
     }),
   }),
 
+  noteTemplates: router({
+    /** List all note templates for the logged-in user */
+    list: protectedProcedure.query(async ({ ctx }) => {
+      return db.listNoteTemplates(ctx.user.id);
+    }),
+
+    /** Get a single note template by ID */
+    get: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .query(async ({ ctx, input }) => {
+        const tmpl = await db.getNoteTemplate(input.id, ctx.user.id);
+        if (!tmpl) throw new Error("Template not found");
+        return tmpl;
+      }),
+
+    /** Create a new note template */
+    create: protectedProcedure
+      .input(
+        z.object({
+          name: z.string().min(1),
+          notes: z.array(z.string()),
+          sortOrder: z.number().default(0),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        return db.createNoteTemplate({
+          userId: ctx.user.id,
+          name: input.name,
+          notes: input.notes,
+          sortOrder: input.sortOrder,
+        });
+      }),
+
+    /** Update an existing note template */
+    update: protectedProcedure
+      .input(
+        z.object({
+          id: z.number(),
+          data: z.object({
+            name: z.string().min(1).optional(),
+            notes: z.array(z.string()).optional(),
+            sortOrder: z.number().optional(),
+          }),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        const updateData: Record<string, unknown> = {};
+        if (input.data.name !== undefined) updateData.name = input.data.name;
+        if (input.data.notes !== undefined) updateData.notes = input.data.notes;
+        if (input.data.sortOrder !== undefined) updateData.sortOrder = input.data.sortOrder;
+
+        const tmpl = await db.updateNoteTemplate(input.id, ctx.user.id, updateData);
+        if (!tmpl) throw new Error("Template not found or not authorized");
+        return tmpl;
+      }),
+
+    /** Delete a note template */
+    delete: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        return db.deleteNoteTemplate(input.id, ctx.user.id);
+      }),
+
+    /** Save current document notes as a new template */
+    saveFromDocument: protectedProcedure
+      .input(
+        z.object({
+          name: z.string().min(1),
+          notes: z.array(z.string()),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        return db.createNoteTemplate({
+          userId: ctx.user.id,
+          name: input.name,
+          notes: input.notes,
+          sortOrder: 0,
+        });
+      }),
+  }),
+
   documents: router({
     /** List documents for the logged-in user, optionally filtered by type */
     list: protectedProcedure

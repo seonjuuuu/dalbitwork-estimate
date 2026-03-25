@@ -1,6 +1,6 @@
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, asc } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users, documents, InsertDocument } from "../drizzle/schema";
+import { InsertUser, users, documents, InsertDocument, noteTemplates, InsertNoteTemplate } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -163,5 +163,82 @@ async function getDocumentById(id: number) {
   if (!db) return undefined;
 
   const result = await db.select().from(documents).where(eq(documents.id, id)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+// ─── Note Template CRUD ─────────────────────────────────────────
+
+/** List all note templates for a user, ordered by sortOrder then createdAt */
+export async function listNoteTemplates(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+
+  return db
+    .select()
+    .from(noteTemplates)
+    .where(eq(noteTemplates.userId, userId))
+    .orderBy(asc(noteTemplates.sortOrder), desc(noteTemplates.createdAt));
+}
+
+/** Get a single note template by ID, scoped to user */
+export async function getNoteTemplate(id: number, userId: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+
+  const result = await db
+    .select()
+    .from(noteTemplates)
+    .where(and(eq(noteTemplates.id, id), eq(noteTemplates.userId, userId)))
+    .limit(1);
+
+  return result.length > 0 ? result[0] : undefined;
+}
+
+/** Create a new note template */
+export async function createNoteTemplate(data: InsertNoteTemplate) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const result = await db.insert(noteTemplates).values(data);
+  const insertId = result[0].insertId;
+
+  return getNoteTemplateById(insertId);
+}
+
+/** Update an existing note template (only if owned by user) */
+export async function updateNoteTemplate(
+  id: number,
+  userId: number,
+  data: Partial<Omit<InsertNoteTemplate, "id" | "userId" | "createdAt">>
+) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  await db
+    .update(noteTemplates)
+    .set(data)
+    .where(and(eq(noteTemplates.id, id), eq(noteTemplates.userId, userId)));
+
+  return getNoteTemplate(id, userId);
+}
+
+/** Delete a note template (only if owned by user) */
+export async function deleteNoteTemplate(id: number, userId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  await db
+    .delete(noteTemplates)
+    .where(and(eq(noteTemplates.id, id), eq(noteTemplates.userId, userId)));
+
+  return { success: true };
+}
+
+/** Internal helper: get note template by ID without user scope */
+async function getNoteTemplateById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+
+  const result = await db.select().from(noteTemplates).where(eq(noteTemplates.id, id)).limit(1);
   return result.length > 0 ? result[0] : undefined;
 }

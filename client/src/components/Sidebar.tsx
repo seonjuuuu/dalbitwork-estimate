@@ -1,5 +1,5 @@
 import { useEstimate } from '@/contexts/EstimateContext';
-import { FilePlus, FileText, List, ChevronLeft, ChevronRight, FileCheck, LogOut, User } from 'lucide-react';
+import { FilePlus, FileText, List, ChevronLeft, ChevronRight, FileCheck, LogOut, User, BookOpen } from 'lucide-react';
 import { useState } from 'react';
 import { useLocation } from 'wouter';
 import { useAuth } from '@/_core/hooks/useAuth';
@@ -51,6 +51,13 @@ export default function Sidebar() {
       id: 'estimate-list',
       active: location === '/estimates',
       onClick: () => navigate('/estimates'),
+    },
+    {
+      icon: BookOpen,
+      label: '참고사항 템플릿',
+      id: 'note-templates',
+      active: location === '/templates',
+      onClick: () => navigate('/templates'),
     },
   ];
 
@@ -107,7 +114,31 @@ export default function Sidebar() {
             관리
           </p>
         )}
-        {navItems.slice(2).map((item) => (
+        {navItems.slice(2, 4).map((item) => (
+          <button
+            key={item.id}
+            onClick={item.onClick}
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-sm transition-colors ${
+              item.active
+                ? 'bg-primary/10 text-primary font-medium'
+                : 'text-muted-foreground hover:bg-accent hover:text-foreground'
+            } ${collapsed ? 'justify-center' : ''}`}
+          >
+            <item.icon className="w-4.5 h-4.5 flex-shrink-0" />
+            {!collapsed && <span>{item.label}</span>}
+          </button>
+        ))}
+
+        {/* Divider */}
+        <div className="my-2 border-t border-border" />
+
+        {/* Section: 설정 */}
+        {!collapsed && (
+          <p className="px-3 pt-2 pb-1 text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider">
+            설정
+          </p>
+        )}
+        {navItems.slice(4).map((item) => (
           <button
             key={item.id}
             onClick={item.onClick}

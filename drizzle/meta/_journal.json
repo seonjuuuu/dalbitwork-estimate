@@ -15,6 +15,13 @@
       "when": 1774442876015,
       "tag": "0001_steady_edwin_jarvis",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1774444999701,
+      "tag": "0002_loving_zarek",
+      "breakpoints": true
     }
   ]
 }
