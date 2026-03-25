@@ -35,6 +35,7 @@ Font.register({
 Font.registerHyphenationCallback((word) => [word]);
 
 const PDF_LOGO_URL = 'https://d2xsxph8kpxj0f.cloudfront.net/310519663381204565/fPgwdiJ6bkDvqhYoiMKGTH/dalbitwork-logo-full_89e7c0c1.png';
+const SIGNATURE_URL = 'https://d2xsxph8kpxj0f.cloudfront.net/310519663381204565/fPgwdiJ6bkDvqhYoiMKGTH/dalbitwork-signature_54c0e698.png';
 
 const GOLD = '#F7AE00';
 const GOLD_DARK = '#C78B00';
@@ -229,51 +230,54 @@ const s = StyleSheet.create({
     lineHeight: 1.6,
   },
   // Signature
+  signatureDateLine: {
+    textAlign: 'center',
+    marginTop: 20,
+    marginBottom: 16,
+    fontSize: 11,
+    color: '#555555',
+  },
   signatureWrap: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 30,
-    marginTop: 16,
+    justifyContent: 'center',
+    gap: 40,
+    marginTop: 8,
   },
-  signatureBox: {
-    flex: 1,
+  signatureItem: {
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: 6,
   },
-  signatureLabel: {
+  signatureRoleLabel: {
     fontSize: 11,
-    fontWeight: 600,
     color: '#555555',
-    marginBottom: 6,
-    borderBottomWidth: 2,
-    borderBottomColor: '#323232',
-    paddingBottom: 5,
-    width: '100%',
-    textAlign: 'center',
   },
-  signatureName: {
-    fontSize: 12,
-    fontWeight: 700,
-    color: '#1a1a1a',
-    marginTop: 6,
-  },
-  signatureLine: {
-    marginTop: 6,
+  signatureUnderline: {
     borderBottomWidth: 1,
-    borderBottomColor: '#cccccc',
-    height: 30,
-    width: '100%',
+    borderBottomColor: '#333333',
+    width: 100,
+    height: 18,
     justifyContent: 'flex-end',
     alignItems: 'center',
+    position: 'relative',
   },
-  signatureHint: {
-    fontSize: 9,
-    color: '#bbbbbb',
-    marginBottom: 3,
+  signatureNameOnLine: {
+    fontSize: 11,
+    fontWeight: 700,
+    color: '#1a1a1a',
+    marginBottom: 2,
   },
-  signatureDate: {
-    fontSize: 9,
-    color: '#888888',
-    marginTop: 5,
+  signatureSeal: {
+    fontSize: 10,
+    color: '#555555',
+    marginLeft: 4,
+  },
+  signatureImage: {
+    width: 36,
+    height: 36,
+    position: 'absolute',
+    right: -10,
+    top: -20,
   },
   // Footer logo
   footerLogoWrap: {
@@ -490,7 +494,7 @@ export default function PdfDocument({ doc }: PdfDocumentProps) {
           <Text style={s.notesTitle}>참고 사항</Text>
           {doc.notes.map((note: string, idx: number) => (
             <Text key={idx} style={s.noteText}>
-              {idx + 1}. {note}
+              {note.trim() ? `${idx + 1}. ${note}` : ' '}
             </Text>
           ))}
         </View>
@@ -513,22 +517,30 @@ export default function PdfDocument({ doc }: PdfDocumentProps) {
         {/* Estimate: 서명 영역 */}
         {!isProposal && (
           <>
+            {/* 날짜 */}
+            <Text style={s.signatureDateLine}>
+              {'      '}년{'    '}월{'    '}일
+            </Text>
+
+            {/* 의뢰인 / 공급인 */}
             <View style={s.signatureWrap}>
-              <View style={s.signatureBox}>
-                <Text style={s.signatureLabel}>발 행 처</Text>
-                <Text style={s.signatureName}>달빛워크</Text>
-                <View style={s.signatureLine}>
-                  <Text style={s.signatureHint}>(서명)</Text>
+              {/* 의뢰인 */}
+              <View style={s.signatureItem}>
+                <Text style={s.signatureRoleLabel}>의뢰인</Text>
+                <View style={s.signatureUnderline}>
+                  <Text style={{ fontSize: 1, color: '#ffffff' }}>{'                              '}</Text>
                 </View>
-                <Text style={s.signatureDate}>날짜: {formatDate(doc.date)}</Text>
+                <Text style={s.signatureSeal}>(인)</Text>
               </View>
-              <View style={s.signatureBox}>
-                <Text style={s.signatureLabel}>수 신 처</Text>
-                <Text style={s.signatureName}>{doc.clientName || '(고객사명)'}</Text>
-                <View style={s.signatureLine}>
-                  <Text style={s.signatureHint}>(서명)</Text>
+
+              {/* 공급인 */}
+              <View style={s.signatureItem}>
+                <Text style={s.signatureRoleLabel}>공급인</Text>
+                <View style={s.signatureUnderline}>
+                  <Text style={s.signatureNameOnLine}>달빛워크</Text>
+                  <Image src={SIGNATURE_URL} style={s.signatureImage} />
                 </View>
-                <Text style={s.signatureDate}>날짜: ____년 ____월 ____일</Text>
+                <Text style={s.signatureSeal}>(인)</Text>
               </View>
             </View>
 
