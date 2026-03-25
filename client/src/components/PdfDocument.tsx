@@ -104,6 +104,40 @@ const s = StyleSheet.create({
     fontWeight: 500,
     color: '#1a1a1a',
   },
+  // Supplier info table (견적서 전용)
+  supplierTable: {
+    marginBottom: 18,
+    borderWidth: 1,
+    borderColor: '#dddddd',
+  },
+  supplierRow: {
+    flexDirection: 'row',
+    borderBottomWidth: 1,
+    borderBottomColor: '#dddddd',
+  },
+  supplierLabelCell: {
+    width: 80,
+    backgroundColor: '#323232',
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    justifyContent: 'center',
+  },
+  supplierLabelText: {
+    fontSize: 9,
+    fontWeight: 600,
+    color: '#ffffff',
+    textAlign: 'center',
+  },
+  supplierValueCell: {
+    flex: 1,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    justifyContent: 'center',
+  },
+  supplierValueText: {
+    fontSize: 9,
+    color: '#1a1a1a',
+  },
   // Discount banner
   discountBanner: {
     backgroundColor: '#FFF8E1',
@@ -362,6 +396,52 @@ export default function PdfDocument({ doc }: PdfDocumentProps) {
           </Text>
           <Text style={s.subtitle}>{docSubtitle}</Text>
         </View>
+
+        {/* 견적서: 공급자 정보 테이블 */}
+        {!isProposal && (
+          <View style={s.supplierTable}>
+            <View style={s.supplierRow}>
+              <View style={s.supplierLabelCell}>
+                <Text style={s.supplierLabelText}>공급자</Text>
+              </View>
+              <View style={s.supplierValueCell}>
+                <Text style={s.supplierValueText}>달빛워크</Text>
+              </View>
+            </View>
+            <View style={s.supplierRow}>
+              <View style={s.supplierLabelCell}>
+                <Text style={s.supplierLabelText}>대표자</Text>
+              </View>
+              <View style={s.supplierValueCell}>
+                <Text style={s.supplierValueText}>문선주</Text>
+              </View>
+            </View>
+            <View style={s.supplierRow}>
+              <View style={s.supplierLabelCell}>
+                <Text style={s.supplierLabelText}>사업자번호</Text>
+              </View>
+              <View style={s.supplierValueCell}>
+                <Text style={s.supplierValueText}>350-14-02666</Text>
+              </View>
+            </View>
+            <View style={s.supplierRow}>
+              <View style={s.supplierLabelCell}>
+                <Text style={s.supplierLabelText}>연락처</Text>
+              </View>
+              <View style={s.supplierValueCell}>
+                <Text style={s.supplierValueText}>010-2757-9116</Text>
+              </View>
+            </View>
+            <View style={[s.supplierRow, { borderBottomWidth: 0 }]}>
+              <View style={s.supplierLabelCell}>
+                <Text style={s.supplierLabelText}>업태</Text>
+              </View>
+              <View style={s.supplierValueCell}>
+                <Text style={s.supplierValueText}>정보통신업 / 컴퓨터 프로그래밍 서비스업</Text>
+              </View>
+            </View>
+          </View>
+        )}
 
         {/* Info */}
         <View style={s.infoRow}>
