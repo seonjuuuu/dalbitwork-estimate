@@ -268,17 +268,24 @@ const s = StyleSheet.create({
     color: '#1a1a1a',
     marginBottom: 2,
   },
-  signatureSeal: {
+  signatureSealWrap: {
+    marginLeft: 4,
+    position: 'relative',
+    width: 20,
+    height: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  signatureSealText: {
     fontSize: 10,
     color: '#555555',
-    marginLeft: 4,
   },
   signatureImage: {
-    width: 50,
-    height: 50,
+    width: 100,
+    height: 100,
     position: 'absolute',
-    right: -18,
-    top: -38,
+    left: -40,
+    top: -42,
   },
   // Footer logo
   footerLogoWrap: {
@@ -531,7 +538,9 @@ export default function PdfDocument({ doc }: PdfDocumentProps) {
                 <View style={s.signatureUnderline}>
                   <Text style={{ fontSize: 1, color: '#ffffff' }}>{'                              '}</Text>
                 </View>
-                <Text style={s.signatureSeal}>(인)</Text>
+                <View style={s.signatureSealWrap}>
+                  <Text style={s.signatureSealText}>(인)</Text>
+                </View>
               </View>
 
               {/* 공급인 */}
@@ -539,9 +548,11 @@ export default function PdfDocument({ doc }: PdfDocumentProps) {
                 <Text style={s.signatureRoleLabel}>공급인</Text>
                 <View style={s.signatureUnderline}>
                   <Text style={s.signatureNameOnLine}>달빛워크</Text>
+                </View>
+                <View style={s.signatureSealWrap}>
+                  <Text style={s.signatureSealText}>(인)</Text>
                   <Image src={SIGNATURE_URL} style={s.signatureImage} />
                 </View>
-                <Text style={s.signatureSeal}>(인)</Text>
               </View>
             </View>
 
