@@ -159,8 +159,12 @@ const s = StyleSheet.create({
   // Discount banner
   discountBanner: {
     backgroundColor: '#FFF8E1',
-    padding: '8px 16px',
-    borderRadius: '6px 6px 0 0',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderTopLeftRadius: 6,
+    borderTopRightRadius: 6,
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -177,7 +181,8 @@ const s = StyleSheet.create({
   // Total banner
   totalBanner: {
     backgroundColor: GOLD,
-    padding: '12px 16px',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
     borderRadius: 6,
     flexDirection: 'row',
     justifyContent: 'space-between',
