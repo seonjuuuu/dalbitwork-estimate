@@ -281,11 +281,11 @@ const s = StyleSheet.create({
     color: '#555555',
   },
   signatureImage: {
-    width: 30,
-    height: 30,
+    width: 50,
+    height: 50,
     position: 'absolute',
-    left: -18,
-    top: -24,
+    left: -28,
+    top: -35,
   },
   // Footer logo
   footerLogoWrap: {
