@@ -285,7 +285,7 @@ const s = StyleSheet.create({
     height: 50,
     position: 'absolute',
     left: -28,
-    top: -35,
+    top: -25,
   },
   // Footer logo
   footerLogoWrap: {
