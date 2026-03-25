@@ -50,6 +50,8 @@ vi.mock("./db", () => {
     userId: number;
     name: string;
     notes: string[];
+    mode: string;
+    freeformNotes: string | null;
     sortOrder: number;
     createdAt: Date;
     updatedAt: Date;
@@ -75,6 +77,8 @@ vi.mock("./db", () => {
         userId: data.userId as number,
         name: data.name as string,
         notes: data.notes as string[],
+        mode: (data.mode as string) || 'list',
+        freeformNotes: (data.freeformNotes as string | null) || null,
         sortOrder: (data.sortOrder as number) || 0,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -312,6 +316,79 @@ describe("noteTemplates.saveFromDocument", () => {
     expect(result).toBeDefined();
     expect(result!.name).toBe("문서에서 저장");
     expect(result!.notes).toHaveLength(3);
+  });
+});
+
+describe("noteTemplates - freeform mode", () => {
+  it("creates a freeform note template", async () => {
+    const ctx = createAuthContext(1);
+    const caller = appRouter.createCaller(ctx);
+
+    const result = await caller.noteTemplates.create({
+      name: "정식 계약서 (자유형식)",
+      notes: [],
+      mode: "freeform",
+      freeformNotes: "제1조 (계약의 성립)\n\n1. 계약자는 계약서 내용을 확인하고...",
+    });
+
+    expect(result).toBeDefined();
+    expect(result!.name).toBe("정식 계약서 (자유형식)");
+    expect(result!.mode).toBe("freeform");
+    expect(result!.freeformNotes).toContain("제1조");
+    expect(result!.notes).toHaveLength(0);
+  });
+
+  it("saves freeform notes from document as template", async () => {
+    const ctx = createAuthContext(1);
+    const caller = appRouter.createCaller(ctx);
+
+    const result = await caller.noteTemplates.saveFromDocument({
+      name: "문서에서 저장 (자유형식)",
+      notes: [],
+      mode: "freeform",
+      freeformNotes: "제1조 (계약의 성립)\n1. 계약금 입금 시...",
+    });
+
+    expect(result).toBeDefined();
+    expect(result!.mode).toBe("freeform");
+    expect(result!.freeformNotes).toContain("제1조");
+  });
+
+  it("updates a template from list to freeform mode", async () => {
+    const ctx = createAuthContext(1);
+    const caller = appRouter.createCaller(ctx);
+
+    const created = await caller.noteTemplates.create({
+      name: "리스트 템플릿",
+      notes: ["항목 1", "항목 2"],
+    });
+
+    const updated = await caller.noteTemplates.update({
+      id: created!.id,
+      data: {
+        mode: "freeform",
+        freeformNotes: "제1조 (계약의 성립)\n\n1. 계약자는...",
+        notes: [],
+      },
+    });
+
+    expect(updated).toBeDefined();
+    expect(updated!.mode).toBe("freeform");
+    expect(updated!.freeformNotes).toContain("제1조");
+  });
+
+  it("defaults mode to list when not specified", async () => {
+    const ctx = createAuthContext(1);
+    const caller = appRouter.createCaller(ctx);
+
+    const result = await caller.noteTemplates.create({
+      name: "기본 템플릿",
+      notes: ["항목 1"],
+    });
+
+    expect(result).toBeDefined();
+    expect(result!.mode).toBe("list");
+    expect(result!.freeformNotes).toBeNull();
   });
 });
 

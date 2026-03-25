@@ -8,6 +8,8 @@ export interface DocumentItem {
   discountPrice: string; // 할인가 (선택, 비어있으면 정가가 최종 금액)
 }
 
+export type NotesMode = 'list' | 'freeform';
+
 export interface DocumentData {
   id?: string;
   type: DocumentType;
@@ -19,6 +21,8 @@ export interface DocumentData {
   date: string;
   items: DocumentItem[];
   notes: string[];
+  notesMode: NotesMode;
+  freeformNotes: string | null;
   totalMin: number;
   totalMax: number;
   createdAt?: string;
@@ -125,6 +129,8 @@ export const defaultProposal: DocumentData = {
     { id: '3', name: '영문 사이트 (셋팅 / 반응형 정리)', quantity: '5페이지', originalPrice: '750,000', discountPrice: '' },
   ],
   notes: proposalNotes,
+  notesMode: 'list',
+  freeformNotes: null,
   totalMin: 2000000,
   totalMax: 2250000,
 };
@@ -143,6 +149,8 @@ export const defaultEstimate: DocumentData = {
     { id: '3', name: '영문 사이트 (셋팅 / 반응형 정리)', quantity: '5페이지', originalPrice: '750,000', discountPrice: '' },
   ],
   notes: estimateNotes,
+  notesMode: 'list',
+  freeformNotes: null,
   totalMin: 2250000,
   totalMax: 2250000,
 };

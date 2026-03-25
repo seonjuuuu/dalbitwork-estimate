@@ -44,6 +44,10 @@ export const documents = mysqlTable("documents", {
   items: json("items").$type<DocumentItemRow[]>().notNull(),
   /** Reference notes as JSON array of strings */
   notes: json("notes").$type<string[]>().notNull(),
+  /** Notes display mode: 'list' for numbered items, 'freeform' for free-text */
+  notesMode: mysqlEnum("notesMode", ["list", "freeform"]).default("list").notNull(),
+  /** Freeform notes content (used when notesMode is 'freeform') */
+  freeformNotes: text("freeformNotes"),
   /** Total minimum amount */
   totalMin: int("totalMin").default(0).notNull(),
   /** Total maximum amount */
@@ -76,6 +80,10 @@ export const noteTemplates = mysqlTable("note_templates", {
   name: varchar("name", { length: 500 }).notNull(),
   /** Notes content as JSON array of strings */
   notes: json("notes").$type<string[]>().notNull(),
+  /** Template mode: 'list' for numbered items, 'freeform' for free-text */
+  mode: mysqlEnum("mode", ["list", "freeform"]).default("list").notNull(),
+  /** Freeform notes content (used when mode is 'freeform') */
+  freeformNotes: text("freeformNotes"),
   /** Display order for sorting */
   sortOrder: int("sortOrder").default(0).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),

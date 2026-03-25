@@ -26,6 +26,8 @@ const documentInputSchema = z.object({
   date: z.string().default(""),
   items: z.array(documentItemSchema),
   notes: z.array(z.string()),
+  notesMode: z.enum(["list", "freeform"]).default("list"),
+  freeformNotes: z.string().nullable().default(null),
   totalMin: z.number().default(0),
   totalMax: z.number().default(0),
 });
@@ -64,6 +66,8 @@ export const appRouter = router({
         z.object({
           name: z.string().min(1),
           notes: z.array(z.string()),
+          mode: z.enum(["list", "freeform"]).default("list"),
+          freeformNotes: z.string().nullable().default(null),
           sortOrder: z.number().default(0),
         })
       )
@@ -72,6 +76,8 @@ export const appRouter = router({
           userId: ctx.user.id,
           name: input.name,
           notes: input.notes,
+          mode: input.mode,
+          freeformNotes: input.freeformNotes,
           sortOrder: input.sortOrder,
         });
       }),
@@ -84,6 +90,8 @@ export const appRouter = router({
           data: z.object({
             name: z.string().min(1).optional(),
             notes: z.array(z.string()).optional(),
+            mode: z.enum(["list", "freeform"]).optional(),
+            freeformNotes: z.string().nullable().optional(),
             sortOrder: z.number().optional(),
           }),
         })
@@ -92,6 +100,8 @@ export const appRouter = router({
         const updateData: Record<string, unknown> = {};
         if (input.data.name !== undefined) updateData.name = input.data.name;
         if (input.data.notes !== undefined) updateData.notes = input.data.notes;
+        if (input.data.mode !== undefined) updateData.mode = input.data.mode;
+        if (input.data.freeformNotes !== undefined) updateData.freeformNotes = input.data.freeformNotes;
         if (input.data.sortOrder !== undefined) updateData.sortOrder = input.data.sortOrder;
 
         const tmpl = await db.updateNoteTemplate(input.id, ctx.user.id, updateData);
@@ -112,6 +122,8 @@ export const appRouter = router({
         z.object({
           name: z.string().min(1),
           notes: z.array(z.string()),
+          mode: z.enum(["list", "freeform"]).default("list"),
+          freeformNotes: z.string().nullable().default(null),
         })
       )
       .mutation(async ({ ctx, input }) => {
@@ -119,6 +131,8 @@ export const appRouter = router({
           userId: ctx.user.id,
           name: input.name,
           notes: input.notes,
+          mode: input.mode,
+          freeformNotes: input.freeformNotes,
           sortOrder: 0,
         });
       }),
@@ -187,6 +201,8 @@ export const appRouter = router({
         if (input.data.date !== undefined) updateData.date = input.data.date;
         if (input.data.items !== undefined) updateData.items = input.data.items;
         if (input.data.notes !== undefined) updateData.notes = input.data.notes;
+        if (input.data.notesMode !== undefined) updateData.notesMode = input.data.notesMode;
+        if (input.data.freeformNotes !== undefined) updateData.freeformNotes = input.data.freeformNotes;
         if (input.data.totalMin !== undefined) updateData.totalMin = input.data.totalMin;
         if (input.data.totalMax !== undefined) updateData.totalMax = input.data.totalMax;
 

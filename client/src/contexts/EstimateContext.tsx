@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react';
-import { type DocumentData, type DocumentItem, type DocumentType, defaultProposal, defaultEstimate } from '@/lib/types';
+import { type DocumentData, type DocumentItem, type DocumentType, type NotesMode, defaultProposal, defaultEstimate } from '@/lib/types';
 import { nanoid } from 'nanoid';
 import { trpc } from '@/lib/trpc';
 
@@ -36,6 +36,8 @@ function dbDocToLocal(doc: {
   date: string;
   items: { id: string; name: string; quantity: string; originalPrice: string; discountPrice: string }[];
   notes: string[];
+  notesMode: "list" | "freeform";
+  freeformNotes: string | null;
   totalMin: number;
   totalMax: number;
   createdAt: Date | string;
@@ -58,6 +60,8 @@ function dbDocToLocal(doc: {
       discountPrice: item.discountPrice || '',
     })),
     notes: doc.notes || [],
+    notesMode: (doc.notesMode as NotesMode) || 'list',
+    freeformNotes: doc.freeformNotes || null,
     totalMin: doc.totalMin || 0,
     totalMax: doc.totalMax || 0,
     createdAt: typeof doc.createdAt === 'string' ? doc.createdAt : new Date(doc.createdAt).toISOString(),
@@ -73,6 +77,8 @@ export function EstimateProvider({ children }: { children: ReactNode }) {
     memo: '',
     items: defaultProposal.items.map((item) => ({ ...item, id: nanoid() })),
     notes: [...defaultProposal.notes],
+    notesMode: 'list',
+    freeformNotes: null,
   }));
 
   const [isSaving, setIsSaving] = useState(false);
@@ -115,6 +121,8 @@ export function EstimateProvider({ children }: { children: ReactNode }) {
       date: new Date().toISOString().split('T')[0],
       items: template.items.map((item) => ({ ...item, id: nanoid() })),
       notes: [...template.notes],
+      notesMode: 'list',
+      freeformNotes: null,
     });
   }, []);
 
@@ -137,6 +145,8 @@ export function EstimateProvider({ children }: { children: ReactNode }) {
           discountPrice: item.discountPrice,
         })),
         notes: currentDoc.notes,
+        notesMode: currentDoc.notesMode,
+        freeformNotes: currentDoc.freeformNotes,
         totalMin: currentDoc.totalMin,
         totalMax: currentDoc.totalMax,
       };
@@ -172,6 +182,8 @@ export function EstimateProvider({ children }: { children: ReactNode }) {
         ...found,
         items: found.items.map((item) => ({ ...item })),
         notes: [...found.notes],
+        notesMode: found.notesMode || 'list',
+        freeformNotes: found.freeformNotes || null,
       });
     }
   }, [proposals, estimates]);

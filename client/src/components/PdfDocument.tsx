@@ -2,6 +2,7 @@
  * @react-pdf/renderer 기반 PDF 문서 컴포넌트
  * 한글 폰트(Noto Sans KR)를 TTF로 직접 등록하여 깨짐 없이 출력
  */
+import React from 'react';
 import {
   Document,
   Page,
@@ -24,11 +25,15 @@ import {
 } from '@/lib/types';
 
 // 폰트 등록 - Noto Sans KR (variable weight TTF)
-const FONT_URL = 'https://d2xsxph8kpxj0f.cloudfront.net/310519663381204565/fPgwdiJ6bkDvqhYoiMKGTH/NotoSansKR-Regular_84451f6a.ttf';
+const FONT_REGULAR_URL = 'https://d2xsxph8kpxj0f.cloudfront.net/310519663381204565/fPgwdiJ6bkDvqhYoiMKGTH/NotoSansKR-Regular_84451f6a.ttf';
+const FONT_BOLD_URL = 'https://d2xsxph8kpxj0f.cloudfront.net/310519663381204565/fPgwdiJ6bkDvqhYoiMKGTH/NotoSansKR-Bold_41a848f1.ttf';
 
 Font.register({
   family: 'NotoSansKR',
-  src: FONT_URL,
+  fonts: [
+    { src: FONT_REGULAR_URL, fontWeight: 'normal' },
+    { src: FONT_BOLD_URL, fontWeight: 'bold' },
+  ],
 });
 
 // 하이픈 비활성화 (한글에 불필요)
@@ -275,6 +280,21 @@ const s = StyleSheet.create({
     marginBottom: 3,
     lineHeight: 1.6,
   },
+  // Freeform notes
+  freeformLine: {
+    fontSize: 9,
+    color: '#555555',
+    lineHeight: 1.7,
+    marginBottom: 1,
+  },
+  freeformBoldLine: {
+    fontSize: 9.5,
+    color: '#1a1a1a',
+    fontWeight: 700,
+    lineHeight: 1.7,
+    marginTop: 8,
+    marginBottom: 2,
+  },
   // Signature
   signatureDateLine: {
     textAlign: 'center',
@@ -374,6 +394,89 @@ const s = StyleSheet.create({
     color: '#bbbbbb',
   },
 });
+
+/**
+ * Parse freeform notes text into PDF elements.
+ * - Lines matching "제N조" or "제 N조" patterns are rendered bold (article headings)
+ * - **text** markdown-style bold markers are rendered as bold inline spans
+ * - Empty lines become spacing
+ */
+function renderFreeformNotes(text: string) {
+  if (!text) return null;
+  const lines = text.split('\n');
+  const elements: React.ReactNode[] = [];
+
+  // Pattern for article headings: 제1조, 제 1조, 제2조 (계약의 성립), etc.
+  const articlePattern = /^\s*제\s*\d+\s*조/;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+
+    // Empty line → spacing
+    if (line.trim() === '') {
+      elements.push(<View key={`space-${i}`} style={{ height: 4 }} />);
+      continue;
+    }
+
+    // Article heading (제N조)
+    if (articlePattern.test(line)) {
+      elements.push(
+        <Text key={`line-${i}`} style={s.freeformBoldLine}>
+          {line}
+        </Text>
+      );
+      continue;
+    }
+
+    // Check for **bold** markers in the line
+    if (line.includes('**')) {
+      const parts = parseBoldText(line);
+      elements.push(
+        <Text key={`line-${i}`} style={s.freeformLine}>
+          {parts.map((part, j) =>
+            part.bold ? (
+              <Text key={j} style={{ fontWeight: 700, color: '#1a1a1a' }}>{part.text}</Text>
+            ) : (
+              <Text key={j}>{part.text}</Text>
+            )
+          )}
+        </Text>
+      );
+      continue;
+    }
+
+    // Regular line
+    elements.push(
+      <Text key={`line-${i}`} style={s.freeformLine}>
+        {line}
+      </Text>
+    );
+  }
+
+  return <>{elements}</>;
+}
+
+/** Parse **bold** markers in a string */
+function parseBoldText(text: string): { text: string; bold: boolean }[] {
+  const parts: { text: string; bold: boolean }[] = [];
+  const regex = /\*\*(.+?)\*\*/g;
+  let lastIndex = 0;
+  let match;
+
+  while ((match = regex.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      parts.push({ text: text.slice(lastIndex, match.index), bold: false });
+    }
+    parts.push({ text: match[1], bold: true });
+    lastIndex = regex.lastIndex;
+  }
+
+  if (lastIndex < text.length) {
+    parts.push({ text: text.slice(lastIndex), bold: false });
+  }
+
+  return parts;
+}
 
 interface PdfDocumentProps {
   doc: DocumentData;
@@ -562,11 +665,17 @@ export default function PdfDocument({ doc }: PdfDocumentProps) {
         {/* Notes */}
         <View style={s.notesSection}>
           <Text style={s.notesTitle}>참고 사항</Text>
-          {doc.notes.map((note: string, idx: number) => (
-            <Text key={idx} style={s.noteText}>
-              {note.trim() ? `${idx + 1}. ${note}` : ' '}
-            </Text>
-          ))}
+          {(!doc.notesMode || doc.notesMode === 'list') ? (
+            // List mode - numbered items
+            doc.notes.map((note: string, idx: number) => (
+              <Text key={idx} style={s.noteText}>
+                {note.trim() ? `${idx + 1}. ${note}` : ' '}
+              </Text>
+            ))
+          ) : (
+            // Freeform mode - render with bold support
+            renderFreeformNotes(doc.freeformNotes || '')
+          )}
         </View>
 
         {/* Proposal: 하단 우측 로고 + 날짜 */}

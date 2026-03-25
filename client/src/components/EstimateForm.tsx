@@ -1,10 +1,11 @@
 import { useEstimate } from '@/contexts/EstimateContext';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Plus, Trash2, Save, GripVertical, Tag, StickyNote, Loader2, BookOpen, BookmarkPlus, Download, Replace } from 'lucide-react';
+import { Plus, Trash2, Save, GripVertical, Tag, StickyNote, Loader2, BookOpen, BookmarkPlus, Download, Replace, List, FileText } from 'lucide-react';
 import { trpc } from '@/lib/trpc';
 import { useState, useRef, useEffect } from 'react';
 import { toast } from 'sonner';
+import type { NotesMode } from '@/lib/types';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -104,15 +105,18 @@ function SortableNoteItem({
 // 참고사항 템플릿 불러오기/저장 컴포넌트
 function NoteTemplateActions({
   currentNotes,
+  currentMode,
+  currentFreeformNotes,
   onApplyTemplate,
 }: {
   currentNotes: string[];
-  onApplyTemplate: (notes: string[], mode: 'replace' | 'append') => void;
+  currentMode: NotesMode;
+  currentFreeformNotes: string | null;
+  onApplyTemplate: (data: { notes: string[]; mode: NotesMode; freeformNotes: string | null }, applyMode: 'replace' | 'append') => void;
 }) {
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [templateName, setTemplateName] = useState('');
-  const [selectedTemplate, setSelectedTemplate] = useState<{ id: number; name: string; notes: string[] } | null>(null);
-  const [applyMode, setApplyMode] = useState<'replace' | 'append'>('replace');
+  const [selectedTemplate, setSelectedTemplate] = useState<{ id: number; name: string; notes: string[]; mode: string; freeformNotes: string | null } | null>(null);
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
 
   const templatesQuery = trpc.noteTemplates.list.useQuery();
@@ -131,10 +135,17 @@ function NoteTemplateActions({
   const templates = templatesQuery.data || [];
 
   const handleSaveAsTemplate = () => {
-    const filteredNotes = currentNotes.filter((n) => n.trim() !== '');
-    if (filteredNotes.length === 0) {
-      toast.error('저장할 참고사항이 없습니다.');
-      return;
+    if (currentMode === 'list') {
+      const filteredNotes = currentNotes.filter((n) => n.trim() !== '');
+      if (filteredNotes.length === 0) {
+        toast.error('저장할 참고사항이 없습니다.');
+        return;
+      }
+    } else {
+      if (!currentFreeformNotes?.trim()) {
+        toast.error('저장할 참고사항이 없습니다.');
+        return;
+      }
     }
     setSaveDialogOpen(true);
   };
@@ -145,25 +156,35 @@ function NoteTemplateActions({
       return;
     }
     const filteredNotes = currentNotes.filter((n) => n.trim() !== '');
-    saveMutation.mutate({ name: templateName.trim(), notes: filteredNotes });
+    saveMutation.mutate({
+      name: templateName.trim(),
+      notes: filteredNotes,
+      mode: currentMode,
+      freeformNotes: currentMode === 'freeform' ? currentFreeformNotes : null,
+    });
   };
 
-  const handleSelectTemplate = (tmpl: { id: number; name: string; notes: string[] }) => {
+  const handleSelectTemplate = (tmpl: { id: number; name: string; notes: string[]; mode: string; freeformNotes: string | null }) => {
     setSelectedTemplate(tmpl);
     // If there are existing notes, ask for replace/append
-    if (currentNotes.filter((n) => n.trim() !== '').length > 0) {
+    const hasExisting = currentMode === 'list'
+      ? currentNotes.filter((n) => n.trim() !== '').length > 0
+      : (currentFreeformNotes?.trim() || '').length > 0;
+    if (hasExisting) {
       setConfirmDialogOpen(true);
     } else {
-      onApplyTemplate(tmpl.notes, 'replace');
+      const mode = (tmpl.mode || 'list') as NotesMode;
+      onApplyTemplate({ notes: tmpl.notes, mode, freeformNotes: tmpl.freeformNotes }, 'replace');
       toast.success(`"${tmpl.name}" 템플릿이 적용되었습니다.`);
     }
   };
 
-  const handleConfirmApply = (mode: 'replace' | 'append') => {
+  const handleConfirmApply = (applyMode: 'replace' | 'append') => {
     if (selectedTemplate) {
-      onApplyTemplate(selectedTemplate.notes, mode);
+      const mode = (selectedTemplate.mode || 'list') as NotesMode;
+      onApplyTemplate({ notes: selectedTemplate.notes, mode, freeformNotes: selectedTemplate.freeformNotes }, applyMode);
       toast.success(
-        mode === 'replace'
+        applyMode === 'replace'
           ? `"${selectedTemplate.name}" 템플릿으로 교체되었습니다.`
           : `"${selectedTemplate.name}" 템플릿이 추가되었습니다.`
       );
@@ -194,10 +215,16 @@ function NoteTemplateActions({
                 onClick={() => handleSelectTemplate(tmpl)}
                 className="flex items-center gap-2 cursor-pointer"
               >
-                <BookOpen className="w-3.5 h-3.5 text-primary flex-shrink-0" />
+                {(tmpl.mode || 'list') === 'freeform' ? (
+                  <FileText className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" />
+                ) : (
+                  <BookOpen className="w-3.5 h-3.5 text-primary flex-shrink-0" />
+                )}
                 <div className="flex-1 min-w-0">
                   <p className="text-sm truncate">{tmpl.name}</p>
-                  <p className="text-[10px] text-muted-foreground">{tmpl.notes.length}개 항목</p>
+                  <p className="text-[10px] text-muted-foreground">
+                    {(tmpl.mode || 'list') === 'freeform' ? '자유형식' : `${tmpl.notes.length}개 항목`}
+                  </p>
                 </div>
               </DropdownMenuItem>
             ))
@@ -237,7 +264,9 @@ function NoteTemplateActions({
               />
             </div>
             <p className="text-xs text-muted-foreground">
-              {currentNotes.filter((n) => n.trim() !== '').length}개의 참고사항이 저장됩니다.
+              {currentMode === 'list'
+                ? `${currentNotes.filter((n) => n.trim() !== '').length}개의 참고사항이 저장됩니다.`
+                : '자유형식 참고사항이 저장됩니다.'}
             </p>
           </div>
           <DialogFooter>
@@ -357,6 +386,64 @@ export default function EstimateForm() {
       const oldIndex = noteIds.indexOf(String(active.id));
       const newIndex = noteIds.indexOf(String(over.id));
       reorderNotes(oldIndex, newIndex);
+    }
+  };
+
+  // 참고사항 모드 전환
+  const handleNotesMode = (mode: NotesMode) => {
+    setCurrentDoc((prev) => ({ ...prev, notesMode: mode }));
+  };
+
+  // 자유형식 텍스트 업데이트
+  const handleFreeformNotesChange = (value: string) => {
+    setCurrentDoc((prev) => ({ ...prev, freeformNotes: value }));
+  };
+
+  // 템플릿 적용 핸들러 (모드 포함)
+  const handleApplyTemplate = (
+    data: { notes: string[]; mode: NotesMode; freeformNotes: string | null },
+    applyMode: 'replace' | 'append'
+  ) => {
+    if (applyMode === 'replace') {
+      setCurrentDoc((prev) => ({
+        ...prev,
+        notes: data.notes,
+        notesMode: data.mode,
+        freeformNotes: data.freeformNotes,
+      }));
+    } else {
+      // append
+      if (data.mode === 'freeform') {
+        // 자유형식 템플릿을 추가할 때
+        if (currentDoc.notesMode === 'freeform') {
+          setCurrentDoc((prev) => ({
+            ...prev,
+            freeformNotes: (prev.freeformNotes || '') + '\n\n' + (data.freeformNotes || ''),
+          }));
+        } else {
+          // 리스트 모드에서 자유형식 추가 → 자유형식으로 전환
+          setCurrentDoc((prev) => ({
+            ...prev,
+            notesMode: 'freeform',
+            freeformNotes: data.freeformNotes,
+          }));
+        }
+      } else {
+        // 리스트 템플릿 추가
+        if (currentDoc.notesMode === 'list') {
+          setCurrentDoc((prev) => ({
+            ...prev,
+            notes: [...prev.notes, ...data.notes],
+          }));
+        } else {
+          // 자유형식 모드에서 리스트 추가 → 리스트로 전환
+          setCurrentDoc((prev) => ({
+            ...prev,
+            notesMode: 'list',
+            notes: data.notes,
+          }));
+        }
+      }
     }
   };
 
@@ -583,50 +670,99 @@ export default function EstimateForm() {
         </div>
       </div>
 
-      {/* Notes with Drag and Drop */}
+      {/* Notes Section with Mode Toggle */}
       <div className="bg-card rounded-lg border border-border p-5">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-sm font-semibold text-foreground section-title">참고 사항</h3>
           <div className="flex items-center gap-2">
             <NoteTemplateActions
               currentNotes={currentDoc.notes}
-              onApplyTemplate={(notes, mode) => {
-                if (mode === 'replace') {
-                  setCurrentDoc((prev) => ({ ...prev, notes }));
-                } else {
-                  setCurrentDoc((prev) => ({ ...prev, notes: [...prev.notes, ...notes] }));
-                }
-              }}
+              currentMode={currentDoc.notesMode}
+              currentFreeformNotes={currentDoc.freeformNotes}
+              onApplyTemplate={handleApplyTemplate}
             />
-            <Button variant="outline" size="sm" onClick={addNote} className="text-xs gap-1.5">
-              <Plus className="w-3.5 h-3.5" />
-              추가
-            </Button>
+            {currentDoc.notesMode === 'list' && (
+              <Button variant="outline" size="sm" onClick={addNote} className="text-xs gap-1.5">
+                <Plus className="w-3.5 h-3.5" />
+                추가
+              </Button>
+            )}
           </div>
         </div>
-        <p className="text-[11px] text-muted-foreground mb-3 mt-2">
-          드래그하여 순서를 변경할 수 있습니다. 계약 조항, 작업 범위, 결제 조건 등을 자유롭게 입력하세요.
-        </p>
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragEnd={handleDragEnd}
-        >
-          <SortableContext items={noteIds} strategy={verticalListSortingStrategy}>
-            <div className="space-y-3 mt-3">
-              {currentDoc.notes.map((note: string, idx: number) => (
-                <SortableNoteItem
-                  key={noteIds[idx]}
-                  id={noteIds[idx]}
-                  index={idx}
-                  note={note}
-                  onUpdate={updateNote}
-                  onRemove={removeNote}
-                />
-              ))}
-            </div>
-          </SortableContext>
-        </DndContext>
+
+        {/* Mode Toggle Tabs */}
+        <div className="flex gap-1 p-1 bg-muted rounded-lg mb-4">
+          <button
+            onClick={() => handleNotesMode('list')}
+            className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+              currentDoc.notesMode === 'list'
+                ? 'bg-background text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <List className="w-3.5 h-3.5" />
+            항목별 (리스트)
+          </button>
+          <button
+            onClick={() => handleNotesMode('freeform')}
+            className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+              currentDoc.notesMode === 'freeform'
+                ? 'bg-background text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <FileText className="w-3.5 h-3.5" />
+            자유형식 (계약서)
+          </button>
+        </div>
+
+        {/* List Mode */}
+        {currentDoc.notesMode === 'list' && (
+          <>
+            <p className="text-[11px] text-muted-foreground mb-3">
+              드래그하여 순서를 변경할 수 있습니다. 계약 조항, 작업 범위, 결제 조건 등을 자유롭게 입력하세요.
+            </p>
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+            >
+              <SortableContext items={noteIds} strategy={verticalListSortingStrategy}>
+                <div className="space-y-3">
+                  {currentDoc.notes.map((note: string, idx: number) => (
+                    <SortableNoteItem
+                      key={noteIds[idx]}
+                      id={noteIds[idx]}
+                      index={idx}
+                      note={note}
+                      onUpdate={updateNote}
+                      onRemove={removeNote}
+                    />
+                  ))}
+                </div>
+              </SortableContext>
+            </DndContext>
+          </>
+        )}
+
+        {/* Freeform Mode */}
+        {currentDoc.notesMode === 'freeform' && (
+          <>
+            <p className="text-[11px] text-muted-foreground mb-3">
+              계약서 조항처럼 자유롭게 작성하세요. <strong>**굵은 글씨**</strong> 표기를 사용하면 PDF에서 굵게 표시됩니다.
+            </p>
+            <textarea
+              value={currentDoc.freeformNotes || ''}
+              onChange={(e) => handleFreeformNotesChange(e.target.value)}
+              rows={16}
+              className="w-full text-sm bg-background border border-input rounded-md px-4 py-3 resize-y min-h-[200px] focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1 leading-relaxed"
+              placeholder={`제 1조 (계약의 성립 및 효력 발생)\n\n1. 계약자는 계약서 내용을 확인하고 **계약금(총 제작비의 50%)**을 입금함으로써 본 계약 및 서비스 약관에 동의한 것으로 간주합니다.\n2. 계약금이 입금된 시점부터 본 계약의 효력이 발생합니다.\n\n제2조 (제작 및 진행 절차)\n\n1. 계약금 입금 후 홈페이지 제작을 착수합니다.`}
+            />
+            <p className="text-[10px] text-muted-foreground mt-2">
+              팁: 조항 제목(예: 제1조, 제2조)은 자동으로 굵게 표시됩니다. 추가로 <code className="bg-muted px-1 rounded">**텍스트**</code>로 감싸면 해당 부분도 굵게 표시됩니다.
+            </p>
+          </>
+        )}
       </div>
 
       {/* Save Button */}
