@@ -35,7 +35,7 @@ Font.register({
 Font.registerHyphenationCallback((word) => [word]);
 
 const PDF_LOGO_URL = 'https://d2xsxph8kpxj0f.cloudfront.net/310519663381204565/fPgwdiJ6bkDvqhYoiMKGTH/dalbitwork-logo-full_89e7c0c1.png';
-const SIGNATURE_URL = 'https://d2xsxph8kpxj0f.cloudfront.net/310519663381204565/fPgwdiJ6bkDvqhYoiMKGTH/dalbitwork-signature_54c0e698.png';
+const SIGNATURE_URL = 'https://d2xsxph8kpxj0f.cloudfront.net/310519663381204565/fPgwdiJ6bkDvqhYoiMKGTH/signature-new_03d3b216.png';
 
 const GOLD = '#F7AE00';
 const GOLD_DARK = '#C78B00';
@@ -281,11 +281,11 @@ const s = StyleSheet.create({
     color: '#555555',
   },
   signatureImage: {
-    width: 100,
-    height: 100,
+    width: 80,
+    height: 80,
     position: 'absolute',
-    left: -40,
-    top: -42,
+    left: -50,
+    top: -60,
   },
   // Footer logo
   footerLogoWrap: {
