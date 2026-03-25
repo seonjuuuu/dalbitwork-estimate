@@ -6,7 +6,15 @@ import { trpc } from '@/lib/trpc';
 import { useState, useRef, useEffect } from 'react';
 import { toast } from 'sonner';
 import type { NotesMode } from '@/lib/types';
-import { extractVariables, buildVariablesMap } from '@/lib/templateVariables';
+import {
+  extractVariables,
+  buildVariablesMap,
+  isAmountVariable,
+  formatAmountWithComma,
+  parseAmountString,
+  calculateAmounts,
+  getPresetValue,
+} from '@/lib/templateVariables';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -99,6 +107,174 @@ function SortableNoteItem({
       >
         <Trash2 className="w-3.5 h-3.5" />
       </button>
+    </div>
+  );
+}
+
+// 스마트 변수 입력 그리드 컴포넌트
+function VariableInputGrid({
+  detectedVariables,
+  templateVariables,
+  onVariableChange,
+}: {
+  detectedVariables: string[];
+  templateVariables: Record<string, string>;
+  onVariableChange: (varName: string, value: string) => void;
+}) {
+  // 총금액 변수가 있는지 확인
+  const hasTotalAmount = detectedVariables.includes('총금액');
+  const hasDeposit = detectedVariables.includes('계약금');
+  const hasBalance = detectedVariables.includes('잔금');
+  const hasAmountCalc = hasTotalAmount && hasDeposit && hasBalance;
+
+  // 계약금 비율 상태 (50% 기본)
+  const [depositRatio, setDepositRatio] = useState(50);
+
+  // 총금액 변경 시 계약금/잔금 자동 계산
+  const handleTotalAmountChange = (value: string) => {
+    const formatted = formatAmountWithComma(value);
+    onVariableChange('총금액', formatted ? `${formatted}원` : '');
+    
+    if (formatted) {
+      const total = parseAmountString(formatted);
+      const { deposit, balance } = calculateAmounts(total, depositRatio);
+      if (hasDeposit) onVariableChange('계약금', deposit);
+      if (hasBalance) onVariableChange('잔금', balance);
+    } else {
+      if (hasDeposit) onVariableChange('계약금', '');
+      if (hasBalance) onVariableChange('잔금', '');
+    }
+  };
+
+  // 비율 변경 시 재계산
+  const handleRatioChange = (newRatio: number) => {
+    setDepositRatio(newRatio);
+    const totalStr = templateVariables['총금액'] || '';
+    const total = parseAmountString(totalStr);
+    if (total > 0) {
+      const { deposit, balance } = calculateAmounts(total, newRatio);
+      if (hasDeposit) onVariableChange('계약금', deposit);
+      if (hasBalance) onVariableChange('잔금', balance);
+    }
+  };
+
+  // 금액 변수 자동 계산 그룹에 포함되는 변수들
+  const autoCalcVars = hasAmountCalc ? ['총금액', '계약금', '잔금'] : [];
+  // 일반 변수 (자동 계산 그룹에 포함되지 않는 변수)
+  const normalVars = detectedVariables.filter((v) => !autoCalcVars.includes(v));
+
+  return (
+    <div className="space-y-4">
+      {/* 일반 변수 입력 */}
+      {normalVars.length > 0 && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {normalVars.map((varName) => {
+            const preset = getPresetValue(varName);
+            return (
+              <div key={varName}>
+                <label className="text-[11px] font-medium text-amber-800 dark:text-amber-200 mb-1 block">
+                  {`{{${varName}}}`}
+                  {preset && (
+                    <span className="ml-1 text-[9px] text-amber-500 font-normal">기본값 적용됨</span>
+                  )}
+                </label>
+                <Input
+                  value={templateVariables[varName] || ''}
+                  onChange={(e) => onVariableChange(varName, e.target.value)}
+                  placeholder={preset || `${varName} 값을 입력하세요`}
+                  className="bg-background text-sm h-8"
+                />
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* 금액 자동 계산 그룹 */}
+      {hasAmountCalc && (
+        <div className="p-3 bg-amber-100/50 dark:bg-amber-900/20 rounded-lg border border-amber-200/60 dark:border-amber-700/40">
+          <div className="flex items-center gap-1.5 mb-3">
+            <span className="text-[11px] font-semibold text-amber-800 dark:text-amber-200">금액 자동 계산</span>
+            <span className="text-[9px] text-amber-600 dark:text-amber-400 bg-amber-200/60 dark:bg-amber-800/40 px-1.5 py-0.5 rounded-full">총금액 입력 시 자동 계산</span>
+          </div>
+
+          {/* 총금액 입력 */}
+          <div className="mb-3">
+            <label className="text-[11px] font-medium text-amber-800 dark:text-amber-200 mb-1 block">
+              {`{{총금액}}`}
+            </label>
+            <div className="flex items-center gap-2">
+              <Input
+                value={templateVariables['총금액']?.replace(/원$/, '').replace(/,/g, '') || ''}
+                onChange={(e) => handleTotalAmountChange(e.target.value)}
+                placeholder="650000"
+                className="bg-background text-sm h-8 flex-1"
+                type="text"
+                inputMode="numeric"
+              />
+              <span className="text-xs text-amber-700 dark:text-amber-300 flex-shrink-0">원</span>
+            </div>
+          </div>
+
+          {/* 비율 설정 */}
+          <div className="mb-3">
+            <label className="text-[11px] font-medium text-amber-800 dark:text-amber-200 mb-1 block">
+              계약금 / 잔금 비율
+            </label>
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1 flex-1">
+                <span className="text-[10px] text-amber-700 dark:text-amber-300">계약금</span>
+                <Input
+                  type="number"
+                  min={0}
+                  max={100}
+                  value={depositRatio}
+                  onChange={(e) => handleRatioChange(Number(e.target.value))}
+                  className="bg-background text-sm h-8 w-16 text-center"
+                />
+                <span className="text-[10px] text-amber-700 dark:text-amber-300">%</span>
+              </div>
+              <span className="text-amber-400">:</span>
+              <div className="flex items-center gap-1 flex-1">
+                <span className="text-[10px] text-amber-700 dark:text-amber-300">잔금</span>
+                <Input
+                  type="number"
+                  value={100 - depositRatio}
+                  readOnly
+                  className="bg-muted text-sm h-8 w-16 text-center cursor-not-allowed"
+                />
+                <span className="text-[10px] text-amber-700 dark:text-amber-300">%</span>
+              </div>
+            </div>
+          </div>
+
+          {/* 계산 결과 */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-[11px] font-medium text-amber-800 dark:text-amber-200 mb-1 block">
+                {`{{계약금}}`}
+              </label>
+              <Input
+                value={templateVariables['계약금'] || ''}
+                readOnly
+                className="bg-muted text-sm h-8 cursor-not-allowed"
+                placeholder="자동 계산"
+              />
+            </div>
+            <div>
+              <label className="text-[11px] font-medium text-amber-800 dark:text-amber-200 mb-1 block">
+                {`{{잔금}}`}
+              </label>
+              <Input
+                value={templateVariables['잔금'] || ''}
+                readOnly
+                className="bg-muted text-sm h-8 cursor-not-allowed"
+                placeholder="자동 계산"
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -800,21 +976,11 @@ export default function EstimateForm() {
                 <p className="text-[10px] text-amber-700 dark:text-amber-300 mb-3">
                   아래 변수에 값을 입력하면 미리보기와 PDF에서 자동으로 치환됩니다.
                 </p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {detectedVariables.map((varName) => (
-                    <div key={varName}>
-                      <label className="text-[11px] font-medium text-amber-800 dark:text-amber-200 mb-1 block">
-                        {`{{${varName}}}`}
-                      </label>
-                      <Input
-                        value={currentDoc.templateVariables?.[varName] || ''}
-                        onChange={(e) => handleVariableChange(varName, e.target.value)}
-                        placeholder={`${varName} 값을 입력하세요`}
-                        className="bg-background text-sm h-8"
-                      />
-                    </div>
-                  ))}
-                </div>
+                <VariableInputGrid
+                  detectedVariables={detectedVariables}
+                  templateVariables={currentDoc.templateVariables || {}}
+                  onVariableChange={handleVariableChange}
+                />
               </div>
             )}
           </>

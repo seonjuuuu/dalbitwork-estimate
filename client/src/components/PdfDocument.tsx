@@ -176,7 +176,7 @@ const s = StyleSheet.create({
   },
   // Total banner
   totalBanner: {
-    backgroundColor: '#323232',
+    backgroundColor: GOLD,
     padding: '12px 16px',
     borderRadius: 6,
     flexDirection: 'row',
@@ -191,12 +191,12 @@ const s = StyleSheet.create({
   totalLabel: {
     fontSize: 11,
     fontWeight: 500,
-    color: '#ffffff',
+    color: '#1a1a1a',
   },
   totalValue: {
     fontSize: 16,
     fontWeight: 700,
-    color: '#ffffff',
+    color: '#1a1a1a',
     letterSpacing: -0.5,
   },
   // Discount info
@@ -496,13 +496,26 @@ export default function PdfDocument({ doc }: PdfDocumentProps) {
   const showDiscount = hasAnyDiscount(doc.items);
   const discountPercent = totalOriginal > 0 ? Math.round((totalDiscount / totalOriginal) * 100) : 0;
 
-  const totalDisplay = isProposal
-    ? `${formatNumber(doc.totalMin)} ~ ${formatNumber(doc.totalMax)} 원`
-    : `${formatNumber(doc.totalMin)} 원`;
+  // 예상총액: 최소/최대 중 하나가 0이면 단일 금액만 표시
+  const getTotalDisplay = () => {
+    if (!isProposal) return `${formatNumber(doc.totalMin)} \uc6d0`;
+    if (doc.totalMin === 0 && doc.totalMax === 0) return '0 \uc6d0';
+    if (doc.totalMin === 0) return `${formatNumber(doc.totalMax)} \uc6d0`;
+    if (doc.totalMax === 0) return `${formatNumber(doc.totalMin)} \uc6d0`;
+    if (doc.totalMin === doc.totalMax) return `${formatNumber(doc.totalMin)} \uc6d0`;
+    return `${formatNumber(doc.totalMin)} ~ ${formatNumber(doc.totalMax)} \uc6d0`;
+  };
+  const totalDisplay = getTotalDisplay();
 
-  const footerTotalDisplay = isProposal
-    ? `${formatNumber(doc.totalMin)} ~ ${formatNumber(doc.totalMax)}`
-    : formatNumber(doc.totalMin);
+  const getFooterTotalDisplay = () => {
+    if (!isProposal) return formatNumber(doc.totalMin);
+    if (doc.totalMin === 0 && doc.totalMax === 0) return '0';
+    if (doc.totalMin === 0) return formatNumber(doc.totalMax);
+    if (doc.totalMax === 0) return formatNumber(doc.totalMin);
+    if (doc.totalMin === doc.totalMax) return formatNumber(doc.totalMin);
+    return `${formatNumber(doc.totalMin)} ~ ${formatNumber(doc.totalMax)}`;
+  };
+  const footerTotalDisplay = getFooterTotalDisplay();
 
   return (
     <Document>

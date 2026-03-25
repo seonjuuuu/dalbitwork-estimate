@@ -4,6 +4,12 @@ import {
   substituteVariables,
   hasVariables,
   buildVariablesMap,
+  getPresetValue,
+  isAmountVariable,
+  isRatioVariable,
+  formatAmountWithComma,
+  parseAmountString,
+  calculateAmounts,
 } from './templateVariables';
 
 describe('extractVariables', () => {
@@ -85,16 +91,20 @@ describe('hasVariables', () => {
 });
 
 describe('buildVariablesMap', () => {
-  it('builds map with empty values for new variables', () => {
-    const result = buildVariablesMap(['계약금', '잔금', '총금액']);
-    expect(result).toEqual({ '계약금': '', '잔금': '', '총금액': '' });
+  it('builds map with preset values for known variables', () => {
+    const result = buildVariablesMap(['계좌번호', '예금주', '총금액']);
+    expect(result).toEqual({
+      '계좌번호': '국민은행 616337-04-005356',
+      '예금주': '문선주(달빛워크)',
+      '총금액': '',
+    });
   });
 
-  it('preserves existing values', () => {
-    const existing = { '계약금': '325,000원', '잔금': '325,000원' };
-    const result = buildVariablesMap(['계약금', '잔금', '총금액'], existing);
+  it('preserves existing values over presets', () => {
+    const existing = { '계좌번호': '신한은행 123-456', '잔금': '325,000원' };
+    const result = buildVariablesMap(['계좌번호', '잔금', '총금액'], existing);
     expect(result).toEqual({
-      '계약금': '325,000원',
+      '계좌번호': '신한은행 123-456',
       '잔금': '325,000원',
       '총금액': '',
     });
@@ -103,5 +113,131 @@ describe('buildVariablesMap', () => {
   it('handles null existing values', () => {
     const result = buildVariablesMap(['계약금'], null);
     expect(result).toEqual({ '계약금': '' });
+  });
+
+  it('applies preset for 예금주 when no existing value', () => {
+    const result = buildVariablesMap(['예금주']);
+    expect(result['예금주']).toBe('문선주(달빛워크)');
+  });
+});
+
+describe('getPresetValue', () => {
+  it('returns preset for 계좌번호', () => {
+    expect(getPresetValue('계좌번호')).toBe('국민은행 616337-04-005356');
+  });
+
+  it('returns preset for 예금주', () => {
+    expect(getPresetValue('예금주')).toBe('문선주(달빛워크)');
+  });
+
+  it('returns empty string for unknown variable', () => {
+    expect(getPresetValue('알수없는변수')).toBe('');
+  });
+});
+
+describe('isAmountVariable', () => {
+  it('returns true for known amount variables', () => {
+    expect(isAmountVariable('계약금')).toBe(true);
+    expect(isAmountVariable('잔금')).toBe(true);
+    expect(isAmountVariable('총금액')).toBe(true);
+  });
+
+  it('returns true for variables containing 금액 or 금', () => {
+    expect(isAmountVariable('추가금액')).toBe(true);
+    expect(isAmountVariable('보증금')).toBe(true);
+  });
+
+  it('returns false for non-amount variables', () => {
+    expect(isAmountVariable('계좌번호')).toBe(false);
+    expect(isAmountVariable('프로젝트명')).toBe(false);
+  });
+
+  it('returns true for 예금주 (contains 금)', () => {
+    // 예금주 contains 금 so it matches the heuristic
+    expect(isAmountVariable('예금주')).toBe(true);
+  });
+});
+
+describe('isRatioVariable', () => {
+  it('returns true for known ratio variables', () => {
+    expect(isRatioVariable('계약금비율')).toBe(true);
+    expect(isRatioVariable('잔금비율')).toBe(true);
+  });
+
+  it('returns true for variables containing 비율', () => {
+    expect(isRatioVariable('할인비율')).toBe(true);
+  });
+
+  it('returns false for non-ratio variables', () => {
+    expect(isRatioVariable('계약금')).toBe(false);
+  });
+});
+
+describe('formatAmountWithComma', () => {
+  it('formats number string with commas', () => {
+    expect(formatAmountWithComma('325000')).toBe('325,000');
+    expect(formatAmountWithComma('1000000')).toBe('1,000,000');
+    expect(formatAmountWithComma('650000')).toBe('650,000');
+  });
+
+  it('removes existing commas and reformats', () => {
+    expect(formatAmountWithComma('1,000,000')).toBe('1,000,000');
+  });
+
+  it('strips non-digit characters', () => {
+    expect(formatAmountWithComma('650,000원')).toBe('650,000');
+  });
+
+  it('returns empty string for empty input', () => {
+    expect(formatAmountWithComma('')).toBe('');
+    expect(formatAmountWithComma('abc')).toBe('');
+  });
+});
+
+describe('parseAmountString', () => {
+  it('parses comma-formatted amount', () => {
+    expect(parseAmountString('325,000')).toBe(325000);
+    expect(parseAmountString('1,000,000')).toBe(1000000);
+  });
+
+  it('parses amount with 원 suffix', () => {
+    expect(parseAmountString('650,000원')).toBe(650000);
+  });
+
+  it('returns 0 for empty/invalid input', () => {
+    expect(parseAmountString('')).toBe(0);
+    expect(parseAmountString('abc')).toBe(0);
+  });
+});
+
+describe('calculateAmounts', () => {
+  it('calculates 50/50 split', () => {
+    const result = calculateAmounts(650000, 50);
+    expect(result.deposit).toBe('325,000원');
+    expect(result.balance).toBe('325,000원');
+  });
+
+  it('calculates 30/70 split', () => {
+    const result = calculateAmounts(1000000, 30);
+    expect(result.deposit).toBe('300,000원');
+    expect(result.balance).toBe('700,000원');
+  });
+
+  it('handles 100/0 split', () => {
+    const result = calculateAmounts(500000, 100);
+    expect(result.deposit).toBe('500,000원');
+    expect(result.balance).toBe('0원');
+  });
+
+  it('handles 0/100 split', () => {
+    const result = calculateAmounts(500000, 0);
+    expect(result.deposit).toBe('0원');
+    expect(result.balance).toBe('500,000원');
+  });
+
+  it('rounds deposit correctly', () => {
+    const result = calculateAmounts(333333, 50);
+    expect(result.deposit).toBe('166,667원');
+    expect(result.balance).toBe('166,666원');
   });
 });
