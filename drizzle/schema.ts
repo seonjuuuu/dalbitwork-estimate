@@ -48,6 +48,8 @@ export const documents = mysqlTable("documents", {
   notesMode: mysqlEnum("notesMode", ["list", "freeform"]).default("list").notNull(),
   /** Freeform notes content (used when notesMode is 'freeform') */
   freeformNotes: text("freeformNotes"),
+  /** Template variables for placeholder substitution (e.g. {{계약금}} → "325,000원") */
+  templateVariables: json("templateVariables").$type<Record<string, string>>(),
   /** Total minimum amount */
   totalMin: int("totalMin").default(0).notNull(),
   /** Total maximum amount */

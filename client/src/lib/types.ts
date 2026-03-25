@@ -23,6 +23,7 @@ export interface DocumentData {
   notes: string[];
   notesMode: NotesMode;
   freeformNotes: string | null;
+  templateVariables: Record<string, string> | null;
   totalMin: number;
   totalMax: number;
   createdAt?: string;
@@ -131,6 +132,7 @@ export const defaultProposal: DocumentData = {
   notes: proposalNotes,
   notesMode: 'list',
   freeformNotes: null,
+  templateVariables: null,
   totalMin: 2000000,
   totalMax: 2250000,
 };
@@ -151,6 +153,7 @@ export const defaultEstimate: DocumentData = {
   notes: estimateNotes,
   notesMode: 'list',
   freeformNotes: null,
+  templateVariables: null,
   totalMin: 2250000,
   totalMax: 2250000,
 };

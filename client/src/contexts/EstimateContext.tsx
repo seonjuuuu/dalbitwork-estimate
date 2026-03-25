@@ -62,6 +62,7 @@ function dbDocToLocal(doc: {
     notes: doc.notes || [],
     notesMode: (doc.notesMode as NotesMode) || 'list',
     freeformNotes: doc.freeformNotes || null,
+    templateVariables: (doc as any).templateVariables || null,
     totalMin: doc.totalMin || 0,
     totalMax: doc.totalMax || 0,
     createdAt: typeof doc.createdAt === 'string' ? doc.createdAt : new Date(doc.createdAt).toISOString(),
@@ -79,6 +80,7 @@ export function EstimateProvider({ children }: { children: ReactNode }) {
     notes: [...defaultProposal.notes],
     notesMode: 'list',
     freeformNotes: null,
+    templateVariables: null,
   }));
 
   const [isSaving, setIsSaving] = useState(false);
@@ -123,6 +125,7 @@ export function EstimateProvider({ children }: { children: ReactNode }) {
       notes: [...template.notes],
       notesMode: 'list',
       freeformNotes: null,
+      templateVariables: null,
     });
   }, []);
 
@@ -147,6 +150,7 @@ export function EstimateProvider({ children }: { children: ReactNode }) {
         notes: currentDoc.notes,
         notesMode: currentDoc.notesMode,
         freeformNotes: currentDoc.freeformNotes,
+        templateVariables: currentDoc.templateVariables,
         totalMin: currentDoc.totalMin,
         totalMax: currentDoc.totalMax,
       };
@@ -184,6 +188,7 @@ export function EstimateProvider({ children }: { children: ReactNode }) {
         notes: [...found.notes],
         notesMode: found.notesMode || 'list',
         freeformNotes: found.freeformNotes || null,
+        templateVariables: found.templateVariables || null,
       });
     }
   }, [proposals, estimates]);

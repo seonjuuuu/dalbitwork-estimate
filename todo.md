@@ -45,3 +45,12 @@
 - [x] 자유형식 계약서 템플릿 시드 데이터 등록
 - [x] 참고사항 템플릿에도 자유형식 지원
 - [x] Vitest 테스트 업데이트
+
+# 템플릿 변수 치환 기능
+
+- [x] DB 스키마에 documents.templateVariables JSON 필드 추가
+- [x] 서버 API에 templateVariables 필드 지원
+- [x] 프론트엔드 변수 입력 UI (템플릿 적용 시 변수 입력 폼)
+- [x] 미리보기/PDF에 변수 치환 반영
+- [x] 기존 자유형식 계약서 템플릿에 {{변수}} 적용
+- [x] Vitest 테스트 업데이트

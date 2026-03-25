@@ -1,11 +1,12 @@
 import { useEstimate } from '@/contexts/EstimateContext';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Plus, Trash2, Save, GripVertical, Tag, StickyNote, Loader2, BookOpen, BookmarkPlus, Download, Replace, List, FileText } from 'lucide-react';
+import { Plus, Trash2, Save, GripVertical, Tag, StickyNote, Loader2, BookOpen, BookmarkPlus, Download, Replace, List, FileText, Variable } from 'lucide-react';
 import { trpc } from '@/lib/trpc';
 import { useState, useRef, useEffect } from 'react';
 import { toast } from 'sonner';
 import type { NotesMode } from '@/lib/types';
+import { extractVariables, buildVariablesMap } from '@/lib/templateVariables';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -396,8 +397,31 @@ export default function EstimateForm() {
 
   // 자유형식 텍스트 업데이트
   const handleFreeformNotesChange = (value: string) => {
-    setCurrentDoc((prev) => ({ ...prev, freeformNotes: value }));
+    setCurrentDoc((prev) => {
+      // Auto-detect variables and update templateVariables map
+      const vars = extractVariables(value);
+      const newVarsMap = vars.length > 0
+        ? buildVariablesMap(vars, prev.templateVariables)
+        : null;
+      return { ...prev, freeformNotes: value, templateVariables: newVarsMap };
+    });
   };
+
+  // 변수 값 업데이트
+  const handleVariableChange = (varName: string, value: string) => {
+    setCurrentDoc((prev) => ({
+      ...prev,
+      templateVariables: {
+        ...(prev.templateVariables || {}),
+        [varName]: value,
+      },
+    }));
+  };
+
+  // 현재 감지된 변수 목록
+  const detectedVariables = currentDoc.notesMode === 'freeform'
+    ? extractVariables(currentDoc.freeformNotes || '')
+    : [];
 
   // 템플릿 적용 핸들러 (모드 포함)
   const handleApplyTemplate = (
@@ -760,7 +784,39 @@ export default function EstimateForm() {
             />
             <p className="text-[10px] text-muted-foreground mt-2">
               팁: 조항 제목(예: 제1조, 제2조)은 자동으로 굵게 표시됩니다. 추가로 <code className="bg-muted px-1 rounded">**텍스트**</code>로 감싸면 해당 부분도 굵게 표시됩니다.
+              {' '}<code className="bg-muted px-1 rounded">{`{{변수명}}`}</code>을 사용하면 문서마다 다른 값으로 치환할 수 있습니다.
             </p>
+
+            {/* 변수 입력 UI */}
+            {detectedVariables.length > 0 && (
+              <div className="mt-4 p-4 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+                <div className="flex items-center gap-2 mb-3">
+                  <Variable className="w-4 h-4 text-amber-600" />
+                  <h4 className="text-xs font-semibold text-amber-800 dark:text-amber-200">변수 입력</h4>
+                  <span className="text-[10px] text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/40 px-1.5 py-0.5 rounded-full">
+                    {detectedVariables.length}개 감지됨
+                  </span>
+                </div>
+                <p className="text-[10px] text-amber-700 dark:text-amber-300 mb-3">
+                  아래 변수에 값을 입력하면 미리보기와 PDF에서 자동으로 치환됩니다.
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {detectedVariables.map((varName) => (
+                    <div key={varName}>
+                      <label className="text-[11px] font-medium text-amber-800 dark:text-amber-200 mb-1 block">
+                        {`{{${varName}}}`}
+                      </label>
+                      <Input
+                        value={currentDoc.templateVariables?.[varName] || ''}
+                        onChange={(e) => handleVariableChange(varName, e.target.value)}
+                        placeholder={`${varName} 값을 입력하세요`}
+                        className="bg-background text-sm h-8"
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </>
         )}
       </div>

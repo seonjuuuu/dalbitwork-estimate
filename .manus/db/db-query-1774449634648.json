@@ -1,0 +1,22 @@
+{
+  "query": "SELECT id, name, mode, LEFT(freeformNotes, 200) as preview FROM note_templates WHERE mode = 'freeform';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2dhCyUAa13PM9Fz.f0884bab86c4 --database fPgwdiJ6bkDvqhYoiMKGTH --execute SELECT id, name, mode, LEFT(freeformNotes, 200) as preview FROM note_templates WHERE mode = 'freeform';",
+  "rows": [
+    {
+      "id": "3",
+      "name": "정식 계약서 (자유형식)",
+      "mode": "freeform",
+      "preview": "제  1조 (계약의 성립 및 효력 발생)"
+    }
+  ],
+  "messages": [
+    "1. 계약자는 계약서 내용을 확인하고 **계약금(총 제작비의 50%)**을 입금함으로써 본 계약 및 서비스 약관에 동의한 것으로 간주합니다.",
+    "2. 계약금이 입금된 시점부터 본 계약의 효력이 발생합니다.",
+    "제2조 (제작 및 진행 절차)",
+    "1. 계약금 입금 후 홈페이지 제작을 착수합니다.",
+    "2. 홈페이지 제작 완료 후 "
+  ],
+  "stdout": "id\tname\tmode\tpreview\n3\t정식 계약서 (자유형식)\tfreeform\t제  1조 (계약의 성립 및 효력 발생)\n\n1. 계약자는 계약서 내용을 확인하고 **계약금(총 제작비의 50%)**을 입금함으로써 본 계약 및 서비스 약관에 동의한 것으로 간주합니다.\n2. 계약금이 입금된 시점부터 본 계약의 효력이 발생합니다.\n\n제2조 (제작 및 진행 절차)\n\n1. 계약금 입금 후 홈페이지 제작을 착수합니다.\n2. 홈페이지 제작 완료 후 \n",
+  "stderr": "",
+  "execution_time_ms": 1735
+}

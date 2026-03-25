@@ -13,6 +13,7 @@ import {
   StyleSheet,
 } from '@react-pdf/renderer';
 import type { DocumentData, DocumentItem } from '@/lib/types';
+import { substituteVariables } from '@/lib/templateVariables';
 import {
   getDocTypeLabel,
   getDocTypeSubtitle,
@@ -401,9 +402,11 @@ const s = StyleSheet.create({
  * - **text** markdown-style bold markers are rendered as bold inline spans
  * - Empty lines become spacing
  */
-function renderFreeformNotes(text: string) {
+function renderFreeformNotes(text: string, variables?: Record<string, string> | null) {
   if (!text) return null;
-  const lines = text.split('\n');
+  // Apply variable substitution before rendering
+  const processedText = substituteVariables(text, variables);
+  const lines = processedText.split('\n');
   const elements: React.ReactNode[] = [];
 
   // Pattern for article headings: 제1조, 제 1조, 제2조 (계약의 성립), etc.
@@ -673,8 +676,8 @@ export default function PdfDocument({ doc }: PdfDocumentProps) {
               </Text>
             ))
           ) : (
-            // Freeform mode - render with bold support
-            renderFreeformNotes(doc.freeformNotes || '')
+            // Freeform mode - render with bold support and variable substitution
+            renderFreeformNotes(doc.freeformNotes || '', doc.templateVariables)
           )}
         </View>
 

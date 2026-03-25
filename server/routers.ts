@@ -28,6 +28,7 @@ const documentInputSchema = z.object({
   notes: z.array(z.string()),
   notesMode: z.enum(["list", "freeform"]).default("list"),
   freeformNotes: z.string().nullable().default(null),
+  templateVariables: z.record(z.string(), z.string()).nullable().default(null),
   totalMin: z.number().default(0),
   totalMax: z.number().default(0),
 });
@@ -176,6 +177,9 @@ export const appRouter = router({
           date: input.date,
           items: input.items as DocumentItemRow[],
           notes: input.notes,
+          notesMode: input.notesMode,
+          freeformNotes: input.freeformNotes,
+          templateVariables: input.templateVariables,
           totalMin: input.totalMin,
           totalMax: input.totalMax,
         });
@@ -203,6 +207,7 @@ export const appRouter = router({
         if (input.data.notes !== undefined) updateData.notes = input.data.notes;
         if (input.data.notesMode !== undefined) updateData.notesMode = input.data.notesMode;
         if (input.data.freeformNotes !== undefined) updateData.freeformNotes = input.data.freeformNotes;
+        if (input.data.templateVariables !== undefined) updateData.templateVariables = input.data.templateVariables;
         if (input.data.totalMin !== undefined) updateData.totalMin = input.data.totalMin;
         if (input.data.totalMax !== undefined) updateData.totalMax = input.data.totalMax;
 

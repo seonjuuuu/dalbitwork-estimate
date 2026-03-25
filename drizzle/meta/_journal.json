@@ -29,6 +29,13 @@
       "when": 1774447957423,
       "tag": "0003_nosy_paladin",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "5",
+      "when": 1774449262217,
+      "tag": "0004_crazy_meteorite",
+      "breakpoints": true
     }
   ]
 }

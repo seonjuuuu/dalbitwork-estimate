@@ -1,0 +1,1 @@
+ALTER TABLE `documents` ADD `templateVariables` json;
