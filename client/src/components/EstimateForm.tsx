@@ -558,18 +558,14 @@ export default function EstimateForm() {
         const minBudget = Math.floor(baseAmount * 0.9);
         const maxBudget = Math.ceil(baseAmount * 1.1);
         setCurrentDoc((prev) => {
-          if (prev.totalMin === 0 && prev.totalMax === 0) {
-            return { ...prev, totalMin: minBudget, totalMax: maxBudget };
-          }
-          return prev;
+          // 항상 자동 계산
+          return { ...prev, totalMin: minBudget, totalMax: maxBudget };
         });
       } else {
         // 견적서: 정가 또는 할인가 기준
         setCurrentDoc((prev) => {
-          if (prev.totalMin === 0 && prev.totalMax === 0) {
-            return { ...prev, totalMin: baseAmount, totalMax: baseAmount };
-          }
-          return prev;
+          // 항상 자동 계산
+          return { ...prev, totalMin: baseAmount, totalMax: baseAmount };
         });
       }
     }
