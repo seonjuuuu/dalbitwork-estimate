@@ -555,8 +555,8 @@ export default function EstimateForm() {
     if (baseAmount > 0) {
       if (isProposal) {
         // 제안서: ±10% 범위
-        const minBudget = Math.floor(baseAmount * 0.9);
-        const maxBudget = Math.ceil(baseAmount * 1.1);
+        const minBudget = Math.round(baseAmount * 0.9);
+        const maxBudget = Math.round(baseAmount * 1.1);
         setCurrentDoc((prev) => {
           // 항상 자동 계산
           return { ...prev, totalMin: minBudget, totalMax: maxBudget };
@@ -905,28 +905,34 @@ export default function EstimateForm() {
           위 항목의 합계가 자동 반영됩니다. 필요 시 직접 수정할 수 있습니다.
         </p>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+        <div className="space-y-4 mt-4">
           {isProposal ? (
             <>
-              <div>
-                <label className="text-xs font-medium text-muted-foreground mb-1.5 block">최종 최소 금액 (원)</label>
-                <Input
-                  type="number"
-                  value={currentDoc.totalMin}
-                  onChange={(e) => updateField('totalMin', Number(e.target.value))}
-                  placeholder="2000000"
-                  className="bg-background amount"
-                />
+              <div className="p-3 bg-muted rounded-lg border border-border">
+                <p className="text-xs text-muted-foreground mb-1">총합</p>
+                <p className="text-lg font-bold text-foreground">{(showDiscount ? totalFinal : totalOriginal).toLocaleString('ko-KR')}원</p>
               </div>
-              <div>
-                <label className="text-xs font-medium text-muted-foreground mb-1.5 block">최종 최대 금액 (원)</label>
-                <Input
-                  type="number"
-                  value={currentDoc.totalMax}
-                  onChange={(e) => updateField('totalMax', Number(e.target.value))}
-                  placeholder="2250000"
-                  className="bg-background amount"
-                />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground mb-1.5 block">최소 범위 (-10%)</label>
+                  <Input
+                    type="number"
+                    value={currentDoc.totalMin}
+                    onChange={(e) => updateField('totalMin', Number(e.target.value))}
+                    placeholder="2000000"
+                    className="bg-background amount"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground mb-1.5 block">최대 범위 (+10%)</label>
+                  <Input
+                    type="number"
+                    value={currentDoc.totalMax}
+                    onChange={(e) => updateField('totalMax', Number(e.target.value))}
+                    placeholder="2250000"
+                    className="bg-background amount"
+                  />
+                </div>
               </div>
             </>
           ) : (
