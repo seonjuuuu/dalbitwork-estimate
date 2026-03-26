@@ -550,6 +550,14 @@ export default function PdfDocument({ doc }: PdfDocumentProps) {
               <Text style={s.infoLabel}>플 랫 폼</Text>
               <Text style={s.infoValue}>{doc.platform || '-'}</Text>
             </View>
+            <View style={s.infoLine}>
+              <Text style={s.infoLabel}>담당자이름</Text>
+              <Text style={s.infoValue}>{doc.clientName || '-'}</Text>
+            </View>
+            <View style={s.infoLine}>
+              <Text style={s.infoLabel}>연 락 처</Text>
+              <Text style={s.infoValue}>{doc.contactPhone || '-'}</Text>
+            </View>
           </View>
           <View style={s.infoRight}>
             <View style={s.infoLine}>
