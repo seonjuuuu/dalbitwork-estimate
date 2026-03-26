@@ -505,12 +505,17 @@ export default function PdfDocument({ doc }: PdfDocumentProps) {
 
   // 예상총액: 최소/최대 중 하나가 0이면 단일 금액만 표시
   const getTotalDisplay = () => {
-    if (!isProposal) return `${formatNumber(doc.totalMin)} \uc6d0`;
-    if (doc.totalMin === 0 && doc.totalMax === 0) return '0 \uc6d0';
-    if (doc.totalMin === 0) return `${formatNumber(doc.totalMax)} \uc6d0`;
-    if (doc.totalMax === 0) return `${formatNumber(doc.totalMin)} \uc6d0`;
-    if (doc.totalMin === doc.totalMax) return `${formatNumber(doc.totalMin)} \uc6d0`;
-    return `${formatNumber(doc.totalMin)} ~ ${formatNumber(doc.totalMax)} \uc6d0`;
+    const baseAmount = showDiscount ? totalFinal : totalOriginal;
+    if (!isProposal) return `${formatNumber(doc.totalMin)} 원`;
+    if (doc.totalMin === 0 && doc.totalMax === 0) return '0 원';
+    if (doc.totalMin === 0) return `${formatNumber(doc.totalMax)} 원`;
+    if (doc.totalMax === 0) return `${formatNumber(doc.totalMin)} 원`;
+    if (doc.totalMin === doc.totalMax) return `${formatNumber(doc.totalMin)} 원`;
+    // 제안서: 총합과 범위를 줄바꿈으로 분리
+    return {
+      total: `총합: ${formatNumber(baseAmount)} 원`,
+      range: `범위: ${formatNumber(doc.totalMin)} ~ ${formatNumber(doc.totalMax)} 원`
+    };
   };
   const totalDisplay = getTotalDisplay();
 
@@ -600,7 +605,14 @@ export default function PdfDocument({ doc }: PdfDocumentProps) {
           <Text style={s.totalLabel}>
             {isProposal ? '예상 총액' : '확정 총액'}
           </Text>
-          <Text style={s.totalValue}>{totalDisplay}</Text>
+          {typeof totalDisplay === 'object' ? (
+            <View>
+              <Text style={s.totalValue}>{totalDisplay.total}</Text>
+              <Text style={s.totalValue}>{totalDisplay.range}</Text>
+            </View>
+          ) : (
+            <Text style={s.totalValue}>{totalDisplay}</Text>
+          )}
         </View>
 
         {showDiscount && (
