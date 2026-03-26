@@ -656,14 +656,14 @@ export default function PdfDocument({ doc }: PdfDocumentProps) {
                 {showDiscount && (
                   <Text style={[
                     s.tdDiscAmount,
-                    { color: itemHasDiscount ? GOLD : '#888888' }
+                    { color: '#666666' }
                   ]}>
                     {discountAmountVal > 0 ? formatNumber(discountAmountVal) : '-'}
                   </Text>
                 )}
                 <Text style={[
                   s.tdPrice,
-                  { color: itemHasDiscount ? GOLD : '#1a1a1a' }
+                  { color: '#1a1a1a' }
                 ]}>
                   {isProposal ? `약 ${formatNumber(finalAmt)}` : formatNumber(finalAmt)}
                 </Text>
