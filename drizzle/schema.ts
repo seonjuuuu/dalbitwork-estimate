@@ -58,9 +58,21 @@ export const documents = mysqlTable("documents", {
   contactPhone: varchar("contactPhone", { length: 50 }).default("").notNull(),
   /** Business category/type */
   businessType: varchar("businessType", { length: 100 }).default("").notNull(),
+  /** Optional items (for estimates) - JSON array */
+  optionalItems: json("optionalItems").$type<OptionalItemRow[]>().default([]).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
+
+/** Shape of each optional item stored in the JSON `optionalItems` column */
+export interface OptionalItemRow {
+  id: string;
+  name: string;
+  description: string;
+  quantity: string;
+  price: string;
+  payer: string; // 결제자 정보
+}
 
 /** Shape of each item stored in the JSON `items` column */
 export interface DocumentItemRow {

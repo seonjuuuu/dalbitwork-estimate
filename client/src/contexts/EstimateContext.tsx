@@ -42,6 +42,7 @@ function dbDocToLocal(doc: {
   totalMax: number;
   contactPhone: string;
   businessType: string;
+  optionalItems?: { id: string; name: string; description: string; quantity: string; price: string; payer: string }[];
   createdAt: Date | string;
   updatedAt: Date | string;
 }): DocumentData {
@@ -70,6 +71,14 @@ function dbDocToLocal(doc: {
     totalMax: doc.totalMax || 0,
     contactPhone: doc.contactPhone || '',
     businessType: doc.businessType || '',
+    optionalItems: (doc.optionalItems || []).map((item) => ({
+      id: item.id || nanoid(),
+      name: item.name || '',
+      description: item.description || '',
+      quantity: item.quantity || '',
+      price: item.price || '',
+      payer: item.payer || '',
+    })),
     createdAt: typeof doc.createdAt === 'string' ? doc.createdAt : new Date(doc.createdAt).toISOString(),
     updatedAt: typeof doc.updatedAt === 'string' ? doc.updatedAt : new Date(doc.updatedAt).toISOString(),
   };

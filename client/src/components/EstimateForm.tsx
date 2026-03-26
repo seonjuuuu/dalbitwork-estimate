@@ -548,6 +548,33 @@ export default function EstimateForm() {
   const showDiscount = hasAnyDiscount(currentDoc.items);
   const discountPercent = totalOriginal > 0 ? Math.round((totalDiscount / totalOriginal) * 100) : 0;
 
+  // 예산 범위 자동계산 (항목 변경 시)
+  useEffect(() => {
+    const baseAmount = showDiscount ? totalFinal : totalOriginal;
+    
+    if (baseAmount > 0) {
+      if (isProposal) {
+        // 제안서: ±10% 범위
+        const minBudget = Math.floor(baseAmount * 0.9);
+        const maxBudget = Math.ceil(baseAmount * 1.1);
+        setCurrentDoc((prev) => {
+          if (prev.totalMin === 0 && prev.totalMax === 0) {
+            return { ...prev, totalMin: minBudget, totalMax: maxBudget };
+          }
+          return prev;
+        });
+      } else {
+        // 견적서: 정가 또는 할인가 기준
+        setCurrentDoc((prev) => {
+          if (prev.totalMin === 0 && prev.totalMax === 0) {
+            return { ...prev, totalMin: baseAmount, totalMax: baseAmount };
+          }
+          return prev;
+        });
+      }
+    }
+  }, [totalOriginal, totalFinal, showDiscount, isProposal, setCurrentDoc]);
+
   // 드래그앤드롭 센서
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -861,10 +888,10 @@ export default function EstimateForm() {
               <span className="line-through text-muted-foreground amount">{totalOriginal.toLocaleString('ko-KR')}원</span>
             </div>
             <div className="flex items-center justify-between text-xs mt-1">
-              <span className="text-[#F7AE00] font-semibold">총 할인 ({discountPercent}%)</span>
-              <span className="text-[#F7AE00] font-semibold amount">-{totalDiscount.toLocaleString('ko-KR')}원</span>
+              <span className="text-muted-foreground font-semibold">총 할인 ({discountPercent}%)</span>
+              <span className="text-muted-foreground font-semibold amount">-{totalDiscount.toLocaleString('ko-KR')}원</span>
             </div>
-            <div className="flex items-center justify-between text-xs mt-1 pt-1 border-t border-[#F7AE00]/20">
+            <div className="flex items-center justify-between text-xs mt-1 pt-1 border-t border-muted-foreground/20">
               <span className="font-semibold text-foreground">할인 적용 금액</span>
               <span className="font-bold text-foreground amount">{totalFinal.toLocaleString('ko-KR')}원</span>
             </div>

@@ -1,0 +1,1 @@
+ALTER TABLE `documents` ADD `optionalItems` json DEFAULT ('[]') NOT NULL;

@@ -1,13 +1,14 @@
-import { Button } from '@/components/ui/button';
-import { Download, Eye, Loader2 } from 'lucide-react';
+import { Download, Eye, Loader2, Save } from 'lucide-react';
 import { useCallback, useState, useRef, useEffect } from 'react';
 import { pdf } from '@react-pdf/renderer';
 import PdfDocument from './PdfDocument';
 import { getDocTypeLabel } from '@/lib/types';
 import { useEstimate } from '@/contexts/EstimateContext';
+import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
 
 export default function EstimatePreview() {
-  const { currentDoc } = useEstimate();
+  const { currentDoc, saveDocument, isSaving } = useEstimate();
   const [isRendering, setIsRendering] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const [pdfBlobUrl, setPdfBlobUrl] = useState<string | null>(null);
@@ -15,6 +16,15 @@ export default function EstimatePreview() {
   const prevBlobUrlRef = useRef<string | null>(null);
 
   const docLabel = getDocTypeLabel(currentDoc.type);
+
+  const handleSave = async () => {
+    try {
+      await saveDocument();
+      toast.success(`${docLabel}가 저장되었습니다.`);
+    } catch (err) {
+      toast.error('저장에 실패했습니다. 다시 시도해주세요.');
+    }
+  };
 
   // PDF blob 생성 및 iframe 미리보기 갱신
   const renderPreview = useCallback(async () => {
@@ -95,14 +105,28 @@ export default function EstimatePreview() {
             <Loader2 className="w-3 h-3 animate-spin ml-1" />
           )}
         </div>
-        <Button
-          onClick={handleDownload}
-          disabled={isDownloading}
-          className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
-        >
-          <Download className="w-4 h-4" />
-          {isDownloading ? '생성 중...' : 'PDF 다운로드'}
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            onClick={handleSave}
+            disabled={isSaving}
+            className="gap-2 bg-secondary text-secondary-foreground hover:bg-secondary/90"
+          >
+            {isSaving ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Save className="w-4 h-4" />
+            )}
+            {isSaving ? '저장 중...' : '저장하기'}
+          </Button>
+          <Button
+            onClick={handleDownload}
+            disabled={isDownloading}
+            className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
+          >
+            <Download className="w-4 h-4" />
+            {isDownloading ? '생성 중...' : 'PDF 다운로드'}
+          </Button>
+        </div>
       </div>
 
       {/* Preview Container - iframe으로 PDF 직접 표시 */}
@@ -173,3 +197,4 @@ export default function EstimatePreview() {
     </div>
   );
 }
+

@@ -43,6 +43,13 @@
       "when": 1774453987024,
       "tag": "0005_illegal_junta",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "5",
+      "when": 1774488500467,
+      "tag": "0006_strong_joshua_kane",
+      "breakpoints": true
     }
   ]
 }

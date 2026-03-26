@@ -29,8 +29,18 @@ export interface DocumentData {
   totalMax: number;
   contactPhone: string; // 담당자 번호
   businessType: string; // 업종
+  optionalItems: OptionalItem[]; // 선택사항
   createdAt?: string;
   updatedAt?: string;
+}
+
+export interface OptionalItem {
+  id: string;
+  name: string;
+  description: string;
+  quantity: string;
+  price: string;
+  payer: string;
 }
 
 // 콤마 제거하고 숫자만 추출
@@ -123,11 +133,11 @@ export const defaultProposal: DocumentData = {
   memo: '',
   clientName: '',
   projectName: '',
-  platform: "아임웹(I'mweb)",
+  platform: "\uc544\uc784\uc6f9(I'mweb)",
   date: new Date().toISOString().split('T')[0],
   items: [
-    { id: '1', name: '메인 페이지 (국문, 5섹션 기준)', quantity: '1페이지', originalPrice: '900,000', discountPrice: '', discountAmount: '' },
-    { id: '2', name: '서브 페이지 (국문)', quantity: '4페이지', originalPrice: '600,000', discountPrice: '', discountAmount: '' },
+    { id: '1', name: '\uba54\uc778 \ud398\uc774\uc9c0 (\uad6d\ubb38, 5\uc12e\uc158 \uae30\uc900)', quantity: '1\ud398\uc774\uc9c0', originalPrice: '900,000', discountPrice: '', discountAmount: '' },
+    { id: '2', name: '\uc11c\ube0c \ud398\uc774\uc9c0 (\uad6d\ubb38)', quantity: '4\ud398\uc774\uc9c0', originalPrice: '600,000', discountPrice: '', discountAmount: '' },
   ],
   notes: proposalNotes,
   notesMode: 'list',
@@ -137,6 +147,7 @@ export const defaultProposal: DocumentData = {
   totalMax: 2250000,
   contactPhone: '',
   businessType: '',
+  optionalItems: [],
 };
 
 export const defaultEstimate: DocumentData = {
@@ -145,11 +156,11 @@ export const defaultEstimate: DocumentData = {
   memo: '',
   clientName: '',
   projectName: '',
-  platform: "아임웹(I'mweb)",
+  platform: "\uc544\uc784\uc6f9(I'mweb)",
   date: new Date().toISOString().split('T')[0],
   items: [
-    { id: '1', name: '메인 페이지 (국문, 5섹션 기준)', quantity: '1페이지', originalPrice: '900,000', discountPrice: '', discountAmount: '' },
-    { id: '2', name: '서브 페이지 (국문)', quantity: '4페이지', originalPrice: '600,000', discountPrice: '', discountAmount: '' },
+    { id: '1', name: '\uba54\uc778 \ud398\uc774\uc9c0 (\uad6d\ubb38, 5\uc12e\uc158 \uae30\uc900)', quantity: '1\ud398\uc774\uc9c0', originalPrice: '900,000', discountPrice: '', discountAmount: '' },
+    { id: '2', name: '\uc11c\ube0c \ud398\uc774\uc9c0 (\uad6d\ubb38)', quantity: '4\ud398\uc774\uc9c0', originalPrice: '600,000', discountPrice: '', discountAmount: '' },
   ],
   notes: estimateNotes,
   notesMode: 'list',
@@ -159,6 +170,7 @@ export const defaultEstimate: DocumentData = {
   totalMax: 2250000,
   contactPhone: '',
   businessType: '',
+  optionalItems: [],
 };
 
 export function getDocTypeLabel(type: DocumentType): string {
