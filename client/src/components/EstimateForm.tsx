@@ -800,7 +800,7 @@ export default function EstimateForm() {
         </div>
 
         {/* Table Header */}
-        <div className="grid grid-cols-[2fr_0.8fr_0.8fr_1fr_1fr_1fr_auto] gap-2 mb-2 mt-5">
+        <div className="grid grid-cols-[1.5fr_0.7fr_0.7fr_0.8fr_0.8fr_0.8fr_auto] gap-1.5 mb-2 mt-5 overflow-x-auto">
           <span className="text-[11px] font-medium text-muted-foreground px-1">항목명</span>
           <span className="text-[11px] font-medium text-muted-foreground px-1">수량</span>
           <span className="text-[11px] font-medium text-muted-foreground px-1">단가(원)</span>
@@ -815,7 +815,7 @@ export default function EstimateForm() {
           {currentDoc.items.map((item) => (
             <div
               key={item.id}
-              className="grid grid-cols-[2fr_0.8fr_0.8fr_1fr_1fr_1fr_auto] gap-2 items-center group"
+              className="grid grid-cols-[1.5fr_0.7fr_0.7fr_0.8fr_0.8fr_0.8fr_auto] gap-1.5 items-center group"
             >
               <Input
                 value={item.name}
