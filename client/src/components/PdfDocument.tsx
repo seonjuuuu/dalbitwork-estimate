@@ -607,7 +607,7 @@ export default function PdfDocument({ doc }: PdfDocumentProps) {
           </Text>
           {typeof totalDisplay === 'object' ? (
             <View>
-              <Text style={s.totalValue}>{totalDisplay.total}</Text>
+              <Text style={{ fontSize: 12, fontWeight: 500, color: '#666666', marginBottom: 4 }}>{totalDisplay.total}</Text>
               <Text style={s.totalValue}>{totalDisplay.range}</Text>
             </View>
           ) : (
