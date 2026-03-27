@@ -800,9 +800,10 @@ export default function EstimateForm() {
         </div>
 
         {/* Table Header */}
-        <div className="grid grid-cols-[2fr_0.8fr_1fr_1fr_1fr_auto] gap-2 mb-2 mt-5">
+        <div className="grid grid-cols-[2fr_0.8fr_0.8fr_1fr_1fr_1fr_auto] gap-2 mb-2 mt-5">
           <span className="text-[11px] font-medium text-muted-foreground px-1">항목명</span>
           <span className="text-[11px] font-medium text-muted-foreground px-1">수량</span>
+          <span className="text-[11px] font-medium text-muted-foreground px-1">단가(원)</span>
           <span className="text-[11px] font-medium text-muted-foreground px-1">정가(원)</span>
           <span className="text-[11px] font-medium text-muted-foreground px-1">할인금액(원)</span>
           <span className="text-[11px] font-medium text-muted-foreground px-1">할인가(원)</span>
@@ -814,7 +815,7 @@ export default function EstimateForm() {
           {currentDoc.items.map((item) => (
             <div
               key={item.id}
-              className="grid grid-cols-[2fr_0.8fr_1fr_1fr_1fr_auto] gap-2 items-center group"
+              className="grid grid-cols-[2fr_0.8fr_0.8fr_1fr_1fr_1fr_auto] gap-2 items-center group"
             >
               <Input
                 value={item.name}
@@ -827,6 +828,25 @@ export default function EstimateForm() {
                 onChange={(e) => updateItem(item.id, 'quantity', e.target.value)}
                 placeholder="1페이지"
                 className="text-sm bg-background h-9"
+              />
+              <Input
+                value={item.unitPrice || ''}
+                onChange={(e) => {
+                  handleNumberInput(e.target.value, (v) => {
+                    updateItem(item.id, 'unitPrice', v);
+                    // 단가 입력 시 정가 자동 계산 (정가 = 단가 × 수량)
+                    if (v && item.quantity) {
+                      const unitPrice = parseAmount(v);
+                      const qty = parseAmount(item.quantity);
+                      if (unitPrice > 0 && qty > 0) {
+                        const newOriginalPrice = autoFormatNumber(String(unitPrice * qty));
+                        updateItem(item.id, 'originalPrice', newOriginalPrice);
+                      }
+                    }
+                  });
+                }}
+                placeholder="단가 (선택)"
+                className="text-sm bg-background h-9 amount"
               />
               <Input
                 value={item.originalPrice}

@@ -79,6 +79,7 @@ export interface DocumentItemRow {
   id: string;
   name: string;
   quantity: string;
+  unitPrice?: string; // 단가 (선택사항)
   originalPrice: string;
   discountPrice: string;
   discountAmount?: string; // 할인금액 (선택, 입력 시 할인가 자동 계산)

@@ -4,7 +4,8 @@ export interface DocumentItem {
   id: string;
   name: string;
   quantity: string;
-  originalPrice: string; // 정가 (필수)
+  unitPrice?: string; // 단가 (선택사항)
+  originalPrice: string; // 정가 (아수)
   discountPrice: string; // 할인가 (선택, 비어있으면 정가가 최종 금액)
   discountAmount: string; // 할인금액 (선택, 입력 시 할인가 자동 계산)
 }
