@@ -506,17 +506,15 @@ export default function PdfDocument({ doc }: PdfDocumentProps) {
   // 예상총액: 최소/최대 중 하나가 0이면 단일 금액만 표시
   const getTotalDisplay = () => {
     const baseAmount = showDiscount ? totalFinal : totalOriginal;
-    if (!isProposal) return `확정 총액: ${formatNumber(doc.totalMin)} 원`;
+    if (!isProposal) return `${formatNumber(doc.totalMin)} 원`;
     if (doc.totalMin === 0 && doc.totalMax === 0) return '0 원';
     if (doc.totalMin === 0) return `${formatNumber(doc.totalMax)} 원`;
     if (doc.totalMax === 0) return `${formatNumber(doc.totalMin)} 원`;
     if (doc.totalMin === doc.totalMax) return `${formatNumber(doc.totalMin)} 원`;
-    // 제안서: 총합 + 범위(±10%)를 줄바꿈으로 분리
-    const minRange = Math.round(baseAmount * 0.9);
-    const maxRange = Math.round(baseAmount * 1.1);
+    // 제안서: 총합과 범위를 줄바꿈으로 분리
     return {
       total: `총합: ${formatNumber(baseAmount)} 원`,
-      range: `범위(±10%): ${formatNumber(minRange)} ~ ${formatNumber(maxRange)} 원`
+      range: `범위: ${formatNumber(doc.totalMin)} ~ ${formatNumber(doc.totalMax)} 원`
     };
   };
   const totalDisplay = getTotalDisplay();
@@ -717,31 +715,7 @@ export default function PdfDocument({ doc }: PdfDocumentProps) {
           </View>
         </View>
 
-                {/* Optional Items Table */}
-        {doc.optionalItems && doc.optionalItems.length > 0 && (
-          <View style={{ marginTop: 20, marginBottom: 20 }}>
-            <View style={s.tableHeader}>
-              <Text style={{ flex: 1, textAlign: 'left', fontWeight: 600, fontSize: 9 }}>구분</Text>
-              <Text style={{ flex: 2, textAlign: 'left', fontWeight: 600, fontSize: 9 }}>설명</Text>
-              <Text style={{ width: 60, textAlign: 'center', fontWeight: 600, fontSize: 9 }}>수량</Text>
-              <Text style={{ width: 80, textAlign: 'right', fontWeight: 600, fontSize: 9 }}>가격</Text>
-              <Text style={{ width: 100, textAlign: 'right', fontWeight: 600, fontSize: 9 }}>비고</Text>
-            </View>
-            {doc.optionalItems.map((item, idx) => (
-              <View key={idx} style={s.tableRow}>
-                <Text style={{ flex: 1, textAlign: 'left', fontSize: 9 }}>선택사항</Text>
-                <Text style={{ flex: 2, textAlign: 'left', fontSize: 9 }}>{item.name}</Text>
-                <Text style={{ width: 60, textAlign: 'center', fontSize: 9 }}>1</Text>
-                <Text style={{ width: 80, textAlign: 'right', fontSize: 9, color: '#666666' }}>
-                  {item.price ? formatNumber(parseInt(item.price)) : '선택사항'}
-                </Text>
-                <Text style={{ width: 100, textAlign: 'right', fontSize: 9 }}>사업주 선택</Text>
-              </View>
-            ))}
-          </View>
-        )}
-
-{/* Notes */}
+        {/* Notes */}
         <View style={s.notesSection}>
           <Text style={s.notesTitle}>참고 사항</Text>
           {(!doc.notesMode || doc.notesMode === 'list') ? (
