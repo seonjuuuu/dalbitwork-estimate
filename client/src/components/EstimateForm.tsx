@@ -824,10 +824,24 @@ export default function EstimateForm() {
                 className="text-sm bg-background h-9"
               />
               <Input
+                type="number"
                 value={item.quantity}
-                onChange={(e) => updateItem(item.id, 'quantity', e.target.value)}
-                placeholder="1페이지"
+                onChange={(e) => {
+                  const newQty = e.target.value;
+                  updateItem(item.id, 'quantity', newQty);
+                  // 수량 변경 시 정가 자동 계산 (정가 = 단가 × 수량)
+                  if (item.unitPrice && newQty) {
+                    const unitPrice = parseAmount(item.unitPrice);
+                    const qty = parseAmount(newQty);
+                    if (unitPrice > 0 && qty > 0) {
+                      const newOriginalPrice = autoFormatNumber(String(unitPrice * qty));
+                      updateItem(item.id, 'originalPrice', newOriginalPrice);
+                    }
+                  }
+                }}
+                placeholder="1"
                 className="text-sm bg-background h-9"
+                min="0"
               />
               <Input
                 value={item.unitPrice || ''}
@@ -850,9 +864,9 @@ export default function EstimateForm() {
               />
               <Input
                 value={item.originalPrice}
-                onChange={(e) => handleNumberInput(e.target.value, (v) => updateItem(item.id, 'originalPrice', v))}
+                readOnly
                 placeholder="900,000"
-                className="text-sm bg-background h-9 amount"
+                className="text-sm bg-background h-9 amount text-muted-foreground"
               />
               <Input
                 value={item.discountAmount || ''}
