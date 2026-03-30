@@ -751,21 +751,15 @@ export default function EstimateForm() {
           </div>
           <div>
             <label className="text-xs font-medium text-muted-foreground mb-1.5 block">담당자 이름</label>
-            <Input
-              value={currentDoc.clientName}
-              onChange={(e) => updateField('clientName', e.target.value)}
-              placeholder="담당자 이름"
-              className="bg-background"
-            />
+            <div className="border-b-2 border-gray-300 px-3 py-2 text-sm text-muted-foreground min-h-[40px] flex items-center">
+              {currentDoc.contactName || '나중에 계약서에서 입력'}
+            </div>
           </div>
           <div>
             <label className="text-xs font-medium text-muted-foreground mb-1.5 block">담당자 연락처</label>
-            <Input
-              value={currentDoc.contactPhone}
-              onChange={(e) => updateField('contactPhone', e.target.value)}
-              placeholder="010-0000-0000"
-              className="bg-background"
-            />
+            <div className="border-b-2 border-gray-300 px-3 py-2 text-sm text-muted-foreground min-h-[40px] flex items-center">
+              {currentDoc.contactPhone || '나중에 계약서에서 입력'}
+            </div>
           </div>
           <div>
             <label className="text-xs font-medium text-muted-foreground mb-1.5 block">발행일</label>

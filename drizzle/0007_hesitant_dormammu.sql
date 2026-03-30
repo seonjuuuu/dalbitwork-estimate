@@ -1,0 +1,1 @@
+ALTER TABLE `documents` ADD `contactName` varchar(500) DEFAULT '' NOT NULL;

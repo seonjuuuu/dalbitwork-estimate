@@ -17,7 +17,8 @@ export interface DocumentData {
   type: DocumentType;
   title: string;        // 내부 관리용 타이틀 (PDF 미노출)
   memo: string;         // 내부 관리용 메모 (PDF 미노출)
-  clientName: string;
+  clientName: string;   // 수신처 (고객사)
+  contactName: string;  // 담당자 이름
   projectName: string;
   platform: string;
   date: string;
@@ -133,12 +134,13 @@ export const defaultProposal: DocumentData = {
   title: '',
   memo: '',
   clientName: '',
+  contactName: '',
   projectName: '',
-  platform: "\uc544\uc784\uc6f9(I'mweb)",
+  platform: "아임웹(I'mweb)",
   date: new Date().toISOString().split('T')[0],
   items: [
-    { id: '1', name: '\uba54\uc778 \ud398\uc774\uc9c0 (\uad6d\ubb38, 5\uc12e\uc158 \uae30\uc900)', quantity: '1\ud398\uc774\uc9c0', originalPrice: '900,000', discountPrice: '', discountAmount: '' },
-    { id: '2', name: '\uc11c\ube0c \ud398\uc774\uc9c0 (\uad6d\ubb38)', quantity: '4\ud398\uc774\uc9c0', originalPrice: '600,000', discountPrice: '', discountAmount: '' },
+    { id: '1', name: '메인 페이지 (국문, 5섮션 기준)', quantity: '1페이지', originalPrice: '900,000', discountPrice: '', discountAmount: '' },
+    { id: '2', name: '서브 페이지 (국문)', quantity: '4페이지', originalPrice: '600,000', discountPrice: '', discountAmount: '' },
   ],
   notes: proposalNotes,
   notesMode: 'list',
@@ -156,12 +158,13 @@ export const defaultEstimate: DocumentData = {
   title: '',
   memo: '',
   clientName: '',
+  contactName: '',
   projectName: '',
-  platform: "\uc544\uc784\uc6f9(I'mweb)",
+  platform: "아임웹(I'mweb)",
   date: new Date().toISOString().split('T')[0],
   items: [
-    { id: '1', name: '\uba54\uc778 \ud398\uc774\uc9c0 (\uad6d\ubb38, 5\uc12e\uc158 \uae30\uc900)', quantity: '1\ud398\uc774\uc9c0', originalPrice: '900,000', discountPrice: '', discountAmount: '' },
-    { id: '2', name: '\uc11c\ube0c \ud398\uc774\uc9c0 (\uad6d\ubb38)', quantity: '4\ud398\uc774\uc9c0', originalPrice: '600,000', discountPrice: '', discountAmount: '' },
+    { id: '1', name: '메인 페이지 (국문, 5섮션 기준)', quantity: '1페이지', originalPrice: '900,000', discountPrice: '', discountAmount: '' },
+    { id: '2', name: '서브 페이지 (국문)', quantity: '4페이지', originalPrice: '600,000', discountPrice: '', discountAmount: '' },
   ],
   notes: estimateNotes,
   notesMode: 'list',

@@ -31,6 +31,7 @@ function dbDocToLocal(doc: {
   title: string;
   memo: string | null;
   clientName: string;
+  contactName: string;
   projectName: string;
   platform: string;
   date: string;
@@ -52,6 +53,7 @@ function dbDocToLocal(doc: {
     title: doc.title || '',
     memo: doc.memo || '',
     clientName: doc.clientName || '',
+    contactName: doc.contactName || '',
     projectName: doc.projectName || '',
     platform: doc.platform || '',
     date: doc.date || '',

@@ -34,6 +34,8 @@ export const documents = mysqlTable("documents", {
   memo: text("memo"),
   /** Client/recipient name */
   clientName: varchar("clientName", { length: 500 }).default("").notNull(),
+  /** Contact person name */
+  contactName: varchar("contactName", { length: 500 }).default("").notNull(),
   /** Project name */
   projectName: varchar("projectName", { length: 500 }).default("").notNull(),
   /** Platform info */
