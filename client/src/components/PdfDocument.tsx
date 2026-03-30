@@ -560,7 +560,7 @@ export default function PdfDocument({ doc }: PdfDocumentProps) {
             </View>
             <View style={s.infoLine}>
               <Text style={s.infoLabel}>담당자이름</Text>
-              <Text style={s.infoValue}>{doc.clientName || '-'}</Text>
+              <Text style={s.infoValue}>{doc.contactName || '-'}</Text>
             </View>
             <View style={s.infoLine}>
               <Text style={s.infoLabel}>연 락 처</Text>
