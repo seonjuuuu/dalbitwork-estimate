@@ -821,7 +821,7 @@ export default function EstimateForm() {
                 type="number"
                 value={item.quantity}
                 onChange={(e) => {
-                  const newQty = e.target.value;
+                  const newQty = e.target.value.replace(/[^0-9]/g, '');
                   updateItem(item.id, 'quantity', newQty);
                   // 수량 변경 시 정가 자동 계산 (정가 = 단가 × 수량)
                   if (item.unitPrice && newQty) {
@@ -836,6 +836,8 @@ export default function EstimateForm() {
                 placeholder="1"
                 className="text-sm bg-background h-9"
                 min="0"
+                inputMode="numeric"
+                pattern="[0-9]*"
               />
               <Input
                 value={item.unitPrice || ''}
