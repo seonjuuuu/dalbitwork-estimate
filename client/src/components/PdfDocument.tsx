@@ -697,19 +697,11 @@ export default function PdfDocument({ doc }: PdfDocumentProps) {
             <>
               <View style={[s.footerSubRow, { borderTopWidth: 2, borderTopColor: '#323232' }]}>
                 <Text style={{ flex: 1 }}></Text>
-                <Text style={{ width: 55, textAlign: 'right', fontSize: 10, color: '#aaaaaa' }}>정가 합계</Text>
-                <Text style={{ width: 80, textAlign: 'right', fontSize: 10, color: '#aaaaaa', textDecoration: 'line-through' }}>
-                  {formatNumber(totalOriginal)}
-                </Text>
-                <Text style={{ width: 90 }}></Text>
+                <Text style={{ width: 170, textAlign: 'right', fontSize: 10, color: '#aaaaaa' }}>정가 합계 {formatNumber(totalOriginal)}</Text>
               </View>
               <View style={s.footerSubRow}>
                 <Text style={{ flex: 1 }}></Text>
-                <Text style={{ width: 55, textAlign: 'right', fontSize: 10, color: GOLD, fontWeight: 600 }}>할인 ({discountPercent}%)</Text>
-                <Text style={{ width: 80, textAlign: 'right', fontSize: 10, color: GOLD, fontWeight: 600 }}>
-                  -{formatNumber(totalDiscount)}
-                </Text>
-                <Text style={{ width: 90 }}></Text>
+                <Text style={{ width: 170, textAlign: 'right', fontSize: 10, color: GOLD, fontWeight: 600 }}>할인 ({discountPercent}%) -{formatNumber(totalDiscount)}</Text>
               </View>
             </>
           )}
