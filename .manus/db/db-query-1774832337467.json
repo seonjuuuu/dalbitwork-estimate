@@ -1,0 +1,73 @@
+{
+  "query": "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'documents' AND TABLE_SCHEMA = DATABASE();",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2dhCyUAa13PM9Fz.f0884bab86c4 --database fPgwdiJ6bkDvqhYoiMKGTH --execute SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'documents' AND TABLE_SCHEMA = DATABASE();",
+  "rows": [
+    {
+      "COLUMN_NAME": "id"
+    },
+    {
+      "COLUMN_NAME": "userId"
+    },
+    {
+      "COLUMN_NAME": "type"
+    },
+    {
+      "COLUMN_NAME": "title"
+    },
+    {
+      "COLUMN_NAME": "memo"
+    },
+    {
+      "COLUMN_NAME": "clientName"
+    },
+    {
+      "COLUMN_NAME": "projectName"
+    },
+    {
+      "COLUMN_NAME": "platform"
+    },
+    {
+      "COLUMN_NAME": "date"
+    },
+    {
+      "COLUMN_NAME": "items"
+    },
+    {
+      "COLUMN_NAME": "notes"
+    },
+    {
+      "COLUMN_NAME": "totalMin"
+    },
+    {
+      "COLUMN_NAME": "totalMax"
+    },
+    {
+      "COLUMN_NAME": "createdAt"
+    },
+    {
+      "COLUMN_NAME": "updatedAt"
+    },
+    {
+      "COLUMN_NAME": "notesMode"
+    },
+    {
+      "COLUMN_NAME": "freeformNotes"
+    },
+    {
+      "COLUMN_NAME": "templateVariables"
+    },
+    {
+      "COLUMN_NAME": "contactPhone"
+    },
+    {
+      "COLUMN_NAME": "businessType"
+    },
+    {
+      "COLUMN_NAME": "contactName"
+    }
+  ],
+  "messages": [],
+  "stdout": "COLUMN_NAME\nid\nuserId\ntype\ntitle\nmemo\nclientName\nprojectName\nplatform\ndate\nitems\nnotes\ntotalMin\ntotalMax\ncreatedAt\nupdatedAt\nnotesMode\nfreeformNotes\ntemplateVariables\ncontactPhone\nbusinessType\ncontactName\n",
+  "stderr": "",
+  "execution_time_ms": 1624
+}

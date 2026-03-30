@@ -657,7 +657,7 @@ export default function PdfDocument({ doc }: PdfDocumentProps) {
               <View key={item.id} style={s.tableRow}>
                 <Text style={s.tdNo}>{idx + 1}</Text>
                 <Text style={s.tdName}>{item.name || '-'}</Text>
-                <Text style={s.tdQty}>{item.quantity}</Text>
+                <Text style={s.tdQty}>{item.quantity || 1}</Text>
                 {hasAnyUnitPrice && (
                   <Text style={{...s.tdQty, width: 50, textAlign: 'right'}}>
                     {item.unitPrice ? formatNumber(parseAmount(item.unitPrice)) : '-'}

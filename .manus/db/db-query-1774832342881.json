@@ -1,0 +1,9 @@
+{
+  "query": "ALTER TABLE `documents` ADD COLUMN IF NOT EXISTS `contactName` varchar(500) DEFAULT '' NOT NULL, ADD COLUMN IF NOT EXISTS `optionalItems` json;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2dhCyUAa13PM9Fz.f0884bab86c4 --database fPgwdiJ6bkDvqhYoiMKGTH --execute ALTER TABLE `documents` ADD COLUMN IF NOT EXISTS `contactName` varchar(500) DEFAULT '' NOT NULL, ADD COLUMN IF NOT EXISTS `optionalItems` json;",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1827
+}
