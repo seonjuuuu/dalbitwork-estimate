@@ -681,7 +681,7 @@ export default function EstimateForm() {
               : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
           }`}
         >
-          {isProposal ? '제안서 (대략 견적)' : '견적서 (확정 견적)'}
+          {isProposal ? '제안서 (대략 견적)' : '견적 및 계약서 (확정 견적)'}
         </span>
       </div>
 

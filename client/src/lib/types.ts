@@ -175,7 +175,7 @@ export const defaultEstimate: DocumentData = {
 };
 
 export function getDocTypeLabel(type: DocumentType): string {
-  return type === 'proposal' ? '제안서' : '견적서';
+  return type === 'proposal' ? '제안서' : '견적 및 계약서';
 }
 
 export function getDocTypeSubtitle(type: DocumentType): string {

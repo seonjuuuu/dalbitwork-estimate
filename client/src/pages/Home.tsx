@@ -160,7 +160,7 @@ export default function Home() {
               className="gap-1.5"
             >
               <Plus className="w-3.5 h-3.5" />
-              견적서
+              견적 및 계약서
             </Button>
           </div>
         </div>
@@ -262,7 +262,7 @@ function DocumentListSection({
             <DropdownMenuLabel>문서 유형 선택</DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => {}}>제안서</DropdownMenuItem>
-            <DropdownMenuItem onClick={() => {}}>견적서</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => {}}>견적 및 계약서</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>

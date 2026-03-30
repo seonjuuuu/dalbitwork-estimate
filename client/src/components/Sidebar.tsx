@@ -30,7 +30,7 @@ export default function Sidebar() {
     },
     {
       icon: FileCheck,
-      label: '새 견적서',
+      label: '새 견적 및 계약서',
       id: 'new-estimate',
       active: isEstimateActive,
       onClick: () => {
@@ -47,7 +47,7 @@ export default function Sidebar() {
     },
     {
       icon: List,
-      label: '견적서 목록',
+      label: '견적 및 계약서 목록',
       id: 'estimate-list',
       active: location === '/estimates',
       onClick: () => navigate('/estimates'),
