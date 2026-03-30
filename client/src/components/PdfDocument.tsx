@@ -694,12 +694,24 @@ export default function PdfDocument({ doc }: PdfDocumentProps) {
 
           {/* Footer - discount rows */}
           {showDiscount && (
-            <View style={[s.footerSubRow, { borderTopWidth: 2, borderTopColor: '#323232' }]}>
-              <Text style={{ flex: 1 }}></Text>
-              <Text style={{ width: 170, textAlign: 'right', fontSize: 10, color: '#aaaaaa' }}>
-                정가 <Text style={{ textDecoration: 'line-through' }}>{formatNumber(totalOriginal)}</Text> 원   할인금액 -{formatNumber(totalDiscount)} 원
-              </Text>
-            </View>
+            <>
+              <View style={[s.footerSubRow, { borderTopWidth: 2, borderTopColor: '#323232' }]}>
+                <Text style={{ flex: 1 }}></Text>
+                <Text style={{ width: 55, textAlign: 'right', fontSize: 10, color: '#aaaaaa' }}>정가 합계</Text>
+                <Text style={{ width: 80, textAlign: 'right', fontSize: 10, color: '#aaaaaa', textDecoration: 'line-through' }}>
+                  {formatNumber(totalOriginal)}
+                </Text>
+                <Text style={{ width: 90 }}></Text>
+              </View>
+              <View style={s.footerSubRow}>
+                <Text style={{ flex: 1 }}></Text>
+                <Text style={{ width: 55, textAlign: 'right', fontSize: 10, color: GOLD, fontWeight: 600 }}>할인 ({discountPercent}%)</Text>
+                <Text style={{ width: 80, textAlign: 'right', fontSize: 10, color: GOLD, fontWeight: 600 }}>
+                  -{formatNumber(totalDiscount)}
+                </Text>
+                <Text style={{ width: 90 }}></Text>
+              </View>
+            </>
           )}
 
           {/* Footer total */}
