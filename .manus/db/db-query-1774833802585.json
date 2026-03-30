@@ -1,0 +1,9 @@
+{
+  "query": "UPDATE `documents` SET `items` = JSON_REPLACE(`items`, '$[*].quantity', '1') WHERE JSON_CONTAINS(`items`, '\"1페이지\"', '$[*].quantity') OR JSON_CONTAINS(`items`, '\"4페이지\"', '$[*].quantity');",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2dhCyUAa13PM9Fz.f0884bab86c4 --database fPgwdiJ6bkDvqhYoiMKGTH --execute UPDATE `documents` SET `items` = JSON_REPLACE(`items`, '$[*].quantity', '1') WHERE JSON_CONTAINS(`items`, '\"1페이지\"', '$[*].quantity') OR JSON_CONTAINS(`items`, '\"4페이지\"', '$[*].quantity');",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 2196
+}
