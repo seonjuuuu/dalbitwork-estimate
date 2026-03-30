@@ -538,7 +538,7 @@ export default function PdfDocument({ doc }: PdfDocumentProps) {
         {/* Title */}
         <View style={s.titleWrap}>
           <Text style={s.title}>
-            {docLabel === '제안서' ? '제 안 서' : '견 적 서'}
+            {docLabel === '제안서' ? '제 안 서' : '견적 및 계약서'}
           </Text>
           <Text style={s.subtitle}>{docSubtitle}</Text>
         </View>
