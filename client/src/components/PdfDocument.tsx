@@ -642,7 +642,7 @@ export default function PdfDocument({ doc }: PdfDocumentProps) {
             {hasAnyUnitPrice && <Text style={{...s.thQty, width: 50}}>단가(원)</Text>}
             {showDiscount && <Text style={s.thOrigPrice}>정가(원)</Text>}
             {showDiscount && <Text style={s.thDiscAmount}>할인금액(원)</Text>}
-            <Text style={s.thPrice}>{showDiscount ? '할인가(원)' : '금액(원)'}</Text>
+            <Text style={s.thPrice}>{showDiscount ? '금액(원)' : '금액(원)'}</Text>
           </View>
 
           {/* Body */}
