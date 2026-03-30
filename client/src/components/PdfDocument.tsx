@@ -701,7 +701,7 @@ export default function PdfDocument({ doc }: PdfDocumentProps) {
                 {hasAnyUnitPrice && <Text style={{...s.thQty, width: 50}} />}
                 {showDiscount && <Text style={s.thOrigPrice} />}
                 {showDiscount && <Text style={s.thDiscAmount} />}
-                <Text style={{ width: 90, textAlign: 'right', fontSize: 10, color: '#aaaaaa' }}>정가 합계</Text>
+                <Text style={{ width: 90, textAlign: 'right', fontSize: 10, color: '#aaaaaa' }}>정가 합계 {formatNumber(totalOriginal)}</Text>
               </View>
               <View style={s.footerSubRow}>
                 <Text style={{ flex: 1 }}></Text>
@@ -709,7 +709,7 @@ export default function PdfDocument({ doc }: PdfDocumentProps) {
                 {hasAnyUnitPrice && <Text style={{...s.thQty, width: 50}} />}
                 {showDiscount && <Text style={s.thOrigPrice} />}
                 {showDiscount && <Text style={s.thDiscAmount} />}
-                <Text style={{ width: 90, textAlign: 'right', fontSize: 10, color: GOLD, fontWeight: 600 }}>할인 ({discountPercent}%)</Text>
+                <Text style={{ width: 90, textAlign: 'right', fontSize: 10, color: GOLD, fontWeight: 600 }}>할인 ({discountPercent}%) -{formatNumber(totalDiscount)}</Text>
               </View>
             </>
           )}
