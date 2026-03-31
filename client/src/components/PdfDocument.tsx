@@ -208,11 +208,16 @@ const s = StyleSheet.create({
   discountInfo: {
     textAlign: 'right',
     marginBottom: 10,
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    flexWrap: 'nowrap',
   },
   discountInfoText: {
     fontSize: 9,
     color: GOLD,
     fontWeight: 600,
+    whiteSpace: 'nowrap',
   },
   // Note below total
   totalNote: {
