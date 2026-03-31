@@ -227,6 +227,38 @@ export const appRouter = router({
       .mutation(async ({ ctx, input }) => {
         return db.deleteDocument(input.id, ctx.user.id);
       }),
+
+    /** Duplicate a proposal as an estimate */
+    duplicateAsEstimate: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        const proposal = await db.getDocument(input.id, ctx.user.id);
+        if (!proposal) {
+          throw new Error("Document not found");
+        }
+        if (proposal.type !== "proposal") {
+          throw new Error("Only proposals can be duplicated as estimates");
+        }
+
+        const estimate = await db.createDocument({
+          userId: ctx.user.id,
+          type: "estimate",
+          title: proposal.title,
+          memo: proposal.memo,
+          clientName: proposal.clientName,
+          projectName: proposal.projectName,
+          platform: proposal.platform,
+          date: proposal.date,
+          items: proposal.items as DocumentItemRow[],
+          notes: proposal.notes,
+          notesMode: proposal.notesMode,
+          freeformNotes: proposal.freeformNotes,
+          templateVariables: proposal.templateVariables,
+          totalMin: proposal.totalMin,
+          totalMax: proposal.totalMax,
+        });
+        return estimate;
+      }),
   }),
 });
 
