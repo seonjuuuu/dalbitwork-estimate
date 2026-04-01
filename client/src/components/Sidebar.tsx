@@ -1,5 +1,5 @@
 import { useEstimate } from '@/contexts/EstimateContext';
-import { FilePlus, FileText, List, ChevronLeft, ChevronRight, FileCheck, LogOut, User, BookOpen } from 'lucide-react';
+import { FilePlus, FileText, List, ChevronLeft, ChevronRight, FileCheck, LogOut, User, BookOpen, BarChart3 } from 'lucide-react';
 import { useState } from 'react';
 import { useLocation } from 'wouter';
 import { useAuth } from '@/_core/hooks/useAuth';
@@ -59,6 +59,13 @@ export default function Sidebar() {
       active: location === '/templates',
       onClick: () => navigate('/templates'),
     },
+    {
+      icon: BarChart3,
+      label: '월별 매출',
+      id: 'monthly-sales',
+      active: location === '/sales',
+      onClick: () => navigate('/sales'),
+    },
   ];
 
   const handleLogout = async () => {
@@ -114,7 +121,7 @@ export default function Sidebar() {
             관리
           </p>
         )}
-        {navItems.slice(2, 4).map((item) => (
+        {navItems.slice(2, 5).map((item) => (
           <button
             key={item.id}
             onClick={item.onClick}
@@ -132,13 +139,13 @@ export default function Sidebar() {
         {/* Divider */}
         <div className="my-2 border-t border-border" />
 
-        {/* Section: 설정 */}
+        {/* Section: 분석 */}
         {!collapsed && (
           <p className="px-3 pt-2 pb-1 text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider">
-            설정
+            분석
           </p>
         )}
-        {navItems.slice(4).map((item) => (
+        {navItems.slice(5).map((item) => (
           <button
             key={item.id}
             onClick={item.onClick}

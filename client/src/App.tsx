@@ -8,6 +8,7 @@ import { EstimateProvider } from "./contexts/EstimateContext";
 import Home from "./pages/Home";
 import DocumentList from "./pages/DocumentList";
 import NoteTemplates from "./pages/NoteTemplates";
+import MonthlySales from "./pages/MonthlySales";
 import Sidebar from "./components/Sidebar";
 import { useAuth } from "@/_core/hooks/useAuth";
 import LoginPage from "./pages/LoginPage";
@@ -45,6 +46,7 @@ function Router() {
         <DocumentList type="estimate" />
       </Route>
       <Route path="/templates" component={NoteTemplates} />
+      <Route path="/sales" component={MonthlySales} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>
