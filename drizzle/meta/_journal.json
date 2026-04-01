@@ -61,8 +61,15 @@
     {
       "idx": 8,
       "version": "5",
-      "when": 1775074599273,
-      "tag": "0008_furry_power_man",
+      "when": 1775074800000,
+      "tag": "0008_add_payment_dates",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "5",
+      "when": 1775075699831,
+      "tag": "0009_dizzy_beast",
       "breakpoints": true
     }
   ]
