@@ -714,7 +714,7 @@ export default function PdfDocument({ doc }: PdfDocumentProps) {
                 {hasAnyUnitPrice && <Text style={{...s.thQty, width: 50}} />}
                 {showDiscount && <Text style={s.thOrigPrice} />}
                 {showDiscount && <Text style={s.thDiscAmount} />}
-                <Text style={{ width: 90, textAlign: 'right', fontSize: 10, color: GOLD, fontWeight: 600 }}>할인 ({discountPercent}%) -{formatNumber(totalDiscount)}</Text>
+                <Text style={{ flex: 1, textAlign: 'right', fontSize: 10, color: GOLD, fontWeight: 600 }}>할인 ({discountPercent}%) -{formatNumber(totalDiscount)}</Text>
               </View>
             </>
           )}
