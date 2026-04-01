@@ -1,6 +1,6 @@
 import { useEstimate } from '@/contexts/EstimateContext';
 import { Button } from '@/components/ui/button';
-import { FileText, Trash2, Edit, FileCheck, Loader2, Copy } from 'lucide-react';
+import { FileText, Trash2, Edit, FileCheck, Loader2, Copy, Check } from 'lucide-react';
 import { useLocation } from 'wouter';
 import { type DocumentType, getDocTypeLabel } from '@/lib/types';
 import { toast } from 'sonner';
@@ -16,7 +16,11 @@ export default function DocumentList({ type }: DocumentListProps) {
   const [, navigate] = useLocation();
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [duplicatingId, setDuplicatingId] = useState<string | null>(null);
+  const [depositPaidId, setDepositPaidId] = useState<string | null>(null);
+  const [finalPaidId, setFinalPaidId] = useState<string | null>(null);
   const duplicateMutation = trpc.documents.duplicateAsEstimate.useMutation();
+  const depositMutation = trpc.documents.markDepositPaid.useMutation();
+  const finalMutation = trpc.documents.markFinalPaid.useMutation();
   const utils = trpc.useUtils();
 
   const documents = type === 'proposal' ? proposals : estimates;
@@ -55,6 +59,32 @@ export default function DocumentList({ type }: DocumentListProps) {
       toast.error('변환에 실패했습니다.');
     } finally {
       setDuplicatingId(null);
+    }
+  };
+
+  const handleMarkDepositPaid = async (id: string) => {
+    setDepositPaidId(id);
+    try {
+      await depositMutation.mutateAsync({ id: parseInt(id) });
+      await utils.documents.list.invalidate();
+      toast.success('계약금 입금이 완료되었습니다.');
+    } catch (error) {
+      toast.error('입금 처리에 실패했습니다.');
+    } finally {
+      setDepositPaidId(null);
+    }
+  };
+
+  const handleMarkFinalPaid = async (id: string) => {
+    setFinalPaidId(id);
+    try {
+      await finalMutation.mutateAsync({ id: parseInt(id) });
+      await utils.documents.list.invalidate();
+      toast.success('잔금 입금이 완료되었습니다.');
+    } catch (error) {
+      toast.error('입금 처리에 실패했습니다.');
+    } finally {
+      setFinalPaidId(null);
     }
   };
 
@@ -117,6 +147,38 @@ export default function DocumentList({ type }: DocumentListProps) {
                       )}
                       견적서로 변환
                     </Button>
+                  )}
+                  {type === 'estimate' && (
+                    <>
+                      <Button
+                        variant={doc.depositPaidDate ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => handleMarkDepositPaid(doc.id!)}
+                        disabled={depositPaidId === doc.id}
+                        className="text-xs gap-1"
+                      >
+                        {depositPaidId === doc.id ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <Check className="w-3.5 h-3.5" />
+                        )}
+                        계약금 완료
+                      </Button>
+                      <Button
+                        variant={doc.finalPaidDate ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => handleMarkFinalPaid(doc.id!)}
+                        disabled={finalPaidId === doc.id}
+                        className="text-xs gap-1"
+                      >
+                        {finalPaidId === doc.id ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <Check className="w-3.5 h-3.5" />
+                        )}
+                        잔금 완료
+                      </Button>
+                    </>
                   )}
                   <Button
                     variant="outline"

@@ -62,6 +62,10 @@ export const documents = mysqlTable("documents", {
   businessType: varchar("businessType", { length: 100 }).default("").notNull(),
   /** Optional items (for estimates) - JSON array */
   optionalItems: json("optionalItems").$type<OptionalItemRow[]>().default([]).notNull(),
+  /** Deposit payment date (YYYY-MM-DD) - 계약금 입금일 */
+  depositPaidDate: varchar("depositPaidDate", { length: 20 }),
+  /** Final payment date (YYYY-MM-DD) - 잔금 입금일 */
+  finalPaidDate: varchar("finalPaidDate", { length: 20 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

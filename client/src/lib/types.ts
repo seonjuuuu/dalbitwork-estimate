@@ -32,6 +32,8 @@ export interface DocumentData {
   contactPhone: string; // 담당자 번호
   businessType: string; // 업종
   optionalItems: OptionalItem[]; // 선택사항
+  depositPaidDate?: string; // 계약금 입금일 (YYYY-MM-DD)
+  finalPaidDate?: string; // 잔금 입금일 (YYYY-MM-DD)
   createdAt?: string;
   updatedAt?: string;
 }

@@ -259,6 +259,32 @@ export const appRouter = router({
         });
         return estimate;
       }),
+
+    markDepositPaid: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        const today = new Date().toISOString().split('T')[0];
+        const doc = await db.updateDocument(input.id, ctx.user.id, {
+          depositPaidDate: today,
+        });
+        if (!doc) {
+          throw new Error('Document not found or not authorized');
+        }
+        return doc;
+      }),
+
+    markFinalPaid: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        const today = new Date().toISOString().split('T')[0];
+        const doc = await db.updateDocument(input.id, ctx.user.id, {
+          finalPaidDate: today,
+        });
+        if (!doc) {
+          throw new Error('Document not found or not authorized');
+        }
+        return doc;
+      }),
   }),
 });
 
