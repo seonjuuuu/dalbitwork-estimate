@@ -114,3 +114,28 @@ export const noteTemplates = mysqlTable("note_templates", {
 
 export type NoteTemplate = typeof noteTemplates.$inferSelect;
 export type InsertNoteTemplate = typeof noteTemplates.$inferInsert;
+
+/**
+ * Payments table for tracking payment confirmations (계약금 등).
+ * Separate from documents to avoid schema migration issues.
+ */
+export const payments = mysqlTable("payments", {
+  id: int("id").autoincrement().primaryKey(),
+  /** Owner user ID (FK to users.id) */
+  userId: int("userId").notNull(),
+  /** Document ID (FK to documents.id) */
+  documentId: int("documentId").notNull(),
+  /** Payment type: 'deposit' (계약금) or 'final' (잔금) */
+  type: mysqlEnum("type", ["deposit", "final"]).notNull(),
+  /** Payment amount in KRW */
+  amount: int("amount").notNull(),
+  /** Payment date (YYYY-MM-DD) */
+  paymentDate: varchar("paymentDate", { length: 20 }).notNull(),
+  /** Notes for this payment */
+  notes: text("notes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Payment = typeof payments.$inferSelect;
+export type InsertPayment = typeof payments.$inferInsert;

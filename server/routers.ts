@@ -260,7 +260,53 @@ export const appRouter = router({
         return estimate;
       }),
 
+    /** Record a payment (계약금 확정) */
+    recordPayment: protectedProcedure
+      .input(
+        z.object({
+          documentId: z.number(),
+          type: z.enum(["deposit", "final"]),
+          amount: z.number(),
+          paymentDate: z.string(),
+          notes: z.string().optional(),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        const doc = await db.getDocument(input.documentId, ctx.user.id);
+        if (!doc) {
+          throw new Error("Document not found or not authorized");
+        }
 
+        return db.createPayment({
+          userId: ctx.user.id,
+          documentId: input.documentId,
+          type: input.type,
+          amount: input.amount,
+          paymentDate: input.paymentDate,
+          notes: input.notes || null,
+        });
+      }),
+
+    /** Get all payments for a document */
+    getPayments: protectedProcedure
+      .input(z.object({ documentId: z.number() }))
+      .query(async ({ ctx, input }) => {
+        return db.getDocumentPayments(input.documentId, ctx.user.id);
+      }),
+  }),
+
+  sales: router({
+    /** Get monthly sales data */
+    getMonthly: protectedProcedure
+      .input(
+        z.object({
+          year: z.number(),
+          month: z.number(),
+        })
+      )
+      .query(async ({ ctx, input }) => {
+        return db.getMonthlySalesData(ctx.user.id, input.year, input.month);
+      }),
   }),
 });
 

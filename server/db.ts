@@ -1,6 +1,7 @@
-import { eq, and, desc, asc } from "drizzle-orm";
+import { eq, and, desc, asc, gte, lte } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users, documents, InsertDocument, noteTemplates, InsertNoteTemplate } from "../drizzle/schema";
+import { InsertUser, users, documents, InsertDocument, noteTemplates, InsertNoteTemplate, payments } from "../drizzle/schema";
+import type { InsertPayment } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -240,5 +241,72 @@ async function getNoteTemplateById(id: number) {
   if (!db) return undefined;
 
   const result = await db.select().from(noteTemplates).where(eq(noteTemplates.id, id)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+
+// ─── Payment CRUD ──────────────────────────────────────────────
+
+/** Create a new payment record (계약금 확정 등) */
+export async function createPayment(data: InsertPayment) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const result = await db.insert(payments).values(data);
+  const insertId = result[0].insertId;
+
+  return getPaymentById(insertId);
+}
+
+/** Get all payments for a document */
+export async function getDocumentPayments(documentId: number, userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+
+  return db
+    .select()
+    .from(payments)
+    .where(and(eq(payments.documentId, documentId), eq(payments.userId, userId)))
+    .orderBy(desc(payments.paymentDate));
+}
+
+/** Get monthly sales data based on payment records */
+export async function getMonthlySalesData(userId: number, year: number, month: number) {
+  const db = await getDb();
+  if (!db) return [];
+
+  const startDate = `${year}-${String(month).padStart(2, "0")}-01`;
+  const endDate = new Date(year, month, 0).toISOString().split("T")[0];
+
+  const result = await db
+    .select({
+      documentId: payments.documentId,
+      documentTitle: documents.title,
+      clientName: documents.clientName,
+      type: payments.type,
+      amount: payments.amount,
+      paymentDate: payments.paymentDate,
+      totalAmount: documents.totalMax,
+    })
+    .from(payments)
+    .innerJoin(documents, eq(payments.documentId, documents.id))
+    .where(
+      and(
+        eq(payments.userId, userId),
+        gte(payments.paymentDate, startDate),
+        lte(payments.paymentDate, endDate)
+      )
+    )
+    .orderBy(desc(payments.paymentDate));
+
+  return result;
+}
+
+/** Internal helper: get payment by ID without user scope */
+async function getPaymentById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+
+  const result = await db.select().from(payments).where(eq(payments.id, id)).limit(1);
   return result.length > 0 ? result[0] : undefined;
 }
