@@ -1,11 +1,12 @@
 import { useEstimate } from '@/contexts/EstimateContext';
 import { Button } from '@/components/ui/button';
-import { FileText, Trash2, Edit, FileCheck, Loader2, Copy } from 'lucide-react';
+import { FileText, Trash2, Edit, FileCheck, Loader2, Copy, CreditCard } from 'lucide-react';
 import { useLocation } from 'wouter';
 import { type DocumentType, getDocTypeLabel } from '@/lib/types';
 import { toast } from 'sonner';
 import { useState } from 'react';
 import { trpc } from '@/lib/trpc';
+import DepositConfirmDialog from '@/components/DepositConfirmDialog';
 
 interface DocumentListProps {
   type: DocumentType;
@@ -16,6 +17,9 @@ export default function DocumentList({ type }: DocumentListProps) {
   const [, navigate] = useLocation();
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [duplicatingId, setDuplicatingId] = useState<string | null>(null);
+  const [depositDialogOpen, setDepositDialogOpen] = useState(false);
+  const [selectedDocId, setSelectedDocId] = useState<number | null>(null);
+  const [selectedDocData, setSelectedDocData] = useState<{ totalMax: number; clientName: string } | null>(null);
   const duplicateMutation = trpc.documents.duplicateAsEstimate.useMutation();
   const utils = trpc.useUtils();
 
@@ -56,6 +60,16 @@ export default function DocumentList({ type }: DocumentListProps) {
     } finally {
       setDuplicatingId(null);
     }
+  };
+
+  const handleOpenDepositDialog = (docId: number, totalMax: number, clientName: string) => {
+    setSelectedDocId(docId);
+    setSelectedDocData({ totalMax, clientName });
+    setDepositDialogOpen(true);
+  };
+
+  const handleDepositSuccess = () => {
+    utils.documents.list.invalidate();
   };
 
   return (
@@ -118,6 +132,17 @@ export default function DocumentList({ type }: DocumentListProps) {
                       견적서로 변환
                     </Button>
                   )}
+                  {type === 'estimate' && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleOpenDepositDialog(parseInt(doc.id!), doc.totalMax, doc.clientName)}
+                      className="text-xs gap-1 text-amber-600 hover:text-amber-700"
+                    >
+                      <CreditCard className="w-3.5 h-3.5" />
+                      계약금 확정
+                    </Button>
+                  )}
                   <Button
                     variant="outline"
                     size="sm"
@@ -136,6 +161,17 @@ export default function DocumentList({ type }: DocumentListProps) {
             </div>
           ))}
         </div>
+      )}
+
+      {selectedDocId && selectedDocData && (
+        <DepositConfirmDialog
+          isOpen={depositDialogOpen}
+          onClose={() => setDepositDialogOpen(false)}
+          documentId={selectedDocId}
+          totalAmount={selectedDocData.totalMax}
+          clientName={selectedDocData.clientName}
+          onSuccess={handleDepositSuccess}
+        />
       )}
     </div>
   );
