@@ -22,6 +22,7 @@ const documentInputSchema = z.object({
   title: z.string().default(""),
   memo: z.string().nullable().default(null),
   clientName: z.string().default(""),
+  contactName: z.string().default(""),
   projectName: z.string().default(""),
   platform: z.string().default(""),
   date: z.string().default(""),
@@ -175,6 +176,7 @@ export const appRouter = router({
           title: input.title,
           memo: input.memo,
           clientName: input.clientName,
+          contactName: input.contactName,
           projectName: input.projectName,
           platform: input.platform,
           date: input.date,
@@ -185,6 +187,8 @@ export const appRouter = router({
           templateVariables: input.templateVariables,
           totalMin: input.totalMin,
           totalMax: input.totalMax,
+          contactPhone: input.contactPhone,
+          businessType: input.businessType,
         });
         return doc;
       }),
@@ -213,6 +217,9 @@ export const appRouter = router({
         if (input.data.templateVariables !== undefined) updateData.templateVariables = input.data.templateVariables;
         if (input.data.totalMin !== undefined) updateData.totalMin = input.data.totalMin;
         if (input.data.totalMax !== undefined) updateData.totalMax = input.data.totalMax;
+        if (input.data.contactPhone !== undefined) updateData.contactPhone = input.data.contactPhone;
+        if (input.data.businessType !== undefined) updateData.businessType = input.data.businessType;
+        if (input.data.contactName !== undefined) updateData.contactName = input.data.contactName;
 
         const doc = await db.updateDocument(input.id, ctx.user.id, updateData);
         if (!doc) {
