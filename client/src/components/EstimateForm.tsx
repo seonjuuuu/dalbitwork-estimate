@@ -892,21 +892,27 @@ export default function EstimateForm() {
                 onChange={(e) => {
                   handleNumberInput(e.target.value, (v) => {
                     // 할인금액 입력 시 할인가 자동 계산
-                    const orig = parseAmount(item.originalPrice);
-                    const discAmt = parseAmount(v);
-                    let discPrice = '';
-                    if (orig > 0 && discAmt > 0) {
-                      const result = orig - discAmt;
-                      discPrice = result >= 0 ? autoFormatNumber(String(result)) : '';
-                    }
-                    setCurrentDoc((prev) => ({
-                      ...prev,
-                      items: prev.items.map((it) =>
-                        it.id === item.id
-                          ? { ...it, discountAmount: v, discountPrice: discPrice }
-                          : it
-                      ),
-                    }));
+                    setCurrentDoc((prev) => {
+                      const currentItem = prev.items.find((it) => it.id === item.id);
+                      if (!currentItem) return prev;
+                      
+                      const orig = parseAmount(currentItem.originalPrice);
+                      const discAmt = parseAmount(v);
+                      let discPrice = '';
+                      if (orig > 0 && discAmt > 0) {
+                        const result = orig - discAmt;
+                        discPrice = result >= 0 ? autoFormatNumber(String(result)) : '';
+                      }
+                      
+                      return {
+                        ...prev,
+                        items: prev.items.map((it) =>
+                          it.id === item.id
+                            ? { ...it, discountAmount: v, discountPrice: discPrice }
+                            : it
+                        ),
+                      };
+                    });
                   });
                 }}
                 placeholder="할인금액 (선택)"
