@@ -1,140 +1,97 @@
-import { int, json, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
+import { integer, json, pgEnum, pgTable, serial, text, timestamp, varchar } from "drizzle-orm/pg-core";
 
-/**
- * Core user table backing auth flow.
- */
-export const users = mysqlTable("users", {
-  id: int("id").autoincrement().primaryKey(),
+export const roleEnum = pgEnum("role", ["user", "admin"]);
+export const documentTypeEnum = pgEnum("document_type", ["proposal", "estimate"]);
+export const notesModeEnum = pgEnum("notes_mode", ["list", "freeform"]);
+export const paymentTypeEnum = pgEnum("payment_type", ["deposit", "final"]);
+
+export const users = pgTable("users", {
+  id: serial("id").primaryKey(),
   openId: varchar("openId", { length: 64 }).notNull().unique(),
   name: text("name"),
   email: varchar("email", { length: 320 }),
   loginMethod: varchar("loginMethod", { length: 64 }),
-  role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
+  role: roleEnum("role").default("user").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull().$onUpdateFn(() => new Date()),
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
 });
 
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 
-/**
- * Documents table for storing proposals (제안서) and estimates (견적서).
- * All form data is stored as JSON for flexibility.
- */
-export const documents = mysqlTable("documents", {
-  id: int("id").autoincrement().primaryKey(),
-  /** Owner user ID (FK to users.id) */
-  userId: int("userId").notNull(),
-  /** Document type: proposal or estimate */
-  type: mysqlEnum("type", ["proposal", "estimate"]).notNull(),
-  /** Internal title for management (not shown in PDF) */
+export const documents = pgTable("documents", {
+  id: serial("id").primaryKey(),
+  userId: integer("userId").notNull(),
+  type: documentTypeEnum("type").notNull(),
   title: varchar("title", { length: 500 }).default("").notNull(),
-  /** Internal memo for management (not shown in PDF) */
   memo: text("memo"),
-  /** Client/recipient name */
   clientName: varchar("clientName", { length: 500 }).default("").notNull(),
-  /** Contact person name */
   contactName: varchar("contactName", { length: 500 }).default("").notNull(),
-  /** Project name */
   projectName: varchar("projectName", { length: 500 }).default("").notNull(),
-  /** Platform info */
   platform: varchar("platform", { length: 200 }).default("").notNull(),
-  /** Document date (YYYY-MM-DD) */
   date: varchar("date", { length: 20 }).default("").notNull(),
-  /** Line items as JSON array */
   items: json("items").$type<DocumentItemRow[]>().notNull(),
-  /** Reference notes as JSON array of strings */
   notes: json("notes").$type<string[]>().notNull(),
-  /** Notes display mode: 'list' for numbered items, 'freeform' for free-text */
-  notesMode: mysqlEnum("notesMode", ["list", "freeform"]).default("list").notNull(),
-  /** Freeform notes content (used when notesMode is 'freeform') */
+  notesMode: notesModeEnum("notesMode").default("list").notNull(),
   freeformNotes: text("freeformNotes"),
-  /** Template variables for placeholder substitution (e.g. {{계약금}} → "325,000원") */
   templateVariables: json("templateVariables").$type<Record<string, string>>(),
-  /** Total minimum amount */
-  totalMin: int("totalMin").default(0).notNull(),
-  /** Total maximum amount */
-  totalMax: int("totalMax").default(0).notNull(),
-  /** Contact person phone number */
+  totalMin: integer("totalMin").default(0).notNull(),
+  totalMax: integer("totalMax").default(0).notNull(),
   contactPhone: varchar("contactPhone", { length: 50 }).default("").notNull(),
-  /** Business category/type */
   businessType: varchar("businessType", { length: 100 }).default("").notNull(),
-  /** Optional items (for estimates) - JSON array */
   optionalItems: json("optionalItems").$type<OptionalItemRow[]>().default([]).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull().$onUpdateFn(() => new Date()),
 });
 
-/** Shape of each optional item stored in the JSON `optionalItems` column */
 export interface OptionalItemRow {
   id: string;
   name: string;
   description: string;
   quantity: string;
   price: string;
-  payer: string; // 결제자 정보
+  payer: string;
 }
 
-/** Shape of each item stored in the JSON `items` column */
 export interface DocumentItemRow {
   id: string;
   name: string;
   quantity: string;
-  unitPrice?: string; // 단가 (선택사항)
+  unitPrice?: string;
   originalPrice: string;
   discountPrice: string;
-  discountAmount?: string; // 할인금액 (선택, 입력 시 할인가 자동 계산)
+  discountAmount?: string;
 }
 
 export type DocumentData = typeof documents.$inferSelect;
 export type InsertDocument = typeof documents.$inferInsert;
 
-/**
- * Note templates table for storing reusable reference notes.
- * Each template has a name and an array of note strings.
- */
-export const noteTemplates = mysqlTable("note_templates", {
-  id: int("id").autoincrement().primaryKey(),
-  /** Owner user ID (FK to users.id) */
-  userId: int("userId").notNull(),
-  /** Template name for identification */
+export const noteTemplates = pgTable("note_templates", {
+  id: serial("id").primaryKey(),
+  userId: integer("userId").notNull(),
   name: varchar("name", { length: 500 }).notNull(),
-  /** Notes content as JSON array of strings */
   notes: json("notes").$type<string[]>().notNull(),
-  /** Template mode: 'list' for numbered items, 'freeform' for free-text */
-  mode: mysqlEnum("mode", ["list", "freeform"]).default("list").notNull(),
-  /** Freeform notes content (used when mode is 'freeform') */
+  mode: notesModeEnum("mode").default("list").notNull(),
   freeformNotes: text("freeformNotes"),
-  /** Display order for sorting */
-  sortOrder: int("sortOrder").default(0).notNull(),
+  sortOrder: integer("sortOrder").default(0).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull().$onUpdateFn(() => new Date()),
 });
 
 export type NoteTemplate = typeof noteTemplates.$inferSelect;
 export type InsertNoteTemplate = typeof noteTemplates.$inferInsert;
 
-/**
- * Payments table for tracking payment confirmations (계약금 등).
- * Separate from documents to avoid schema migration issues.
- */
-export const payments = mysqlTable("payments", {
-  id: int("id").autoincrement().primaryKey(),
-  /** Owner user ID (FK to users.id) */
-  userId: int("userId").notNull(),
-  /** Document ID (FK to documents.id) */
-  documentId: int("documentId").notNull(),
-  /** Payment type: 'deposit' (계약금) or 'final' (잔금) */
-  type: mysqlEnum("type", ["deposit", "final"]).notNull(),
-  /** Payment amount in KRW */
-  amount: int("amount").notNull(),
-  /** Payment date (YYYY-MM-DD) */
+export const payments = pgTable("payments", {
+  id: serial("id").primaryKey(),
+  userId: integer("userId").notNull(),
+  documentId: integer("documentId").notNull(),
+  type: paymentTypeEnum("type").notNull(),
+  amount: integer("amount").notNull(),
   paymentDate: varchar("paymentDate", { length: 20 }).notNull(),
-  /** Notes for this payment */
   notes: text("notes"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull().$onUpdateFn(() => new Date()),
 });
 
 export type Payment = typeof payments.$inferSelect;
