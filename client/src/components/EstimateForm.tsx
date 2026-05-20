@@ -874,7 +874,7 @@ export default function EstimateForm() {
                     let discPrice = '';
                     if (orig > 0 && discAmt > 0) {
                       const result = orig - discAmt;
-                      discPrice = result > 0 ? autoFormatNumber(String(result)) : '0';
+                      discPrice = result >= 0 ? autoFormatNumber(String(result)) : '';
                     }
                     setCurrentDoc((prev) => ({
                       ...prev,
