@@ -509,7 +509,10 @@ export default function PdfDocument({ doc }: PdfDocumentProps) {
   const discountPercent = totalOriginal > 0 ? Math.round((totalDiscount / totalOriginal) * 100) : 0;
 
   // 단가가 입력된 항목이 하나라도 있는지 확인
-  const hasAnyUnitPrice = doc.items.some(item => item.unitPrice && parseAmount(item.unitPrice) > 0);
+  const hasAnyUnitPrice = doc.items.some(item => item.unitPrice && item.unitPrice.trim() !== '');
+  
+  // 할인금액이 입력된 항목이 하나라도 있는지 확인
+  const hasAnyDiscountAmount = doc.items.some(item => item.discountAmount && item.discountAmount.trim() !== '');
 
   // 예상총액: 최소/최대 중 하나가 0이면 단일 금액만 표시
   const getTotalDisplay = () => {
@@ -645,8 +648,8 @@ export default function PdfDocument({ doc }: PdfDocumentProps) {
             <Text style={s.thName}>항목</Text>
             <Text style={s.thQty}>수량</Text>
             {hasAnyUnitPrice && <Text style={{...s.thQty, width: 50}}>단가(원)</Text>}
-            {showDiscount && <Text style={s.thOrigPrice}>정가(원)</Text>}
-            {showDiscount && <Text style={s.thDiscAmount}>할인금액(원)</Text>}
+            {(showDiscount || hasAnyDiscountAmount) && <Text style={s.thOrigPrice}>정가(원)</Text>}
+            {(showDiscount || hasAnyDiscountAmount) && <Text style={s.thDiscAmount}>할인금액(원)</Text>}
             <Text style={s.thPrice}>{showDiscount ? '금액(원)' : '금액(원)'}</Text>
           </View>
 
@@ -668,7 +671,7 @@ export default function PdfDocument({ doc }: PdfDocumentProps) {
                     {item.unitPrice ? formatNumber(parseAmount(item.unitPrice)) : '-'}
                   </Text>
                 )}
-                {showDiscount && (
+                {(showDiscount || hasAnyDiscountAmount) && (
                   <Text style={[
                     s.tdOrigPrice,
                     {
@@ -679,7 +682,7 @@ export default function PdfDocument({ doc }: PdfDocumentProps) {
                     {formatNumber(origAmt)}
                   </Text>
                 )}
-                {showDiscount && (
+                {(showDiscount || hasAnyDiscountAmount) && (
                   <Text style={[
                     s.tdDiscAmount,
                     { color: '#666666' }
@@ -698,22 +701,22 @@ export default function PdfDocument({ doc }: PdfDocumentProps) {
           })}
 
           {/* Footer - discount rows */}
-          {showDiscount && (
+          {(showDiscount || hasAnyDiscountAmount) && (
             <>
               <View style={[s.footerSubRow, { borderTopWidth: 2, borderTopColor: '#323232' }]}>
                 <Text style={{ flex: 1 }}></Text>
                 <Text style={{ width: 55 }}></Text>
                 {hasAnyUnitPrice && <Text style={{...s.thQty, width: 50}} />}
-                {showDiscount && <Text style={s.thOrigPrice} />}
-                {showDiscount && <Text style={s.thDiscAmount} />}
+                {(showDiscount || hasAnyDiscountAmount) && <Text style={s.thOrigPrice} />}
+                {(showDiscount || hasAnyDiscountAmount) && <Text style={s.thDiscAmount} />}
                 <Text style={{ width: 90, textAlign: 'right', fontSize: 10, color: '#aaaaaa' }}>정가 합계 {formatNumber(totalOriginal)}</Text>
               </View>
               <View style={s.footerSubRow}>
                 <Text style={{ flex: 1 }}></Text>
                 <Text style={{ width: 55 }}></Text>
                 {hasAnyUnitPrice && <Text style={{...s.thQty, width: 50}} />}
-                {showDiscount && <Text style={s.thOrigPrice} />}
-                {showDiscount && <Text style={s.thDiscAmount} />}
+                {(showDiscount || hasAnyDiscountAmount) && <Text style={s.thOrigPrice} />}
+                {(showDiscount || hasAnyDiscountAmount) && <Text style={s.thDiscAmount} />}
                 <Text style={{ flex: 1, textAlign: 'right', fontSize: 10, color: GOLD, fontWeight: 600 }}>할인 ({discountPercent}%) -{formatNumber(totalDiscount)}</Text>
               </View>
             </>
