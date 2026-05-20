@@ -860,9 +860,13 @@ export default function EstimateForm() {
               />
               <Input
                 value={item.originalPrice}
-                readOnly
+                onChange={(e) => {
+                  handleNumberInput(e.target.value, (v) => {
+                    updateItem(item.id, 'originalPrice', v);
+                  });
+                }}
                 placeholder="900,000"
-                className="text-sm bg-background h-9 amount text-muted-foreground"
+                className="text-sm bg-background h-9 amount"
               />
               <Input
                 value={item.discountAmount || ''}
