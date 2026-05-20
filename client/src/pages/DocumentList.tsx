@@ -13,7 +13,7 @@ interface DocumentListProps {
 }
 
 export default function DocumentList({ type }: DocumentListProps) {
-  const { proposals, estimates, loadDocument, deleteDocument } = useEstimate();
+  const { proposals, estimates, deleteDocument } = useEstimate();
   const [, navigate] = useLocation();
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [duplicatingId, setDuplicatingId] = useState<string | null>(null);
@@ -28,8 +28,7 @@ export default function DocumentList({ type }: DocumentListProps) {
   const IconComponent = type === 'proposal' ? FileText : FileCheck;
 
   const handleEdit = (id: string) => {
-    loadDocument(id, type);
-    navigate('/');
+    navigate(type === 'proposal' ? `/proposals/${id}` : `/estimates/${id}`);
   };
 
   const handleDelete = async (id: string) => {
@@ -51,8 +50,7 @@ export default function DocumentList({ type }: DocumentListProps) {
       const estimate = await duplicateMutation.mutateAsync({ id: parseInt(id) });
       await utils.documents.list.invalidate();
       if (estimate && estimate.id) {
-        loadDocument(estimate.id.toString(), 'estimate');
-        navigate('/');
+        navigate(`/estimates/${estimate.id}`);
         toast.success('견적서로 변환되었습니다.');
       }
     } catch (error) {

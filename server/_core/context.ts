@@ -22,9 +22,12 @@ export async function createContext(
       const { data: { user: supabaseUser }, error } = await supabaseAdmin.auth.getUser(token);
 
       if (!error && supabaseUser) {
+        const meta = supabaseUser.user_metadata ?? {};
+        const name = meta.full_name ?? meta.name ?? meta.user_name ?? null;
         await db.upsertUser({
           openId: supabaseUser.id,
           email: supabaseUser.email ?? null,
+          name,
           loginMethod: supabaseUser.app_metadata?.provider ?? null,
           lastSignedIn: new Date(),
         });

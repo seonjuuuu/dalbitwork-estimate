@@ -7,6 +7,7 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import { EstimateProvider } from "./contexts/EstimateContext";
 import Home from "./pages/Home";
 import DocumentList from "./pages/DocumentList";
+import DocumentEdit from "./pages/DocumentEdit";
 import NoteTemplates from "./pages/NoteTemplates";
 import MonthlySales from "./pages/MonthlySales";
 import Sidebar from "./components/Sidebar";
@@ -42,8 +43,14 @@ function Router() {
       <Route path="/proposals">
         <DocumentList type="proposal" />
       </Route>
+      <Route path="/proposals/:id">
+        {(params) => <DocumentEdit id={params.id} type="proposal" />}
+      </Route>
       <Route path="/estimates">
         <DocumentList type="estimate" />
+      </Route>
+      <Route path="/estimates/:id">
+        {(params) => <DocumentEdit id={params.id} type="estimate" />}
       </Route>
       <Route path="/templates" component={NoteTemplates} />
       <Route path="/sales" component={MonthlySales} />

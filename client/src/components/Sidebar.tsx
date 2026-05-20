@@ -179,7 +179,7 @@ export default function Sidebar() {
             {!collapsed && (
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-medium text-foreground truncate">
-                  {user.name || '사용자'}
+                  {user.name || user.email?.split('@')[0] || '사용자'}
                 </p>
               </div>
             )}
