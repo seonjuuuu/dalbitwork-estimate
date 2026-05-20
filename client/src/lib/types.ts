@@ -106,19 +106,16 @@ export function calcTotalFinal(items: DocumentItem[]): number {
 // 총 할인 금액 계산
 export function calcTotalDiscount(items: DocumentItem[]): number {
   return items.reduce((sum, item) => {
-    const orig = parseAmount(item.originalPrice);
-    const disc = parseAmount(item.discountPrice);
-    if (disc > 0 && orig > disc) return sum + (orig - disc);
-    return sum;
+    const discountAmount = parseAmount(item.discountAmount || '');
+    return sum + discountAmount;
   }, 0);
 }
 
 // 할인이 존재하는지 확인
 export function hasAnyDiscount(items: DocumentItem[]): boolean {
   return items.some(item => {
-    const orig = parseAmount(item.originalPrice);
-    const disc = parseAmount(item.discountPrice);
-    return disc > 0 && orig > disc;
+    const discountAmount = parseAmount(item.discountAmount || '');
+    return discountAmount > 0;
   });
 }
 
