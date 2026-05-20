@@ -297,6 +297,98 @@ export const appRouter = router({
       }),
   }),
 
+  clients: router({
+    list: protectedProcedure.query(async ({ ctx }) => {
+      return db.listClients(ctx.user.id);
+    }),
+
+    create: protectedProcedure
+      .input(z.object({
+        name: z.string().min(1),
+        contactName: z.string().default(''),
+        contactPhone: z.string().default(''),
+        businessNumber: z.string().default(''),
+        contractDate: z.string().default(''),
+        contractAmount: z.number().default(0),
+        memo: z.string().default(''),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        return db.createClient({ ...input, userId: ctx.user.id });
+      }),
+
+    update: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        name: z.string().min(1).optional(),
+        contactName: z.string().optional(),
+        contactPhone: z.string().optional(),
+        businessNumber: z.string().optional(),
+        contractDate: z.string().optional(),
+        contractAmount: z.number().optional(),
+        memo: z.string().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const { id, ...data } = input;
+        return db.updateClient(id, ctx.user.id, data);
+      }),
+
+    delete: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        return db.deleteClient(input.id, ctx.user.id);
+      }),
+
+    upsertFromDocument: protectedProcedure
+      .input(z.object({
+        name: z.string(),
+        contactName: z.string().default(''),
+        contactPhone: z.string().default(''),
+        contractDate: z.string().optional(),
+        contractAmount: z.number().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        return db.upsertClientFromDocument(ctx.user.id, input);
+      }),
+  }),
+
+  serviceItems: router({
+    list: protectedProcedure.query(async ({ ctx }) => {
+      return db.listServiceItems(ctx.user.id);
+    }),
+
+    create: protectedProcedure
+      .input(z.object({
+        name: z.string().min(1),
+        description: z.string().default(''),
+        unitPrice: z.string().default(''),
+        category: z.string().default(''),
+        sortOrder: z.number().default(0),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        return db.createServiceItem({ ...input, userId: ctx.user.id });
+      }),
+
+    update: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        name: z.string().min(1).optional(),
+        description: z.string().optional(),
+        unitPrice: z.string().optional(),
+        category: z.string().optional(),
+        sortOrder: z.number().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const { id, ...data } = input;
+        return db.updateServiceItem(id, ctx.user.id, data);
+      }),
+
+    delete: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        return db.deleteServiceItem(input.id, ctx.user.id);
+      }),
+  }),
+
   sales: router({
     /** Get monthly sales data */
     getMonthly: protectedProcedure

@@ -1,8 +1,8 @@
 import { eq, and, desc, asc, gte, lte } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
-import { InsertUser, users, documents, InsertDocument, noteTemplates, InsertNoteTemplate, payments } from "../drizzle/schema";
-import type { InsertPayment } from "../drizzle/schema";
+import { InsertUser, users, documents, InsertDocument, noteTemplates, InsertNoteTemplate, payments, serviceItems, clients } from "../drizzle/schema";
+import type { InsertPayment, InsertServiceItem, InsertClient } from "../drizzle/schema";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
@@ -165,6 +165,104 @@ export async function getMonthlySalesData(userId: number, year: number, month: n
     .innerJoin(documents, eq(payments.documentId, documents.id))
     .where(and(eq(payments.userId, userId), gte(payments.paymentDate, startDate), lte(payments.paymentDate, endDate)))
     .orderBy(desc(payments.paymentDate));
+}
+
+// ─── Service Items CRUD ───────────────────────────────────────────
+
+export async function listServiceItems(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(serviceItems).where(eq(serviceItems.userId, userId)).orderBy(asc(serviceItems.sortOrder), asc(serviceItems.category), asc(serviceItems.createdAt));
+}
+
+export async function createServiceItem(data: InsertServiceItem) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const [inserted] = await db.insert(serviceItems).values(data).returning({ id: serviceItems.id });
+  const result = await db.select().from(serviceItems).where(eq(serviceItems.id, inserted.id)).limit(1);
+  return result[0];
+}
+
+export async function updateServiceItem(id: number, userId: number, data: Partial<Omit<InsertServiceItem, "id" | "userId" | "createdAt">>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(serviceItems).set(data).where(and(eq(serviceItems.id, id), eq(serviceItems.userId, userId)));
+  const result = await db.select().from(serviceItems).where(eq(serviceItems.id, id)).limit(1);
+  return result[0];
+}
+
+export async function deleteServiceItem(id: number, userId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(serviceItems).where(and(eq(serviceItems.id, id), eq(serviceItems.userId, userId)));
+  return { success: true };
+}
+
+// ─── Clients CRUD ────────────────────────────────────────────────
+
+export async function listClients(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(clients).where(eq(clients.userId, userId)).orderBy(asc(clients.name));
+}
+
+export async function createClient(data: InsertClient) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const [inserted] = await db.insert(clients).values(data).returning({ id: clients.id });
+  const result = await db.select().from(clients).where(eq(clients.id, inserted.id)).limit(1);
+  return result[0];
+}
+
+export async function updateClient(id: number, userId: number, data: Partial<Omit<InsertClient, "id" | "userId" | "createdAt">>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(clients).set(data).where(and(eq(clients.id, id), eq(clients.userId, userId)));
+  const result = await db.select().from(clients).where(eq(clients.id, id)).limit(1);
+  return result[0];
+}
+
+export async function deleteClient(id: number, userId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(clients).where(and(eq(clients.id, id), eq(clients.userId, userId)));
+  return { success: true };
+}
+
+export async function upsertClientFromDocument(
+  userId: number,
+  data: { name: string; contactName: string; contactPhone: string; contractDate?: string; contractAmount?: number }
+) {
+  const db = await getDb();
+  if (!db) return;
+  if (!data.name.trim()) return;
+
+  const existing = await db.select().from(clients)
+    .where(and(eq(clients.userId, userId), eq(clients.name, data.name)))
+    .limit(1);
+
+  if (existing.length === 0) {
+    await db.insert(clients).values({
+      userId,
+      name: data.name,
+      contactName: data.contactName || '',
+      contactPhone: data.contactPhone || '',
+      businessNumber: '',
+      contractDate: data.contractDate || '',
+      contractAmount: data.contractAmount || 0,
+      memo: '',
+    });
+  } else {
+    const client = existing[0];
+    const updates: Partial<typeof clients.$inferInsert> = {};
+    if (!client.contactName && data.contactName) updates.contactName = data.contactName;
+    if (!client.contactPhone && data.contactPhone) updates.contactPhone = data.contactPhone;
+    if (data.contractDate && !client.contractDate) updates.contractDate = data.contractDate;
+    if (data.contractAmount && !client.contractAmount) updates.contractAmount = data.contractAmount;
+    if (Object.keys(updates).length > 0) {
+      await db.update(clients).set(updates).where(eq(clients.id, client.id));
+    }
+  }
 }
 
 async function getPaymentById(id: number) {

@@ -1,5 +1,5 @@
 import { useEstimate } from '@/contexts/EstimateContext';
-import { FilePlus, FileText, List, ChevronLeft, ChevronRight, FileCheck, LogOut, User, BookOpen, BarChart3 } from 'lucide-react';
+import { FilePlus, FileText, List, ChevronLeft, ChevronRight, FileCheck, LogOut, User, BookOpen, BarChart3, Boxes, Building2 } from 'lucide-react';
 import { useState } from 'react';
 import { useLocation } from 'wouter';
 import { useAuth } from '@/_core/hooks/useAuth';
@@ -58,6 +58,20 @@ export default function Sidebar() {
       id: 'note-templates',
       active: location === '/templates',
       onClick: () => navigate('/templates'),
+    },
+    {
+      icon: Boxes,
+      label: '서비스 항목',
+      id: 'service-items',
+      active: location === '/services',
+      onClick: () => navigate('/services'),
+    },
+    {
+      icon: Building2,
+      label: '고객사 관리',
+      id: 'clients',
+      active: location === '/clients',
+      onClick: () => navigate('/clients'),
     },
     {
       icon: BarChart3,
@@ -121,7 +135,7 @@ export default function Sidebar() {
             관리
           </p>
         )}
-        {navItems.slice(2, 5).map((item) => (
+        {navItems.slice(2, 7).map((item) => (
           <button
             key={item.id}
             onClick={item.onClick}
@@ -145,7 +159,7 @@ export default function Sidebar() {
             분석
           </p>
         )}
-        {navItems.slice(5).map((item) => (
+        {navItems.slice(7).map((item) => (
           <button
             key={item.id}
             onClick={item.onClick}

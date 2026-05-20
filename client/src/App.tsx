@@ -10,6 +10,8 @@ import DocumentList from "./pages/DocumentList";
 import DocumentEdit from "./pages/DocumentEdit";
 import NoteTemplates from "./pages/NoteTemplates";
 import MonthlySales from "./pages/MonthlySales";
+import ServiceItems from "./pages/ServiceItems";
+import Clients from "./pages/Clients";
 import Sidebar from "./components/Sidebar";
 import { useAuth } from "@/_core/hooks/useAuth";
 import LoginPage from "./pages/LoginPage";
@@ -53,6 +55,8 @@ function Router() {
         {(params) => <DocumentEdit id={params.id} type="estimate" />}
       </Route>
       <Route path="/templates" component={NoteTemplates} />
+      <Route path="/services" component={ServiceItems} />
+      <Route path="/clients" component={Clients} />
       <Route path="/sales" component={MonthlySales} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />

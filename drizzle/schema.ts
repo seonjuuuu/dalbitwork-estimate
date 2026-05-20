@@ -96,3 +96,35 @@ export const payments = pgTable("payments", {
 
 export type Payment = typeof payments.$inferSelect;
 export type InsertPayment = typeof payments.$inferInsert;
+
+export const clients = pgTable("clients", {
+  id: serial("id").primaryKey(),
+  userId: integer("userId").notNull(),
+  name: varchar("name", { length: 500 }).notNull(),
+  contactName: varchar("contactName", { length: 200 }).default("").notNull(),
+  contactPhone: varchar("contactPhone", { length: 50 }).default("").notNull(),
+  businessNumber: varchar("businessNumber", { length: 50 }).default("").notNull(),
+  contractDate: varchar("contractDate", { length: 20 }).default("").notNull(),
+  contractAmount: integer("contractAmount").default(0).notNull(),
+  memo: text("memo").default("").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull().$onUpdateFn(() => new Date()),
+});
+
+export type Client = typeof clients.$inferSelect;
+export type InsertClient = typeof clients.$inferInsert;
+
+export const serviceItems = pgTable("service_items", {
+  id: serial("id").primaryKey(),
+  userId: integer("userId").notNull(),
+  name: varchar("name", { length: 500 }).notNull(),
+  description: text("description").default("").notNull(),
+  unitPrice: varchar("unitPrice", { length: 50 }).default("").notNull(),
+  category: varchar("category", { length: 100 }).default("").notNull(),
+  sortOrder: integer("sortOrder").default(0).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull().$onUpdateFn(() => new Date()),
+});
+
+export type ServiceItem = typeof serviceItems.$inferSelect;
+export type InsertServiceItem = typeof serviceItems.$inferInsert;

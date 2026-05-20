@@ -142,8 +142,8 @@ export const defaultProposal: DocumentData = {
   platform: "아임웹(I'mweb)",
   date: new Date().toISOString().split('T')[0],
   items: [
-    { id: '1', name: '메인 페이지 (국문, 5섹션 기준)', quantity: '1', originalPrice: '900,000', discountPrice: '', discountAmount: '' },
-    { id: '2', name: '서브 페이지 (국문)', quantity: '1', originalPrice: '600,000', discountPrice: '', discountAmount: '' },
+    { id: '1', name: '메인 페이지 (국문, 5섹션 기준)', quantity: '1', unitPrice: '900,000', originalPrice: '900,000', discountPrice: '', discountAmount: '' },
+    { id: '2', name: '서브 페이지 (국문)', quantity: '1', unitPrice: '150,000', originalPrice: '150,000', discountPrice: '', discountAmount: '' },
   ],
   notes: proposalNotes,
   notesMode: 'list',
@@ -166,8 +166,8 @@ export const defaultEstimate: DocumentData = {
   platform: "아임웹(I'mweb)",
   date: new Date().toISOString().split('T')[0],
   items: [
-    { id: '1', name: '메인 페이지 (국문, 5섹션 기준)', quantity: '1', originalPrice: '900,000', discountPrice: '', discountAmount: '' },
-    { id: '2', name: '서브 페이지 (국문)', quantity: '1', originalPrice: '600,000', discountPrice: '', discountAmount: '' },
+    { id: '1', name: '메인 페이지 (국문, 5섹션 기준)', quantity: '1', unitPrice: '900,000', originalPrice: '900,000', discountPrice: '', discountAmount: '' },
+    { id: '2', name: '서브 페이지 (국문)', quantity: '1', unitPrice: '150,000', originalPrice: '150,000', discountPrice: '', discountAmount: '' },
   ],
   notes: estimateNotes,
   notesMode: 'list',

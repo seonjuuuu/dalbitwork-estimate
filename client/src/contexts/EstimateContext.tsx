@@ -223,7 +223,7 @@ export function EstimateProvider({ children }: { children: ReactNode }) {
   const addItem = useCallback(() => {
     setCurrentDoc((prev) => ({
       ...prev,
-      items: [...prev.items, { id: nanoid(), name: '', quantity: '', originalPrice: '', discountPrice: '', discountAmount: '' }],
+      items: [...prev.items, { id: nanoid(), name: '', quantity: '1', unitPrice: '900,000', originalPrice: '900,000', discountPrice: '', discountAmount: '' }],
     }));
   }, []);
 
@@ -237,7 +237,18 @@ export function EstimateProvider({ children }: { children: ReactNode }) {
   const updateItem = useCallback((id: string, field: keyof DocumentItem, value: string) => {
     setCurrentDoc((prev) => ({
       ...prev,
-      items: prev.items.map((item) => (item.id === id ? { ...item, [field]: value } : item)),
+      items: prev.items.map((item) => {
+        if (item.id !== id) return item;
+        const updated = { ...item, [field]: value };
+        if (field === 'unitPrice' || field === 'quantity') {
+          const price = parseFloat((updated.unitPrice || '0').replace(/,/g, ''));
+          const qty = parseFloat((updated.quantity || '1').replace(/,/g, '')) || 1;
+          if (!isNaN(price)) {
+            updated.originalPrice = (price * qty).toLocaleString('ko-KR');
+          }
+        }
+        return updated;
+      }),
     }));
   }, []);
 

@@ -1,7 +1,10 @@
 import { useEstimate } from '@/contexts/EstimateContext';
+import { nanoid } from 'nanoid';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Plus, Trash2, Save, GripVertical, Tag, StickyNote, Loader2, BookOpen, BookmarkPlus, Download, Replace, List, FileText, Variable } from 'lucide-react';
+import { Plus, Trash2, Save, GripVertical, Tag, StickyNote, Loader2, BookOpen, BookmarkPlus, Download, Replace, List, FileText, Variable, Boxes, Gift } from 'lucide-react';
+import ServiceItemPicker from '@/components/ServiceItemPicker';
+import ClientAutocomplete from '@/components/ClientAutocomplete';
 import { trpc } from '@/lib/trpc';
 import { useState, useRef, useEffect } from 'react';
 import { toast } from 'sonner';
@@ -528,6 +531,17 @@ export default function EstimateForm() {
     setCurrentDoc((prev) => ({ ...prev, [field]: value }));
   };
 
+  const [servicePickerOpen, setServicePickerOpen] = useState(false);
+
+  const handleAddServiceItem = (item: { name: string; unitPrice: string; originalPrice: string }) => {
+    setCurrentDoc((prev) => ({
+      ...prev,
+      items: [...prev.items, { id: nanoid(), name: item.name, quantity: '1', unitPrice: item.unitPrice, originalPrice: item.originalPrice, discountPrice: '', discountAmount: '' }],
+    }));
+  };
+
+  const upsertClientMutation = trpc.clients.upsertFromDocument.useMutation();
+
   const handleSave = async () => {
     if (!currentDoc.clientName.trim()) {
       toast.error('수신처(고객사명)를 입력해주세요.');
@@ -536,6 +550,19 @@ export default function EstimateForm() {
     try {
       await saveDocument();
       toast.success(`${docLabel}가 저장되었습니다.`);
+      // 고객사 자동 등록
+      if (currentDoc.clientName.trim()) {
+        const isEstimate = currentDoc.type === 'estimate';
+        upsertClientMutation.mutate({
+          name: currentDoc.clientName.trim(),
+          contactName: currentDoc.contactName || '',
+          contactPhone: currentDoc.contactPhone || '',
+          ...(isEstimate && {
+            contractDate: currentDoc.date || '',
+            contractAmount: currentDoc.totalMin || 0,
+          }),
+        });
+      }
     } catch (err) {
       toast.error('저장에 실패했습니다. 다시 시도해주세요.');
     }
@@ -710,8 +737,8 @@ export default function EstimateForm() {
             <textarea
               value={currentDoc.memo || ''}
               onChange={(e) => updateField('memo', e.target.value)}
-              rows={2}
-              className="w-full text-sm bg-background border border-input rounded-md px-3 py-2 resize-y min-h-[60px] focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1"
+              rows={5}
+              className="w-full text-sm bg-background border border-input rounded-md px-3 py-2 resize-y min-h-[120px] focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1"
               placeholder="내부 메모를 입력하세요... (예: 담당자 연락처, 특이사항 등)"
             />
           </div>
@@ -724,9 +751,14 @@ export default function EstimateForm() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-5">
           <div>
             <label className="text-xs font-medium text-muted-foreground mb-1.5 block">수신처 (고객사)</label>
-            <Input
+            <ClientAutocomplete
               value={currentDoc.clientName}
-              onChange={(e) => updateField('clientName', e.target.value)}
+              onChange={(v) => updateField('clientName', v)}
+              onSelect={(client) => {
+                updateField('clientName', client.name);
+                if (client.contactName) updateField('contactName', client.contactName);
+                if (client.contactPhone) updateField('contactPhone', client.contactPhone);
+              }}
               placeholder="주식회사 OOO 귀중"
               className="bg-background"
             />
@@ -751,15 +783,21 @@ export default function EstimateForm() {
           </div>
           <div>
             <label className="text-xs font-medium text-muted-foreground mb-1.5 block">담당자 이름</label>
-            <div className="border-b-2 border-gray-300 px-3 py-2 text-sm text-muted-foreground min-h-[40px] flex items-center">
-              {currentDoc.contactName || '나중에 계약서에서 입력'}
-            </div>
+            <Input
+              value={currentDoc.contactName}
+              onChange={(e) => updateField('contactName', e.target.value)}
+              placeholder="홍길동"
+              className="bg-background"
+            />
           </div>
           <div>
             <label className="text-xs font-medium text-muted-foreground mb-1.5 block">담당자 연락처</label>
-            <div className="border-b-2 border-gray-300 px-3 py-2 text-sm text-muted-foreground min-h-[40px] flex items-center">
-              {currentDoc.contactPhone || '나중에 계약서에서 입력'}
-            </div>
+            <Input
+              value={currentDoc.contactPhone}
+              onChange={(e) => updateField('contactPhone', e.target.value)}
+              placeholder="010-1234-5678"
+              className="bg-background"
+            />
           </div>
           <div>
             <label className="text-xs font-medium text-muted-foreground mb-1.5 block">발행일</label>
@@ -787,10 +825,16 @@ export default function EstimateForm() {
       <div className="bg-card rounded-lg border border-border p-5">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-sm font-semibold text-foreground section-title">{docLabel} 항목</h3>
-          <Button variant="outline" size="sm" onClick={addItem} className="text-xs gap-1.5">
-            <Plus className="w-3.5 h-3.5" />
-            항목 추가
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={() => setServicePickerOpen(true)} className="text-xs gap-1.5">
+              <Boxes className="w-3.5 h-3.5" />
+              서비스 추가
+            </Button>
+            <Button variant="outline" size="sm" onClick={addItem} className="text-xs gap-1.5">
+              <Plus className="w-3.5 h-3.5" />
+              직접 추가
+            </Button>
+          </div>
         </div>
 
         {/* Table Header */}
@@ -949,6 +993,27 @@ export default function EstimateForm() {
                 className="text-sm bg-background h-9 amount"
               />
               <button
+                title="무료로 설정"
+                onClick={() => {
+                  const orig = parseAmount(item.originalPrice);
+                  const isFree = parseAmount(item.discountAmount || '') === orig && orig > 0;
+                  if (isFree) {
+                    updateItem(item.id, 'discountAmount', '');
+                    updateItem(item.id, 'discountPrice', '');
+                  } else if (orig > 0) {
+                    updateItem(item.id, 'discountAmount', item.originalPrice);
+                    updateItem(item.id, 'discountPrice', '0');
+                  }
+                }}
+                className={`w-8 h-8 flex items-center justify-center rounded transition-all opacity-0 group-hover:opacity-100 ${
+                  parseAmount(item.discountAmount || '') === parseAmount(item.originalPrice) && parseAmount(item.originalPrice) > 0
+                    ? 'text-emerald-500 bg-emerald-50 dark:bg-emerald-900/30 opacity-100'
+                    : 'text-muted-foreground hover:text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-900/30'
+                }`}
+              >
+                <Gift className="w-3.5 h-3.5" />
+              </button>
+              <button
                 onClick={() => removeItem(item.id)}
                 className="w-8 h-8 flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-all"
               >
@@ -1021,15 +1086,22 @@ export default function EstimateForm() {
             <div className="md:col-span-2">
               <label className="text-xs font-medium text-muted-foreground mb-1.5 block">최종 확정 금액 (원)</label>
               <Input
-                type="number"
-                value={currentDoc.totalMin}
+                type="text"
+                value={currentDoc.totalMin ? currentDoc.totalMin.toLocaleString('ko-KR') : ''}
                 onChange={(e) => {
-                  const val = Number(e.target.value);
+                  const raw = e.target.value.replace(/[^0-9]/g, '');
+                  const val = raw ? Number(raw) : 0;
                   updateField('totalMin', val);
                   updateField('totalMax', val);
+                  if (detectedVariables.includes('총금액')) {
+                    handleVariableChange('총금액', val ? `${val.toLocaleString('ko-KR')}원` : '');
+                    const { deposit, balance } = calculateAmounts(val, 50);
+                    if (detectedVariables.includes('계약금')) handleVariableChange('계약금', deposit);
+                    if (detectedVariables.includes('잔금')) handleVariableChange('잔금', balance);
+                  }
                 }}
-                placeholder="2125000"
-                className="bg-background amount"
+                placeholder="2,125,000"
+                className="bg-background amount text-right"
               />
             </div>
           )}
@@ -1168,6 +1240,12 @@ export default function EstimateForm() {
           {isSaving ? '저장 중...' : '저장하기'}
         </Button>
       </div>
+
+      <ServiceItemPicker
+        isOpen={servicePickerOpen}
+        onClose={() => setServicePickerOpen(false)}
+        onSelect={handleAddServiceItem}
+      />
     </div>
   );
 }

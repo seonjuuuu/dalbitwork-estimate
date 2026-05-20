@@ -90,7 +90,7 @@ const s = StyleSheet.create({
     marginBottom: 18,
     fontSize: 10,
   },
-  infoLeft: {},
+  infoLeft: { width: 260 },
   infoRight: {
     alignItems: 'flex-end',
   },
@@ -109,6 +109,12 @@ const s = StyleSheet.create({
   infoValue: {
     fontWeight: 500,
     color: '#1a1a1a',
+  },
+  infoUnderline: {
+    flex: 1,
+    borderBottomWidth: 1,
+    borderBottomColor: '#cccccc',
+    height: 14,
   },
   // Supplier info - 2열 레이아웃 (견적서 전용)
   supplierWrap: {
@@ -556,11 +562,11 @@ export default function PdfDocument({ doc }: PdfDocumentProps) {
           <View style={s.infoLeft}>
             <View style={s.infoLine}>
               <Text style={s.infoLabel}>수    신</Text>
-              <Text style={s.infoValue}>{doc.clientName || '-'}</Text>
+              {doc.clientName ? <Text style={s.infoValue}>{doc.clientName}</Text> : <View style={s.infoUnderline} />}
             </View>
             <View style={s.infoLine}>
               <Text style={s.infoLabel}>프로젝트</Text>
-              <Text style={s.infoValue}>{doc.projectName || '-'}</Text>
+              {doc.projectName ? <Text style={s.infoValue}>{doc.projectName}</Text> : <View style={s.infoUnderline} />}
             </View>
             <View style={s.infoLine}>
               <Text style={s.infoLabel}>플 랫 폼</Text>
@@ -568,11 +574,11 @@ export default function PdfDocument({ doc }: PdfDocumentProps) {
             </View>
             <View style={s.infoLine}>
               <Text style={s.infoLabel}>담당자이름</Text>
-              <Text style={s.infoValue}>{doc.contactName || '-'}</Text>
+              {doc.contactName ? <Text style={s.infoValue}>{doc.contactName}</Text> : <View style={s.infoUnderline} />}
             </View>
             <View style={s.infoLine}>
               <Text style={s.infoLabel}>연 락 처</Text>
-              <Text style={s.infoValue}>{doc.contactPhone || '-'}</Text>
+              {doc.contactPhone ? <Text style={s.infoValue}>{doc.contactPhone}</Text> : <View style={s.infoUnderline} />}
             </View>
           </View>
           <View style={s.infoRight}>
