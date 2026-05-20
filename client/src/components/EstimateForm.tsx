@@ -862,7 +862,26 @@ export default function EstimateForm() {
                 value={item.originalPrice}
                 onChange={(e) => {
                   handleNumberInput(e.target.value, (v) => {
-                    updateItem(item.id, 'originalPrice', v);
+                    // 정가 변경 시 할인가 자동 재계산
+                    if (item.discountAmount) {
+                      const orig = parseAmount(v);
+                      const discAmt = parseAmount(item.discountAmount);
+                      let discPrice = '';
+                      if (orig > 0 && discAmt > 0) {
+                        const result = orig - discAmt;
+                        discPrice = result >= 0 ? autoFormatNumber(String(result)) : '';
+                      }
+                      setCurrentDoc((prev) => ({
+                        ...prev,
+                        items: prev.items.map((it) =>
+                          it.id === item.id
+                            ? { ...it, originalPrice: v, discountPrice: discPrice }
+                            : it
+                        ),
+                      }));
+                    } else {
+                      updateItem(item.id, 'originalPrice', v);
+                    }
                   });
                 }}
                 placeholder="900,000"
