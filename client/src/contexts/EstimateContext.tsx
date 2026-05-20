@@ -61,6 +61,7 @@ function dbDocToLocal(doc: {
       id: item.id || nanoid(),
       name: item.name || '',
       quantity: item.quantity || '',
+      unitPrice: item.unitPrice || '',
       originalPrice: item.originalPrice || '',
       discountPrice: item.discountPrice || '',
       discountAmount: item.discountAmount || '',
