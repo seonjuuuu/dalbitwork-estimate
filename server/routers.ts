@@ -14,6 +14,7 @@ const documentItemSchema = z.object({
   originalPrice: z.string(),
   discountPrice: z.string(),
   discountAmount: z.string().optional().default(''),
+  unitPrice: z.string().optional().default(''),
 });
 
 // Zod schema for creating/updating a document
