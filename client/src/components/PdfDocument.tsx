@@ -656,10 +656,9 @@ export default function PdfDocument({ doc }: PdfDocumentProps) {
           {/* Body */}
           {doc.items.map((item: DocumentItem, idx: number) => {
             const origAmt = parseAmount(item.originalPrice);
-            const discAmt = parseAmount(item.discountPrice);
             const discountAmountVal = parseAmount(item.discountAmount || '');
             const finalAmt = getItemFinalPrice(item);
-            const itemHasDiscount = discAmt > 0 && origAmt > discAmt;
+            const itemHasDiscount = discountAmountVal > 0 && origAmt > finalAmt;
 
             return (
               <View key={item.id} style={s.tableRow}>
