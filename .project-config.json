@@ -1,0 +1,41 @@
+{
+  "build_command": "pnpm run build",
+  "capabilities": [
+    "db",
+    "server",
+    "user"
+  ],
+  "dev_command": "pnpm run dev",
+  "env_vars": {
+    "DATABASE_URL": "mysql://2dhCyUAa13PM9Fz.f0884bab86c4:3iFrOQCR0dNz1Bmg96o3@gateway04.us-east-1.prod.aws.tidbcloud.com:4000/fPgwdiJ6bkDvqhYoiMKGTH?ssl={\"rejectUnauthorized\":true}"
+  },
+  "experiments": null,
+  "git_remote": {
+    "repo_url": "s3://vida-prod-gitrepo/webdev-git/310519663381204565/fPgwdiJ6bkDvqhYoiMKGTH",
+    "access_key_id": "ASIAZV3A2ECZJTAS6TI3",
+    "secret_access_key": "Dl2/kE3dmls9W6Zh6TvQpkeBexjrQTgCy0DvrZbi",
+    "session_token": "IQoJb3JpZ2luX2VjEBkaCXVzLWVhc3QtMSJHMEUCIQCOrw45EXMWsLkXF5oNqPJO8NVlE27OjVEv5lJcMshvLQIgSjp74KgLFjkhrJ/H82mRO6cJnF1Yk/iwafguPKvMDeIq/wMI4f//////////ARAEGgw2NjUzODYwOTg4NjYiDLCEEBObxeTHQjmOairTA9KXgtL2e/odoZfEF1smSvinQvrHzung/Yn7HSB/ccvH8TWPRKB7tWxQjGcP1z8hn7V+3eVNjHln/rgnqd21S4+kDEzVqnThghNIlPPSclQamN2W2wvQDLzOjEeIUhMPhhfXO/Kk6rk2wecm5FvxgogWitJd+o0phB+Hn2CTm/2venE9rYXX45GOBExuQ3cYfMzw2XltAq321ILTHgqetvUqskbAlSa7POfd++AgwP/guYEigbJNxnvF1hQXL9Y/uRw4Bxt3+mSCDGB6JBbQ/z/q58JZ3pofOYhlEx0g7Fln2NtnZXFJuE6QohMEP+uCL7dtDFZxa886s4M6yumPi4kebXKf2ikFwVoDqfFytX74DUY903b6Gpeo6HqTTHGY2jaj67E6bRHXvmuzUSi3pAqsMFsX4p7O4G/lWpDLoqUD3pn1eYm706em7FQFWS33Z+h7QaH9gb7L8kCqkyiiJk2PfFbLyMJ9gVwomwObapFvx1BgBf5JLqcZHlboJuDca3c1vHRzM16rI81rFx+LiRb+DstDZnZqyxTeEw+HoA6wi4Kp5g9+gU6dmfqoT//EE8ShPJ1JjSIpPZaaSVlNiEwDjtYZF12AOn4Myh1csdAQz0i6MJX8s9AGOp0BR3uTqa3zLnjsou+FneTQVnsuqmtgy4M1ZacDDKGlDVSq0EszyqK1VMTrjarEF/FyImQXeKp8iY9HTXcHaEgX9oujp+Zn0/BToVgiqyTuWK/5fPPs/RnbBJX7Ujfxj3ZMu5Xj4gbkNh1DHqaddRh55r1qTxos9Cw97KK/CS3YtyR36Z+lJ2UUQ8yl2vepR4ro01u4SzeTMjxCRFC+rQ==",
+    "expiration": "2026-05-20T12:19:33.000Z"
+  },
+  "name": "dalbitwork-estimate",
+  "path": "/home/ubuntu/dalbitwork-estimate",
+  "port": 3000,
+  "secrets": {
+    "BUILT_IN_FORGE_API_KEY": "6pPg5iQFDpFD9SfPfucdBj",
+    "BUILT_IN_FORGE_API_URL": "https://forge.manus.ai",
+    "JWT_SECRET": "Ca2PJZg2EMVxFn8x3hHoAL",
+    "OAUTH_SERVER_URL": "https://api.manus.im",
+    "OWNER_NAME": "Ms",
+    "OWNER_OPEN_ID": "C2xTyoBYVVouppM8Vd8hqr",
+    "VITE_ANALYTICS_ENDPOINT": "https://manus-analytics.com",
+    "VITE_ANALYTICS_WEBSITE_ID": "edad74db-7a2d-47ed-a3c7-c0aa9985fe07",
+    "VITE_APP_ID": "fPgwdiJ6bkDvqhYoiMKGTH",
+    "VITE_APP_LOGO": "https://files.manuscdn.com/user_upload_by_module/web_dev_logo/310519663381204565/qvuqoMAJeZpbcXnb.png",
+    "VITE_APP_TITLE": "달빛워크 견적서",
+    "VITE_FRONTEND_FORGE_API_KEY": "7ixfQ8nArhB5mohWzKuQps",
+    "VITE_FRONTEND_FORGE_API_URL": "https://forge.manus.ai",
+    "VITE_OAUTH_PORTAL_URL": "https://manus.im"
+  },
+  "template_id": "web-db-user",
+  "test_command": "pnpm test"
+}

@@ -35,7 +35,7 @@ function dbDocToLocal(doc: {
   projectName: string;
   platform: string;
   date: string;
-  items: { id: string; name: string; quantity: string; originalPrice: string; discountPrice: string; discountAmount?: string }[];
+  items: { id: string; name: string; quantity: string; unitPrice?: string; originalPrice: string; discountPrice: string; discountAmount?: string }[];
   notes: string[];
   notesMode: "list" | "freeform";
   freeformNotes: string | null;
@@ -160,6 +160,7 @@ export function EstimateProvider({ children }: { children: ReactNode }) {
           id: item.id,
           name: item.name,
           quantity: item.quantity,
+          unitPrice: item.unitPrice || '',
           originalPrice: item.originalPrice,
           discountPrice: item.discountPrice,
           discountAmount: item.discountAmount || '',
