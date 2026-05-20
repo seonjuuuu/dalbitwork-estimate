@@ -871,7 +871,11 @@ export default function EstimateForm() {
                     // 할인금액 입력 시 할인가 자동 계산
                     const orig = parseAmount(item.originalPrice);
                     const discAmt = parseAmount(v);
-                    const discPrice = orig > 0 && discAmt > 0 ? autoFormatNumber(String(orig - discAmt)) : '';
+                    let discPrice = '';
+                    if (orig > 0 && discAmt > 0) {
+                      const result = orig - discAmt;
+                      discPrice = result > 0 ? autoFormatNumber(String(result)) : '0';
+                    }
                     setCurrentDoc((prev) => ({
                       ...prev,
                       items: prev.items.map((it) =>
@@ -892,7 +896,16 @@ export default function EstimateForm() {
                     // 할인가 입력 시 할인금액 자동 계산
                     const orig = parseAmount(item.originalPrice);
                     const discPrice = parseAmount(v);
-                    const discAmt = orig > 0 && discPrice > 0 && orig > discPrice ? autoFormatNumber(String(orig - discPrice)) : '';
+                    let discAmt = '';
+                    if (orig > 0) {
+                      if (discPrice === 0) {
+                        // 할인가가 0이면 할인금액 = 정가
+                        discAmt = autoFormatNumber(String(orig));
+                      } else if (discPrice > 0 && orig > discPrice) {
+                        // 할인가가 정가보다 작으면 할인금액 계산
+                        discAmt = autoFormatNumber(String(orig - discPrice));
+                      }
+                    }
                     setCurrentDoc((prev) => ({
                       ...prev,
                       items: prev.items.map((it) =>
