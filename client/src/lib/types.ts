@@ -84,8 +84,12 @@ export function parseAmount(str: string): number {
 
 // 항목의 최종 금액 (할인가가 있으면 할인가, 없으면 정가)
 export function getItemFinalPrice(item: DocumentItem): number {
-  const discount = parseAmount(item.discountPrice);
-  if (discount > 0) return discount;
+  const discountPrice = parseAmount(item.discountPrice);
+  // 할인가가 0이면 0 반환 (무료)
+  if (discountPrice === 0 && item.discountPrice) return 0;
+  // 할인가가 있으면 할인가 반환
+  if (discountPrice > 0) return discountPrice;
+  // 할인가가 없으면 정가 반환
   return parseAmount(item.originalPrice);
 }
 
