@@ -557,6 +557,7 @@ export default function EstimateForm() {
           name: currentDoc.clientName.trim(),
           contactName: currentDoc.contactName || '',
           contactPhone: currentDoc.contactPhone || '',
+          isEstimate,
           ...(isEstimate && {
             contractDate: currentDoc.date || '',
             contractAmount: currentDoc.totalMin || 0,

@@ -97,6 +97,8 @@ export const payments = pgTable("payments", {
 export type Payment = typeof payments.$inferSelect;
 export type InsertPayment = typeof payments.$inferInsert;
 
+export const clientStatusEnum = pgEnum("client_status", ["상담", "제안서", "계약"]);
+
 export const clients = pgTable("clients", {
   id: serial("id").primaryKey(),
   userId: integer("userId").notNull(),
@@ -106,6 +108,7 @@ export const clients = pgTable("clients", {
   businessNumber: varchar("businessNumber", { length: 50 }).default("").notNull(),
   contractDate: varchar("contractDate", { length: 20 }).default("").notNull(),
   contractAmount: integer("contractAmount").default(0).notNull(),
+  status: clientStatusEnum("status").default("상담").notNull(),
   memo: text("memo").default("").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull().$onUpdateFn(() => new Date()),
@@ -113,6 +116,20 @@ export const clients = pgTable("clients", {
 
 export type Client = typeof clients.$inferSelect;
 export type InsertClient = typeof clients.$inferInsert;
+
+export const consultations = pgTable("consultations", {
+  id: serial("id").primaryKey(),
+  userId: integer("userId").notNull(),
+  clientId: integer("clientId").notNull(),
+  date: varchar("date", { length: 20 }).notNull(),
+  content: text("content").notNull(),
+  nextAction: text("nextAction").default("").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull().$onUpdateFn(() => new Date()),
+});
+
+export type Consultation = typeof consultations.$inferSelect;
+export type InsertConsultation = typeof consultations.$inferInsert;
 
 export const serviceItems = pgTable("service_items", {
   id: serial("id").primaryKey(),

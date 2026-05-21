@@ -1,8 +1,8 @@
 import { eq, and, desc, asc, gte, lte } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
-import { InsertUser, users, documents, InsertDocument, noteTemplates, InsertNoteTemplate, payments, serviceItems, clients } from "../drizzle/schema";
-import type { InsertPayment, InsertServiceItem, InsertClient } from "../drizzle/schema";
+import { InsertUser, users, documents, InsertDocument, noteTemplates, InsertNoteTemplate, payments, serviceItems, clients, consultations } from "../drizzle/schema";
+import type { InsertPayment, InsertServiceItem, InsertClient, InsertConsultation } from "../drizzle/schema";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
@@ -167,6 +167,126 @@ export async function getMonthlySalesData(userId: number, year: number, month: n
     .orderBy(desc(payments.paymentDate));
 }
 
+// ─── Dashboard ───────────────────────────────────────────────────
+
+export async function getDashboardData(userId: number) {
+  const db = await getDb();
+  if (!db) return null;
+
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth() + 1;
+  const monthStart = `${year}-${String(month).padStart(2, '0')}-01`;
+  const monthEnd = new Date(year, month, 0).toISOString().split('T')[0];
+
+  // 이번 달 계약서 (estimate)
+  const thisMonthDocs = await db.select({
+    id: documents.id, type: documents.type, title: documents.title,
+    clientName: documents.clientName, date: documents.date,
+    totalMin: documents.totalMin, totalMax: documents.totalMax,
+    updatedAt: documents.updatedAt,
+  }).from(documents)
+    .where(and(eq(documents.userId, userId), eq(documents.type, 'estimate'), gte(documents.date, monthStart), lte(documents.date, monthEnd)));
+
+  const thisMonthContractCount = thisMonthDocs.length;
+  const thisMonthContractAmount = thisMonthDocs.reduce((s, d) => s + (d.totalMin || 0), 0);
+
+  // 총 입금액 (payments)
+  const allPayments = await db.select({ amount: payments.amount, documentId: payments.documentId })
+    .from(payments).where(eq(payments.userId, userId));
+  const totalPaid = allPayments.reduce((s, p) => s + p.amount, 0);
+
+  // 전체 계약서 합산
+  const allEstimates = await db.select({ totalMin: documents.totalMin })
+    .from(documents).where(and(eq(documents.userId, userId), eq(documents.type, 'estimate')));
+  const totalContractAmount = allEstimates.reduce((s, d) => s + (d.totalMin || 0), 0);
+  const unpaidAmount = totalContractAmount - totalPaid;
+
+  // 상담 중 고객 수 (계약 전 = 상담 + 제안서 단계)
+  const consultingClients = await db.select({ id: clients.id, status: clients.status })
+    .from(clients).where(eq(clients.userId, userId));
+  const consultingCount = consultingClients.filter(c => c.status !== '계약').length;
+
+  // 최근 문서 10개
+  const recentDocs = await db.select({
+    id: documents.id, type: documents.type, title: documents.title,
+    clientName: documents.clientName, date: documents.date,
+    totalMin: documents.totalMin, totalMax: documents.totalMax,
+    updatedAt: documents.updatedAt,
+  }).from(documents)
+    .where(eq(documents.userId, userId))
+    .orderBy(desc(documents.updatedAt))
+    .limit(10);
+
+  // 최근 6개월 월별 계약 금액
+  const months: { year: number; month: number }[] = [];
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(year, month - 1 - i, 1);
+    months.push({ year: d.getFullYear(), month: d.getMonth() + 1 });
+  }
+
+  const monthlySummary = await Promise.all(months.map(async ({ year: y, month: m }) => {
+    const start = `${y}-${String(m).padStart(2, '0')}-01`;
+    const end = new Date(y, m, 0).toISOString().split('T')[0];
+    const rows = await db.select({ totalMin: documents.totalMin })
+      .from(documents)
+      .where(and(eq(documents.userId, userId), eq(documents.type, 'estimate'), gte(documents.date, start), lte(documents.date, end)));
+    return { label: `${m}월`, amount: rows.reduce((s, r) => s + (r.totalMin || 0), 0) };
+  }));
+
+  // 상담 → 제안서 → 계약 단계별 고객 수
+  const allClients = await db.select({ status: clients.status }).from(clients).where(eq(clients.userId, userId));
+  const statusCounts = { '상담': 0, '제안서': 0, '계약': 0 };
+  allClients.forEach(c => { statusCounts[c.status ?? '상담']++; });
+
+  return {
+    thisMonthContractCount,
+    thisMonthContractAmount,
+    unpaidAmount,
+    consultingCount,
+    recentDocs,
+    monthlySummary,
+    clientStatus: [
+      { name: '상담', value: statusCounts['상담'] },
+      { name: '제안서', value: statusCounts['제안서'] },
+      { name: '계약', value: statusCounts['계약'] },
+    ],
+  };
+}
+
+// ─── Consultations CRUD ──────────────────────────────────────────
+
+export async function listConsultations(clientId: number, userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(consultations)
+    .where(and(eq(consultations.clientId, clientId), eq(consultations.userId, userId)))
+    .orderBy(desc(consultations.date), desc(consultations.createdAt));
+}
+
+export async function createConsultation(data: InsertConsultation) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const [inserted] = await db.insert(consultations).values(data).returning({ id: consultations.id });
+  const result = await db.select().from(consultations).where(eq(consultations.id, inserted.id)).limit(1);
+  return result[0];
+}
+
+export async function updateConsultation(id: number, userId: number, data: Partial<Omit<InsertConsultation, "id" | "userId" | "clientId" | "createdAt">>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(consultations).set(data).where(and(eq(consultations.id, id), eq(consultations.userId, userId)));
+  const result = await db.select().from(consultations).where(eq(consultations.id, id)).limit(1);
+  return result[0];
+}
+
+export async function deleteConsultation(id: number, userId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(consultations).where(and(eq(consultations.id, id), eq(consultations.userId, userId)));
+  return { success: true };
+}
+
 // ─── Service Items CRUD ───────────────────────────────────────────
 
 export async function listServiceItems(userId: number) {
@@ -200,10 +320,24 @@ export async function deleteServiceItem(id: number, userId: number) {
 
 // ─── Clients CRUD ────────────────────────────────────────────────
 
-export async function listClients(userId: number) {
+export async function listClients(userId: number, search?: string) {
   const db = await getDb();
   if (!db) return [];
+  if (search) {
+    const { ilike, or } = await import("drizzle-orm");
+    const pattern = `%${search}%`;
+    return db.select().from(clients)
+      .where(and(eq(clients.userId, userId), or(ilike(clients.name, pattern), ilike(clients.contactPhone, pattern), ilike(clients.contactName, pattern))))
+      .orderBy(asc(clients.name));
+  }
   return db.select().from(clients).where(eq(clients.userId, userId)).orderBy(asc(clients.name));
+}
+
+export async function getClient(id: number, userId: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(clients).where(and(eq(clients.id, id), eq(clients.userId, userId))).limit(1);
+  return result[0];
 }
 
 export async function createClient(data: InsertClient) {
@@ -229,13 +363,17 @@ export async function deleteClient(id: number, userId: number) {
   return { success: true };
 }
 
+const STATUS_RANK: Record<string, number> = { '상담': 0, '제안서': 1, '계약': 2 };
+
 export async function upsertClientFromDocument(
   userId: number,
-  data: { name: string; contactName: string; contactPhone: string; contractDate?: string; contractAmount?: number }
+  data: { name: string; contactName: string; contactPhone: string; isEstimate: boolean; contractDate?: string; contractAmount?: number }
 ) {
   const db = await getDb();
   if (!db) return;
   if (!data.name.trim()) return;
+
+  const newStatus = data.isEstimate ? '계약' : '제안서';
 
   const existing = await db.select().from(clients)
     .where(and(eq(clients.userId, userId), eq(clients.name, data.name)))
@@ -250,6 +388,7 @@ export async function upsertClientFromDocument(
       businessNumber: '',
       contractDate: data.contractDate || '',
       contractAmount: data.contractAmount || 0,
+      status: newStatus as "상담" | "제안서" | "계약",
       memo: '',
     });
   } else {
@@ -259,10 +398,29 @@ export async function upsertClientFromDocument(
     if (!client.contactPhone && data.contactPhone) updates.contactPhone = data.contactPhone;
     if (data.contractDate && !client.contractDate) updates.contractDate = data.contractDate;
     if (data.contractAmount && !client.contractAmount) updates.contractAmount = data.contractAmount;
+    // 상태는 앞으로만 진행 (상담→제안서→계약, 역방향 불가)
+    if (STATUS_RANK[newStatus] > STATUS_RANK[client.status ?? '상담']) {
+      updates.status = newStatus as "상담" | "제안서" | "계약";
+    }
     if (Object.keys(updates).length > 0) {
       await db.update(clients).set(updates).where(eq(clients.id, client.id));
     }
   }
+}
+
+export async function getEstimatesByClientName(clientName: string, userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select({
+    id: documents.id,
+    title: documents.title,
+    date: documents.date,
+    totalMin: documents.totalMin,
+    totalMax: documents.totalMax,
+    updatedAt: documents.updatedAt,
+  }).from(documents)
+    .where(and(eq(documents.userId, userId), eq(documents.type, 'estimate'), eq(documents.clientName, clientName)))
+    .orderBy(desc(documents.updatedAt));
 }
 
 async function getPaymentById(id: number) {

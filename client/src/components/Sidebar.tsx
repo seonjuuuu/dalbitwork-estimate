@@ -1,5 +1,5 @@
 import { useEstimate } from '@/contexts/EstimateContext';
-import { FilePlus, FileText, List, ChevronLeft, ChevronRight, FileCheck, LogOut, User, BookOpen, BarChart3, Boxes, Building2 } from 'lucide-react';
+import { FilePlus, FileText, List, ChevronLeft, ChevronRight, FileCheck, LogOut, User, BookOpen, BarChart3, Boxes, Building2, LayoutDashboard } from 'lucide-react';
 import { useState } from 'react';
 import { useLocation } from 'wouter';
 import { useAuth } from '@/_core/hooks/useAuth';
@@ -13,11 +13,18 @@ export default function Sidebar() {
   const { user, logout } = useAuth();
 
   // 현재 편집 중인 문서 타입으로 활성 상태 판단
-  const isOnHome = location === '/';
-  const isProposalActive = isOnHome && currentDoc.type === 'proposal';
-  const isEstimateActive = isOnHome && currentDoc.type === 'estimate';
+  const isOnEditor = location === '/editor';
+  const isProposalActive = isOnEditor && currentDoc.type === 'proposal';
+  const isEstimateActive = isOnEditor && currentDoc.type === 'estimate';
 
   const navItems = [
+    {
+      icon: LayoutDashboard,
+      label: '대시보드',
+      id: 'dashboard',
+      active: location === '/',
+      onClick: () => navigate('/'),
+    },
     {
       icon: FilePlus,
       label: '새 제안서',
@@ -25,7 +32,7 @@ export default function Sidebar() {
       active: isProposalActive,
       onClick: () => {
         newDocument('proposal');
-        navigate('/');
+        navigate('/editor');
       },
     },
     {
@@ -35,7 +42,7 @@ export default function Sidebar() {
       active: isEstimateActive,
       onClick: () => {
         newDocument('estimate');
-        navigate('/');
+        navigate('/editor');
       },
     },
     {
@@ -105,13 +112,32 @@ export default function Sidebar() {
 
       {/* Navigation */}
       <nav className="flex-1 py-3 px-2 space-y-1">
+        {/* 대시보드 */}
+        {navItems.slice(0, 1).map((item) => (
+          <button
+            key={item.id}
+            onClick={item.onClick}
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-sm transition-colors ${
+              item.active
+                ? 'bg-primary/10 text-primary font-medium'
+                : 'text-muted-foreground hover:bg-accent hover:text-foreground'
+            } ${collapsed ? 'justify-center' : ''}`}
+          >
+            <item.icon className="w-4.5 h-4.5 flex-shrink-0" />
+            {!collapsed && <span>{item.label}</span>}
+          </button>
+        ))}
+
+        {/* Divider */}
+        <div className="my-2 border-t border-border" />
+
         {/* Section: 작성 */}
         {!collapsed && (
           <p className="px-3 pt-2 pb-1 text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider">
             작성
           </p>
         )}
-        {navItems.slice(0, 2).map((item) => (
+        {navItems.slice(1, 3).map((item) => (
           <button
             key={item.id}
             onClick={item.onClick}
@@ -135,7 +161,7 @@ export default function Sidebar() {
             관리
           </p>
         )}
-        {navItems.slice(2, 7).map((item) => (
+        {navItems.slice(3, 8).map((item) => (
           <button
             key={item.id}
             onClick={item.onClick}
@@ -159,7 +185,7 @@ export default function Sidebar() {
             분석
           </p>
         )}
-        {navItems.slice(7).map((item) => (
+        {navItems.slice(8).map((item) => (
           <button
             key={item.id}
             onClick={item.onClick}

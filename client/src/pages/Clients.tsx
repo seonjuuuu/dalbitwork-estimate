@@ -1,8 +1,9 @@
 import { useState } from 'react';
+import { useLocation } from 'wouter';
 import { trpc } from '@/lib/trpc';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Building2, Edit, Trash2, Plus, Save, X, Loader2, Phone, User, CalendarDays, CircleDollarSign } from 'lucide-react';
+import { Building2, Edit, Trash2, Plus, Save, X, Loader2, Phone, User, CalendarDays, CircleDollarSign, Search } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { ko } from 'date-fns/locale';
@@ -21,7 +22,11 @@ interface ClientForm {
 const emptyForm: ClientForm = { name: '', contactName: '', contactPhone: '', businessNumber: '', contractDate: '', contractAmount: '', memo: '' };
 
 export default function Clients() {
-  const { data: clients = [], refetch } = trpc.clients.list.useQuery();
+  const [, navigate] = useLocation();
+  const [search, setSearch] = useState('');
+  const { data: clients = [], refetch } = trpc.clients.list.useQuery(
+    search ? { search } : undefined
+  );
   const createMutation = trpc.clients.create.useMutation();
   const updateMutation = trpc.clients.update.useMutation();
   const deleteMutation = trpc.clients.delete.useMutation();
@@ -111,7 +116,7 @@ export default function Clients() {
 
   return (
     <div className="max-w-3xl mx-auto p-6">
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
           <Building2 className="w-6 h-6 text-primary" />
           <div>
@@ -125,6 +130,17 @@ export default function Clients() {
           <Plus className="w-4 h-4" />
           고객사 추가
         </Button>
+      </div>
+
+      {/* 검색 */}
+      <div className="relative mb-4">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <Input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="고객사명, 담당자, 연락처로 검색..."
+          className="pl-9"
+        />
       </div>
 
       {/* 등록/수정 폼 */}
@@ -260,14 +276,19 @@ export default function Clients() {
           {clients.map((client) => (
             <div
               key={client.id}
-              className="group flex items-center justify-between p-4 border border-border rounded-lg hover:bg-accent/40 transition-colors"
+              onClick={() => navigate(`/clients/${client.id}`)}
+              className="group flex items-center justify-between p-4 border border-border rounded-lg hover:bg-accent/40 transition-colors cursor-pointer"
             >
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <p className="font-semibold text-sm text-foreground">{client.name}</p>
-                  {client.contractDate && client.contractAmount > 0 ? (
-                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400">
+                  {client.status === '계약' ? (
+                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400">
                       계약
+                    </span>
+                  ) : client.status === '제안서' ? (
+                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400">
+                      제안서
                     </span>
                   ) : (
                     <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">
@@ -309,13 +330,13 @@ export default function Clients() {
                 )}
               </div>
               <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity ml-3">
-                <Button variant="ghost" size="sm" onClick={() => handleEdit(client)} className="w-7 h-7 p-0">
+                <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); handleEdit(client); }} className="w-7 h-7 p-0">
                   <Edit className="w-3.5 h-3.5" />
                 </Button>
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => handleDelete(client.id)}
+                  onClick={(e) => { e.stopPropagation(); handleDelete(client.id); }}
                   disabled={deletingId === client.id}
                   className="w-7 h-7 p-0 text-destructive hover:text-destructive"
                 >

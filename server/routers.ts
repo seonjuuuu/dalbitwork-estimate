@@ -298,9 +298,17 @@ export const appRouter = router({
   }),
 
   clients: router({
-    list: protectedProcedure.query(async ({ ctx }) => {
-      return db.listClients(ctx.user.id);
-    }),
+    list: protectedProcedure
+      .input(z.object({ search: z.string().optional() }).optional())
+      .query(async ({ ctx, input }) => {
+        return db.listClients(ctx.user.id, input?.search);
+      }),
+
+    get: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .query(async ({ ctx, input }) => {
+        return db.getClient(input.id, ctx.user.id);
+      }),
 
     create: protectedProcedure
       .input(z.object({
@@ -326,10 +334,17 @@ export const appRouter = router({
         contractDate: z.string().optional(),
         contractAmount: z.number().optional(),
         memo: z.string().optional(),
+        status: z.enum(['상담', '제안서', '계약']).optional(),
       }))
       .mutation(async ({ ctx, input }) => {
         const { id, ...data } = input;
         return db.updateClient(id, ctx.user.id, data);
+      }),
+
+    getMatchedEstimates: protectedProcedure
+      .input(z.object({ clientName: z.string() }))
+      .query(async ({ ctx, input }) => {
+        return db.getEstimatesByClientName(input.clientName, ctx.user.id);
       }),
 
     delete: protectedProcedure
@@ -343,11 +358,49 @@ export const appRouter = router({
         name: z.string(),
         contactName: z.string().default(''),
         contactPhone: z.string().default(''),
+        isEstimate: z.boolean().default(false),
         contractDate: z.string().optional(),
         contractAmount: z.number().optional(),
       }))
       .mutation(async ({ ctx, input }) => {
         return db.upsertClientFromDocument(ctx.user.id, input);
+      }),
+  }),
+
+  consultations: router({
+    list: protectedProcedure
+      .input(z.object({ clientId: z.number() }))
+      .query(async ({ ctx, input }) => {
+        return db.listConsultations(input.clientId, ctx.user.id);
+      }),
+
+    create: protectedProcedure
+      .input(z.object({
+        clientId: z.number(),
+        date: z.string(),
+        content: z.string().min(1),
+        nextAction: z.string().default(''),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        return db.createConsultation({ ...input, userId: ctx.user.id });
+      }),
+
+    update: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        date: z.string().optional(),
+        content: z.string().optional(),
+        nextAction: z.string().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const { id, ...data } = input;
+        return db.updateConsultation(id, ctx.user.id, data);
+      }),
+
+    delete: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        return db.deleteConsultation(input.id, ctx.user.id);
       }),
   }),
 
@@ -387,6 +440,12 @@ export const appRouter = router({
       .mutation(async ({ ctx, input }) => {
         return db.deleteServiceItem(input.id, ctx.user.id);
       }),
+  }),
+
+  dashboard: router({
+    getData: protectedProcedure.query(async ({ ctx }) => {
+      return db.getDashboardData(ctx.user.id);
+    }),
   }),
 
   sales: router({

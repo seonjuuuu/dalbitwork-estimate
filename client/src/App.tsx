@@ -6,12 +6,14 @@ import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { EstimateProvider } from "./contexts/EstimateContext";
 import Home from "./pages/Home";
+import Dashboard from "./pages/Dashboard";
 import DocumentList from "./pages/DocumentList";
 import DocumentEdit from "./pages/DocumentEdit";
 import NoteTemplates from "./pages/NoteTemplates";
 import MonthlySales from "./pages/MonthlySales";
 import ServiceItems from "./pages/ServiceItems";
 import Clients from "./pages/Clients";
+import ClientDetail from "./pages/ClientDetail";
 import Sidebar from "./components/Sidebar";
 import { useAuth } from "@/_core/hooks/useAuth";
 import LoginPage from "./pages/LoginPage";
@@ -41,7 +43,8 @@ function AuthGate({ children }: { children: React.ReactNode }) {
 function Router() {
   return (
     <Switch>
-      <Route path="/" component={Home} />
+      <Route path="/" component={Dashboard} />
+      <Route path="/editor" component={Home} />
       <Route path="/proposals">
         <DocumentList type="proposal" />
       </Route>
@@ -57,6 +60,9 @@ function Router() {
       <Route path="/templates" component={NoteTemplates} />
       <Route path="/services" component={ServiceItems} />
       <Route path="/clients" component={Clients} />
+      <Route path="/clients/:id">
+        {(params) => <ClientDetail id={params.id} />}
+      </Route>
       <Route path="/sales" component={MonthlySales} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
