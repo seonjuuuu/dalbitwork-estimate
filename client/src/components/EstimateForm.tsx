@@ -2,9 +2,10 @@ import { useEstimate } from '@/contexts/EstimateContext';
 import { nanoid } from 'nanoid';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Plus, Trash2, Save, GripVertical, Tag, StickyNote, Loader2, BookOpen, BookmarkPlus, Download, Replace, List, FileText, Variable, Boxes, Gift } from 'lucide-react';
+import { Plus, Trash2, Save, GripVertical, Tag, StickyNote, Loader2, BookOpen, BookmarkPlus, Download, Replace, List, FileText, Variable, Boxes, Gift, Copy } from 'lucide-react';
 import ServiceItemPicker from '@/components/ServiceItemPicker';
 import ClientAutocomplete from '@/components/ClientAutocomplete';
+import CopyFromDocumentDialog from '@/components/CopyFromDocumentDialog';
 import { trpc } from '@/lib/trpc';
 import { useState, useRef, useEffect } from 'react';
 import { toast } from 'sonner';
@@ -532,6 +533,7 @@ export default function EstimateForm() {
   };
 
   const [servicePickerOpen, setServicePickerOpen] = useState(false);
+  const [copyDialogOpen, setCopyDialogOpen] = useState(false);
 
   const handleAddServiceItem = (item: { name: string; unitPrice: string; originalPrice: string }) => {
     setCurrentDoc((prev) => ({
@@ -701,7 +703,7 @@ export default function EstimateForm() {
   return (
     <div className="space-y-6">
       {/* Document Type Badge */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between gap-2">
         <span
           className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${
             isProposal
@@ -711,7 +713,22 @@ export default function EstimateForm() {
         >
           {isProposal ? '제안서 (대략 견적)' : '견적 및 계약서 (확정 견적)'}
         </span>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setCopyDialogOpen(true)}
+          className="gap-1.5 h-7 text-xs text-muted-foreground"
+        >
+          <Copy className="w-3.5 h-3.5" />
+          이전 문서 복사
+        </Button>
       </div>
+
+      <CopyFromDocumentDialog
+        open={copyDialogOpen}
+        onClose={() => setCopyDialogOpen(false)}
+        onCopied={() => toast.success('문서를 복사했습니다. 내용을 수정 후 저장하세요.')}
+      />
 
       {/* 내부 관리용 타이틀 & 메모 */}
       <div className="bg-card rounded-lg border border-dashed border-amber-300/60 p-5">

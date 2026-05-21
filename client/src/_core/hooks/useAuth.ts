@@ -11,8 +11,16 @@ export function useAuth() {
   });
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
-      utils.auth.me.invalidate();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        // Supabase가 해시 토큰을 처리한 후 URL 정리
+        if (window.location.hash) {
+          window.history.replaceState(null, '', window.location.pathname + window.location.search);
+        }
+        utils.auth.me.invalidate();
+      } else if (event === 'SIGNED_OUT') {
+        utils.auth.me.setData(undefined, null);
+      }
     });
     return () => subscription.unsubscribe();
   }, [utils]);

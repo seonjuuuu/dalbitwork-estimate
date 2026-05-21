@@ -13,7 +13,7 @@ interface DocumentListProps {
 }
 
 export default function DocumentList({ type }: DocumentListProps) {
-  const { proposals, estimates, deleteDocument } = useEstimate();
+  const { proposals, estimates, deleteDocument, isLoadingDocuments } = useEstimate();
   const [, navigate] = useLocation();
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [duplicatingId, setDuplicatingId] = useState<string | null>(null);
@@ -77,12 +77,22 @@ export default function DocumentList({ type }: DocumentListProps) {
         <div>
           <h1 className="text-2xl font-bold text-foreground">{docLabel} 목록</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            {documents.length}개의 {docLabel}가 있습니다.
+            {isLoadingDocuments ? '불러오는 중...' : `${documents.length}개의 ${docLabel}가 있습니다.`}
           </p>
         </div>
       </div>
 
-      {documents.length === 0 ? (
+      {isLoadingDocuments ? (
+        <div className="space-y-2">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="p-4 border border-border rounded-lg animate-pulse">
+              <div className="h-4 bg-muted rounded w-1/3 mb-2" />
+              <div className="h-3 bg-muted rounded w-1/2 mb-1" />
+              <div className="h-3 bg-muted rounded w-1/4" />
+            </div>
+          ))}
+        </div>
+      ) : documents.length === 0 ? (
         <div className="text-center py-12">
           <IconComponent className="w-12 h-12 text-muted-foreground mx-auto mb-4 opacity-50" />
           <p className="text-muted-foreground">아직 {docLabel}가 없습니다.</p>

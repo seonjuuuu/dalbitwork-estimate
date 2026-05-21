@@ -19,6 +19,8 @@ interface EstimateContextType {
   removeNote: (index: number) => void;
   updateNote: (index: number, value: string) => void;
   reorderNotes: (oldIndex: number, newIndex: number) => void;
+  copyFromDocument: (doc: DocumentData) => void;
+  isLoadingDocuments: boolean;
   isSaving: boolean;
 }
 
@@ -273,6 +275,16 @@ export function EstimateProvider({ children }: { children: ReactNode }) {
     }));
   }, []);
 
+  const copyFromDocument = useCallback((doc: DocumentData) => {
+    setCurrentDoc({
+      ...doc,
+      id: '',
+      date: new Date().toISOString().split('T')[0],
+      items: doc.items.map((item) => ({ ...item, id: nanoid() })),
+      notes: [...doc.notes],
+    });
+  }, []);
+
   const reorderNotes = useCallback((oldIndex: number, newIndex: number) => {
     setCurrentDoc((prev) => {
       const newNotes = [...prev.notes];
@@ -293,6 +305,8 @@ export function EstimateProvider({ children }: { children: ReactNode }) {
         saveDocument,
         loadDocument,
         deleteDocument,
+        copyFromDocument,
+        isLoadingDocuments: proposalsQuery.isLoading || estimatesQuery.isLoading,
         addItem,
         removeItem,
         updateItem,

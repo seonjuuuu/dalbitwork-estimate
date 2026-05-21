@@ -17,7 +17,7 @@ const emptyForm: ServiceItemForm = { name: '', description: '', unitPrice: '', c
 const PRESET_CATEGORIES = ['페이지 제작', '기능 개발', '디자인', '유지보수', '기타'];
 
 export default function ServiceItems() {
-  const { data: items = [], refetch } = trpc.serviceItems.list.useQuery();
+  const { data: items = [], isLoading, refetch } = trpc.serviceItems.list.useQuery();
   const createMutation = trpc.serviceItems.create.useMutation();
   const updateMutation = trpc.serviceItems.update.useMutation();
   const deleteMutation = trpc.serviceItems.delete.useMutation();
@@ -202,7 +202,19 @@ export default function ServiceItems() {
       )}
 
       {/* 서비스 목록 */}
-      {items.length === 0 ? (
+      {isLoading ? (
+        <div className="space-y-2">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="p-4 border border-border rounded-lg animate-pulse">
+              <div className="flex justify-between">
+                <div className="h-4 bg-muted rounded w-1/3 mb-2" />
+                <div className="h-4 bg-muted rounded w-16" />
+              </div>
+              <div className="h-3 bg-muted rounded w-1/2" />
+            </div>
+          ))}
+        </div>
+      ) : items.length === 0 ? (
         <div className="text-center py-16">
           <Boxes className="w-12 h-12 text-muted-foreground mx-auto mb-4 opacity-40" />
           <p className="text-muted-foreground text-sm">등록된 서비스가 없습니다.</p>

@@ -2,6 +2,7 @@ import { trpc } from "@/lib/trpc";
 import { supabase } from "@/lib/supabase";
 // Buffer polyfill for @react-pdf/renderer
 import { Buffer } from 'buffer';
+
 if (typeof window !== 'undefined' && !window.Buffer) {
   (window as unknown as Record<string, unknown>).Buffer = Buffer;
 }

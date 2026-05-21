@@ -24,7 +24,7 @@ const emptyForm: ClientForm = { name: '', contactName: '', contactPhone: '', bus
 export default function Clients() {
   const [, navigate] = useLocation();
   const [search, setSearch] = useState('');
-  const { data: clients = [], refetch } = trpc.clients.list.useQuery(
+  const { data: clients = [], isLoading, refetch } = trpc.clients.list.useQuery(
     search ? { search } : undefined
   );
   const createMutation = trpc.clients.create.useMutation();
@@ -265,7 +265,22 @@ export default function Clients() {
       )}
 
       {/* 고객사 목록 */}
-      {clients.length === 0 ? (
+      {isLoading ? (
+        <div className="space-y-2">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="p-4 border border-border rounded-lg animate-pulse">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="h-4 bg-muted rounded w-1/4" />
+                <div className="h-4 bg-muted rounded w-10" />
+              </div>
+              <div className="flex gap-3">
+                <div className="h-3 bg-muted rounded w-20" />
+                <div className="h-3 bg-muted rounded w-24" />
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : clients.length === 0 ? (
         <div className="text-center py-16">
           <Building2 className="w-12 h-12 text-muted-foreground mx-auto mb-4 opacity-40" />
           <p className="text-muted-foreground text-sm">등록된 고객사가 없습니다.</p>
