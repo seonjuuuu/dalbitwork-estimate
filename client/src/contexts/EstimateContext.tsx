@@ -156,6 +156,7 @@ export function EstimateProvider({ children }: { children: ReactNode }) {
         title: currentDoc.title || '',
         memo: currentDoc.memo || null,
         clientName: currentDoc.clientName || '',
+        contactName: currentDoc.contactName || '',
         projectName: currentDoc.projectName || '',
         platform: currentDoc.platform || '',
         date: currentDoc.date || '',
