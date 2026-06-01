@@ -14,6 +14,8 @@ import MonthlySales from "./pages/MonthlySales";
 import ServiceItems from "./pages/ServiceItems";
 import Clients from "./pages/Clients";
 import ClientDetail from "./pages/ClientDetail";
+import HKTBInvoice from "./pages/HKTBInvoice";
+import HKTBRetainerInvoice from "./pages/HKTBRetainerInvoice";
 import Sidebar from "./components/Sidebar";
 import { useAuth } from "@/_core/hooks/useAuth";
 import LoginPage from "./pages/LoginPage";
@@ -64,6 +66,8 @@ function Router() {
         {(params) => <ClientDetail id={params.id} />}
       </Route>
       <Route path="/sales" component={MonthlySales} />
+      <Route path="/hktb-invoice" component={HKTBInvoice} />
+      <Route path="/hktb-retainer" component={HKTBRetainerInvoice} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>

@@ -1,8 +1,8 @@
 import { eq, and, desc, asc, gte, lte } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
-import { InsertUser, users, documents, InsertDocument, noteTemplates, InsertNoteTemplate, payments, serviceItems, clients, consultations } from "../drizzle/schema";
-import type { InsertPayment, InsertServiceItem, InsertClient, InsertConsultation } from "../drizzle/schema";
+import { InsertUser, users, documents, InsertDocument, noteTemplates, InsertNoteTemplate, payments, serviceItems, clients, consultations, hktbInvoices } from "../drizzle/schema";
+import type { InsertPayment, InsertServiceItem, InsertClient, InsertConsultation, InsertHktbInvoice } from "../drizzle/schema";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
@@ -156,15 +156,24 @@ export async function getDocumentPayments(documentId: number, userId: number) {
 
 export async function getMonthlySalesData(userId: number, year: number, month: number) {
   const db = await getDb();
-  if (!db) return [];
+  if (!db) return { payments: [], hktbInvoices: [] };
   const startDate = `${year}-${String(month).padStart(2, "0")}-01`;
   const endDate = new Date(year, month, 0).toISOString().split("T")[0];
-  return db
+  const revenueMonth = `${year}-${String(month).padStart(2, "0")}`;
+
+  const paymentRows = await db
     .select({ documentId: payments.documentId, documentTitle: documents.title, clientName: documents.clientName, type: payments.type, amount: payments.amount, paymentDate: payments.paymentDate, totalAmount: documents.totalMax })
     .from(payments)
     .innerJoin(documents, eq(payments.documentId, documents.id))
     .where(and(eq(payments.userId, userId), gte(payments.paymentDate, startDate), lte(payments.paymentDate, endDate)))
     .orderBy(desc(payments.paymentDate));
+
+  const hktbRows = await db
+    .select()
+    .from(hktbInvoices)
+    .where(and(eq(hktbInvoices.userId, userId), eq(hktbInvoices.revenueMonth, revenueMonth)));
+
+  return { payments: paymentRows, hktbInvoices: hktbRows };
 }
 
 // ─── Dashboard ───────────────────────────────────────────────────
@@ -423,9 +432,59 @@ export async function getEstimatesByClientName(clientName: string, userId: numbe
     .orderBy(desc(documents.updatedAt));
 }
 
+export async function getProposalsByClientName(clientName: string, userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select({
+    id: documents.id,
+    title: documents.title,
+    projectName: documents.projectName,
+    date: documents.date,
+    totalMin: documents.totalMin,
+    totalMax: documents.totalMax,
+    updatedAt: documents.updatedAt,
+  }).from(documents)
+    .where(and(eq(documents.userId, userId), eq(documents.type, 'proposal'), eq(documents.clientName, clientName)))
+    .orderBy(desc(documents.updatedAt));
+}
+
 async function getPaymentById(id: number) {
   const db = await getDb();
   if (!db) return undefined;
   const result = await db.select().from(payments).where(eq(payments.id, id)).limit(1);
   return result.length > 0 ? result[0] : undefined;
+}
+
+// ─── HKTB Invoices CRUD ──────────────────────────────────────────
+
+export async function listHktbInvoices(userId: number, type?: "translation" | "retainer") {
+  const db = await getDb();
+  if (!db) return [];
+  const condition = type
+    ? and(eq(hktbInvoices.userId, userId), eq(hktbInvoices.type, type))
+    : eq(hktbInvoices.userId, userId);
+  return db.select().from(hktbInvoices).where(condition).orderBy(desc(hktbInvoices.updatedAt));
+}
+
+export async function createHktbInvoice(data: InsertHktbInvoice) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const [inserted] = await db.insert(hktbInvoices).values(data).returning({ id: hktbInvoices.id });
+  const result = await db.select().from(hktbInvoices).where(eq(hktbInvoices.id, inserted.id)).limit(1);
+  return result[0];
+}
+
+export async function updateHktbInvoice(id: number, userId: number, data: Partial<Omit<InsertHktbInvoice, "id" | "userId" | "createdAt">>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(hktbInvoices).set(data).where(and(eq(hktbInvoices.id, id), eq(hktbInvoices.userId, userId)));
+  const result = await db.select().from(hktbInvoices).where(eq(hktbInvoices.id, id)).limit(1);
+  return result[0];
+}
+
+export async function deleteHktbInvoice(id: number, userId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(hktbInvoices).where(and(eq(hktbInvoices.id, id), eq(hktbInvoices.userId, userId)));
+  return { success: true };
 }

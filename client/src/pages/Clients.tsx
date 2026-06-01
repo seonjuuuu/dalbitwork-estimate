@@ -3,7 +3,7 @@ import { useLocation } from 'wouter';
 import { trpc } from '@/lib/trpc';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Building2, Edit, Trash2, Plus, Save, X, Loader2, Phone, User, CalendarDays, CircleDollarSign, Search } from 'lucide-react';
+import { Building2, Edit, Trash2, Plus, Save, X, Loader2, Phone, User, CalendarDays, CircleDollarSign, Search, FileText } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { ko } from 'date-fns/locale';
@@ -27,6 +27,12 @@ export default function Clients() {
   const { data: clients = [], isLoading, refetch } = trpc.clients.list.useQuery(
     search ? { search } : undefined
   );
+  const { data: allProposals = [] } = trpc.documents.list.useQuery({ type: 'proposal' });
+  const proposalsByClient = allProposals.reduce<Record<string, typeof allProposals>>((acc, doc) => {
+    if (!doc.clientName) return acc;
+    (acc[doc.clientName] ??= []).push(doc);
+    return acc;
+  }, {});
   const createMutation = trpc.clients.create.useMutation();
   const updateMutation = trpc.clients.update.useMutation();
   const deleteMutation = trpc.clients.delete.useMutation();
@@ -340,6 +346,20 @@ export default function Clients() {
                     <span className="text-xs text-muted-foreground">{client.businessNumber}</span>
                   )}
                 </div>
+                {proposalsByClient[client.name]?.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mt-1.5">
+                    {proposalsByClient[client.name].map((doc) => (
+                      <button
+                        key={doc.id}
+                        onClick={(e) => { e.stopPropagation(); navigate(`/proposals/${doc.id}`); }}
+                        className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 transition-colors dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800"
+                      >
+                        <FileText className="w-2.5 h-2.5" />
+                        {doc.title || doc.projectName || '제안서'}
+                      </button>
+                    ))}
+                  </div>
+                )}
                 {client.memo && (
                   <p className="text-xs text-muted-foreground/70 mt-1 truncate">{client.memo}</p>
                 )}

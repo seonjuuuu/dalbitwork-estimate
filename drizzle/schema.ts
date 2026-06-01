@@ -145,3 +145,21 @@ export const serviceItems = pgTable("service_items", {
 
 export type ServiceItem = typeof serviceItems.$inferSelect;
 export type InsertServiceItem = typeof serviceItems.$inferInsert;
+
+export const hktbInvoiceTypeEnum = pgEnum("hktb_invoice_type", ["translation", "retainer"]);
+
+export const hktbInvoices = pgTable("hktb_invoices", {
+  id: serial("id").primaryKey(),
+  userId: integer("userId").notNull(),
+  type: hktbInvoiceTypeEnum("type").notNull(),
+  invoiceNo: varchar("invoiceNo", { length: 100 }).notNull(),
+  invoiceDate: varchar("invoiceDate", { length: 20 }).notNull(),
+  items: json("items").notNull(),
+  totalAmount: integer("totalAmount").default(0).notNull(),
+  revenueMonth: varchar("revenueMonth", { length: 7 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull().$onUpdateFn(() => new Date()),
+});
+
+export type HktbInvoice = typeof hktbInvoices.$inferSelect;
+export type InsertHktbInvoice = typeof hktbInvoices.$inferInsert;

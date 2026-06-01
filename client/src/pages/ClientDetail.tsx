@@ -9,7 +9,7 @@ import { ko } from 'date-fns/locale';
 import {
   ArrowLeft, Plus, Trash2, Save, X, Loader2,
   Phone, User, CalendarDays, CircleDollarSign,
-  MessageSquare, ChevronDown, ChevronUp, Edit, LinkIcon,
+  MessageSquare, ChevronDown, ChevronUp, Edit, LinkIcon, FileText, ExternalLink,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -38,6 +38,10 @@ export default function ClientDetail({ id }: { id: string }) {
   const { data: client, refetch: refetchClient } = trpc.clients.get.useQuery({ id: clientId });
   const { data: consultations = [], refetch } = trpc.consultations.list.useQuery({ clientId });
   const { data: matchedEstimates = [] } = trpc.clients.getMatchedEstimates.useQuery(
+    { clientName: client?.name ?? '' },
+    { enabled: !!client?.name }
+  );
+  const { data: matchedProposals = [] } = trpc.clients.getMatchedProposals.useQuery(
     { clientName: client?.name ?? '' },
     { enabled: !!client?.name }
   );
@@ -248,6 +252,53 @@ export default function ClientDetail({ id }: { id: string }) {
           <p className="mt-3 text-xs text-muted-foreground/80 border-t border-border pt-3 whitespace-pre-wrap">{client.memo}</p>
         )}
       </div>
+
+      {/* 제안서 연결 */}
+      {matchedProposals.length > 0 && (
+        <div className="bg-card border border-border rounded-xl p-5">
+          <h2 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+            <FileText className="w-4 h-4 text-muted-foreground" />
+            연결된 제안서
+            <span className="text-xs text-muted-foreground font-normal">({matchedProposals.length}건)</span>
+          </h2>
+          <div className="space-y-2">
+            {matchedProposals.map((doc) => (
+              <div key={doc.id} className="flex items-center justify-between p-3 rounded-lg border border-border bg-muted/20">
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-foreground truncate">
+                    {doc.title || doc.projectName || '(제목 없음)'}
+                  </p>
+                  <div className="flex items-center gap-3 mt-0.5">
+                    {doc.date && (
+                      <span className="text-xs text-muted-foreground flex items-center gap-1">
+                        <CalendarDays className="w-3 h-3" />
+                        {doc.date}
+                      </span>
+                    )}
+                    {doc.totalMin > 0 && (
+                      <span className="text-xs text-muted-foreground flex items-center gap-1">
+                        <CircleDollarSign className="w-3 h-3" />
+                        {doc.totalMin === doc.totalMax || doc.totalMax === 0
+                          ? `${doc.totalMin.toLocaleString('ko-KR')}원`
+                          : `${doc.totalMin.toLocaleString('ko-KR')} ~ ${doc.totalMax.toLocaleString('ko-KR')}원`}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => navigate(`/proposals/${doc.id}`)}
+                  className="h-7 text-xs gap-1 flex-shrink-0 ml-3"
+                >
+                  <ExternalLink className="w-3 h-3" />
+                  보기
+                </Button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* 계약서 연동 */}
       {matchedEstimates.length > 0 && (

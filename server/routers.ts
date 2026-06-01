@@ -347,6 +347,12 @@ export const appRouter = router({
         return db.getEstimatesByClientName(input.clientName, ctx.user.id);
       }),
 
+    getMatchedProposals: protectedProcedure
+      .input(z.object({ clientName: z.string() }))
+      .query(async ({ ctx, input }) => {
+        return db.getProposalsByClientName(input.clientName, ctx.user.id);
+      }),
+
     delete: protectedProcedure
       .input(z.object({ id: z.number() }))
       .mutation(async ({ ctx, input }) => {
@@ -439,6 +445,53 @@ export const appRouter = router({
       .input(z.object({ id: z.number() }))
       .mutation(async ({ ctx, input }) => {
         return db.deleteServiceItem(input.id, ctx.user.id);
+      }),
+  }),
+
+  hktbInvoices: router({
+    list: protectedProcedure
+      .input(z.object({ type: z.enum(["translation", "retainer"]).optional() }).optional())
+      .query(async ({ ctx, input }) => {
+        return db.listHktbInvoices(ctx.user.id, input?.type);
+      }),
+
+    create: protectedProcedure
+      .input(z.object({
+        type: z.enum(["translation", "retainer"]),
+        invoiceNo: z.string(),
+        invoiceDate: z.string(),
+        items: z.array(z.record(z.string(), z.unknown())),
+        totalAmount: z.number().default(0),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        return db.createHktbInvoice({
+          userId: ctx.user.id,
+          type: input.type,
+          invoiceNo: input.invoiceNo,
+          invoiceDate: input.invoiceDate,
+          items: input.items,
+          totalAmount: input.totalAmount,
+        });
+      }),
+
+    update: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        invoiceNo: z.string().optional(),
+        invoiceDate: z.string().optional(),
+        items: z.array(z.record(z.string(), z.unknown())).optional(),
+        totalAmount: z.number().optional(),
+        revenueMonth: z.string().nullable().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const { id, ...data } = input;
+        return db.updateHktbInvoice(id, ctx.user.id, data);
+      }),
+
+    delete: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        return db.deleteHktbInvoice(input.id, ctx.user.id);
       }),
   }),
 
