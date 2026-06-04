@@ -8,6 +8,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import { ko } from 'date-fns/locale';
 import { toast } from 'sonner';
+import { formatPhone } from '@/lib/utils';
 
 interface ClientForm {
   name: string;
@@ -177,7 +178,7 @@ export default function Clients() {
               <label className="text-xs text-muted-foreground mb-1 block">연락처</label>
               <Input
                 value={form.contactPhone}
-                onChange={(e) => setForm((f) => ({ ...f, contactPhone: e.target.value }))}
+                onChange={(e) => setForm((f) => ({ ...f, contactPhone: formatPhone(e.target.value) }))}
                 placeholder="예: 010-1234-5678"
               />
             </div>
@@ -311,9 +312,18 @@ export default function Clients() {
                     <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400">
                       제안서
                     </span>
+                  ) : client.status === '완료' ? (
+                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400">
+                      완료
+                    </span>
                   ) : (
                     <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">
                       상담
+                    </span>
+                  )}
+                  {(client as any).isWorking && (
+                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400">
+                      작업중
                     </span>
                   )}
                 </div>
