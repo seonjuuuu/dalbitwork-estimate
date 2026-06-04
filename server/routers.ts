@@ -250,7 +250,7 @@ export const appRouter = router({
           clientName: proposal.clientName,
           projectName: proposal.projectName,
           platform: proposal.platform,
-          date: proposal.date,
+          date: new Date().toISOString().split('T')[0],
           items: proposal.items as DocumentItemRow[],
           notes: proposal.notes,
           notesMode: proposal.notesMode,
@@ -334,7 +334,13 @@ export const appRouter = router({
         contractDate: z.string().optional(),
         contractAmount: z.number().optional(),
         memo: z.string().optional(),
-        status: z.enum(['상담', '제안서', '계약']).optional(),
+        status: z.enum(['상담', '제안서', '계약', '완료']).optional(),
+        isWorking: z.boolean().optional(),
+        workStartDate: z.string().optional(),
+        pcDraftDate: z.string().optional(),
+        mobileDraftDate: z.string().optional(),
+        finalDeliveryDate: z.string().optional(),
+        linkedEstimateId: z.number().nullable().optional(),
       }))
       .mutation(async ({ ctx, input }) => {
         const { id, ...data } = input;
@@ -513,6 +519,15 @@ export const appRouter = router({
       .query(async ({ ctx, input }) => {
         return db.getMonthlySalesData(ctx.user.id, input.year, input.month);
       }),
+  }),
+
+  calendar: router({
+    getEvents: protectedProcedure.query(async ({ ctx }) => {
+      return db.getCalendarEvents(ctx.user.id);
+    }),
+    getWorkRanges: protectedProcedure.query(async ({ ctx }) => {
+      return db.getWorkRanges(ctx.user.id);
+    }),
   }),
 });
 

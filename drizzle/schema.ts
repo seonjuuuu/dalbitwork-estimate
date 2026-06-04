@@ -1,4 +1,4 @@
-import { integer, json, pgEnum, pgTable, serial, text, timestamp, varchar } from "drizzle-orm/pg-core";
+import { boolean, integer, json, pgEnum, pgTable, serial, text, timestamp, varchar } from "drizzle-orm/pg-core";
 
 export const roleEnum = pgEnum("role", ["user", "admin"]);
 export const documentTypeEnum = pgEnum("document_type", ["proposal", "estimate"]);
@@ -97,7 +97,7 @@ export const payments = pgTable("payments", {
 export type Payment = typeof payments.$inferSelect;
 export type InsertPayment = typeof payments.$inferInsert;
 
-export const clientStatusEnum = pgEnum("client_status", ["상담", "제안서", "계약"]);
+export const clientStatusEnum = pgEnum("client_status", ["상담", "제안서", "계약", "완료"]);
 
 export const clients = pgTable("clients", {
   id: serial("id").primaryKey(),
@@ -110,6 +110,12 @@ export const clients = pgTable("clients", {
   contractAmount: integer("contractAmount").default(0).notNull(),
   status: clientStatusEnum("status").default("상담").notNull(),
   memo: text("memo").default("").notNull(),
+  isWorking: boolean("isWorking").default(false).notNull(),
+  workStartDate: varchar("workStartDate", { length: 20 }).default("").notNull(),
+  pcDraftDate: varchar("pcDraftDate", { length: 20 }).default("").notNull(),
+  mobileDraftDate: varchar("mobileDraftDate", { length: 20 }).default("").notNull(),
+  finalDeliveryDate: varchar("finalDeliveryDate", { length: 20 }).default("").notNull(),
+  linkedEstimateId: integer("linkedEstimateId"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull().$onUpdateFn(() => new Date()),
 });

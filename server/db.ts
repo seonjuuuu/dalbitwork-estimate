@@ -296,6 +296,90 @@ export async function deleteConsultation(id: number, userId: number) {
   return { success: true };
 }
 
+// ─── Calendar Events ─────────────────────────────────────────────
+
+export async function getCalendarEvents(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+
+  const [allConsultations, allClients, allDocuments] = await Promise.all([
+    db.select({
+      id: consultations.id,
+      date: consultations.date,
+      content: consultations.content,
+      clientId: consultations.clientId,
+    }).from(consultations).where(eq(consultations.userId, userId)),
+    db.select({
+      id: clients.id,
+      name: clients.name,
+      contractDate: clients.contractDate,
+      pcDraftDate: clients.pcDraftDate,
+      mobileDraftDate: clients.mobileDraftDate,
+      finalDeliveryDate: clients.finalDeliveryDate,
+    }).from(clients).where(eq(clients.userId, userId)),
+    db.select({
+      id: documents.id,
+      type: documents.type,
+      date: documents.date,
+      clientName: documents.clientName,
+      projectName: documents.projectName,
+    }).from(documents).where(eq(documents.userId, userId)),
+  ]);
+
+  const clientMap = new Map(allClients.map((c) => [c.id, c.name]));
+
+  const events: { date: string; type: string; label: string; id: string; clientId?: number }[] = [];
+
+  for (const c of allConsultations) {
+    if (c.date) {
+      events.push({ date: c.date, type: 'consultation', label: clientMap.get(c.clientId) || '고객사', id: `consultation-${c.id}`, clientId: c.clientId });
+    }
+  }
+
+  for (const cl of allClients) {
+    if (cl.contractDate) {
+      events.push({ date: cl.contractDate, type: 'contract', label: cl.name, id: `contract-${cl.id}`, clientId: cl.id });
+    }
+    if (cl.pcDraftDate) {
+      events.push({ date: cl.pcDraftDate, type: 'pcDraft', label: cl.name, id: `pcDraft-${cl.id}`, clientId: cl.id });
+    }
+    if (cl.mobileDraftDate) {
+      events.push({ date: cl.mobileDraftDate, type: 'mobileDraft', label: cl.name, id: `mobileDraft-${cl.id}`, clientId: cl.id });
+    }
+    if (cl.finalDeliveryDate) {
+      events.push({ date: cl.finalDeliveryDate, type: 'finalDelivery', label: cl.name, id: `finalDelivery-${cl.id}`, clientId: cl.id });
+    }
+  }
+
+  for (const doc of allDocuments) {
+    if (doc.date) {
+      events.push({ date: doc.date, type: doc.type, label: doc.clientName || doc.projectName || '문서', id: `doc-${doc.id}` });
+    }
+  }
+
+  return events;
+}
+
+export async function getWorkRanges(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  const rows = await db.select({
+    id: clients.id,
+    name: clients.name,
+    workStartDate: clients.workStartDate,
+    finalDeliveryDate: clients.finalDeliveryDate,
+  }).from(clients).where(eq(clients.userId, userId));
+
+  return rows
+    .filter((c) => c.workStartDate)
+    .map((c) => ({
+      clientId: c.id,
+      clientName: c.name,
+      startDate: c.workStartDate,
+      endDate: c.finalDeliveryDate || '',
+    }));
+}
+
 // ─── Service Items CRUD ───────────────────────────────────────────
 
 export async function listServiceItems(userId: number) {
@@ -426,6 +510,7 @@ export async function getEstimatesByClientName(clientName: string, userId: numbe
     date: documents.date,
     totalMin: documents.totalMin,
     totalMax: documents.totalMax,
+    memo: documents.memo,
     updatedAt: documents.updatedAt,
   }).from(documents)
     .where(and(eq(documents.userId, userId), eq(documents.type, 'estimate'), eq(documents.clientName, clientName)))
@@ -442,6 +527,7 @@ export async function getProposalsByClientName(clientName: string, userId: numbe
     date: documents.date,
     totalMin: documents.totalMin,
     totalMax: documents.totalMax,
+    memo: documents.memo,
     updatedAt: documents.updatedAt,
   }).from(documents)
     .where(and(eq(documents.userId, userId), eq(documents.type, 'proposal'), eq(documents.clientName, clientName)))
