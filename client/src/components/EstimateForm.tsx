@@ -36,6 +36,7 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { getDocTypeLabel, autoFormatNumber, parseAmount, calcTotalOriginal, calcTotalFinal, calcTotalDiscount, hasAnyDiscount } from '@/lib/types';
+import { formatPhone } from '@/lib/utils';
 import {
   DndContext,
   closestCenter,
@@ -601,6 +602,30 @@ export default function EstimateForm() {
     }
   }, [totalOriginal, totalFinal, showDiscount, isProposal, setCurrentDoc]);
 
+  // 계약서이고 자유형식 참고사항에 {{총금액}} 변수가 있으면 항목 합계로 자동 채우기
+  useEffect(() => {
+    if (isProposal) return;
+    if (currentDoc.notesMode !== 'freeform') return;
+    const vars = extractVariables(currentDoc.freeformNotes || '');
+    if (!vars.includes('총금액')) return;
+    const baseAmount = showDiscount ? totalFinal : totalOriginal;
+    if (baseAmount <= 0) return;
+    const formatted = `${baseAmount.toLocaleString('ko-KR')}원`;
+    setCurrentDoc((prev) => {
+      if ((prev.templateVariables?.['총금액'] ?? '') === formatted) return prev;
+      const { deposit, balance } = calculateAmounts(baseAmount, 50);
+      return {
+        ...prev,
+        templateVariables: {
+          ...(prev.templateVariables || {}),
+          '총금액': formatted,
+          ...(vars.includes('계약금') ? { '계약금': deposit } : {}),
+          ...(vars.includes('잔금') ? { '잔금': balance } : {}),
+        },
+      };
+    });
+  }, [totalOriginal, totalFinal, showDiscount, isProposal, currentDoc.notesMode, currentDoc.freeformNotes, setCurrentDoc]);
+
   // 드래그앤드롭 센서
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -812,7 +837,7 @@ export default function EstimateForm() {
             <label className="text-xs font-medium text-muted-foreground mb-1.5 block">담당자 연락처</label>
             <Input
               value={currentDoc.contactPhone}
-              onChange={(e) => updateField('contactPhone', e.target.value)}
+              onChange={(e) => updateField('contactPhone', formatPhone(e.target.value))}
               placeholder="010-1234-5678"
               className="bg-background"
             />
