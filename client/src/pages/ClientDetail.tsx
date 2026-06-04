@@ -1,15 +1,16 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useLocation } from 'wouter';
 import { trpc } from '@/lib/trpc';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Switch } from '@/components/ui/switch';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { ko } from 'date-fns/locale';
 import {
   ArrowLeft, Plus, Trash2, Save, X, Loader2,
   Phone, User, CalendarDays, CircleDollarSign,
-  MessageSquare, ChevronDown, ChevronUp, Edit, LinkIcon, FileText, ExternalLink,
+  MessageSquare, ChevronDown, ChevronUp, Edit, LinkIcon, FileText, ExternalLink, CheckCircle2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -22,13 +23,14 @@ interface ConsultationForm {
 const today = new Date().toISOString().split('T')[0].replace(/-/g, '.');
 const emptyForm: ConsultationForm = { date: today, content: '', nextAction: '' };
 
-const STATUSES = ['상담', '제안서', '계약'] as const;
+const STATUSES = ['상담', '제안서', '계약', '완료'] as const;
 type Status = typeof STATUSES[number];
 
 const STATUS_STYLE: Record<Status, string> = {
   '상담': 'bg-muted text-muted-foreground hover:bg-muted/80',
   '제안서': 'bg-blue-100 text-blue-700 hover:bg-blue-200 dark:bg-blue-900/40 dark:text-blue-400',
   '계약': 'bg-amber-100 text-amber-700 hover:bg-amber-200 dark:bg-amber-900/40 dark:text-amber-400',
+  '완료': 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-900/40 dark:text-emerald-400',
 };
 
 export default function ClientDetail({ id }: { id: string }) {
@@ -58,6 +60,21 @@ export default function ClientDetail({ id }: { id: string }) {
   const [calendarMonth, setCalendarMonth] = useState<Date | undefined>(undefined);
   const [statusPopoverOpen, setStatusPopoverOpen] = useState(false);
   const [syncingEstimateId, setSyncingEstimateId] = useState<number | null>(null);
+  const [syncedEstimateId, setSyncedEstimateId] = useState<number | null>(null);
+  const [workingForm, setWorkingForm] = useState<{
+    isWorking: boolean;
+    workStartDate: string;
+    pcDraftDate: string;
+    mobileDraftDate: string;
+    finalDeliveryDate: string;
+  } | null>(null);
+  const [isSavingWork, setIsSavingWork] = useState(false);
+
+  useEffect(() => {
+    if (client && (client as any).linkedEstimateId) {
+      setSyncedEstimateId((client as any).linkedEstimateId);
+    }
+  }, [client]);
 
   const parseDateString = (str: string): Date | undefined => {
     const parts = str.split('.');
@@ -86,8 +103,10 @@ export default function ClientDetail({ id }: { id: string }) {
         id: clientId,
         contractDate: est.date || '',
         contractAmount: est.totalMin || 0,
+        linkedEstimateId: est.id,
       });
       await refetchClient();
+      setSyncedEstimateId(est.id);
       toast.success('계약서 정보가 연동되었습니다.');
     } catch {
       toast.error('연동에 실패했습니다.');
@@ -253,6 +272,163 @@ export default function ClientDetail({ id }: { id: string }) {
         )}
       </div>
 
+      {/* 작업 현황 */}
+      <div className="bg-card border border-border rounded-xl p-5">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
+            작업 현황
+          </h2>
+          {workingForm ? (
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-7 text-xs text-muted-foreground"
+                onClick={() => setWorkingForm(null)}
+              >
+                취소
+              </Button>
+              <Button
+                size="sm"
+                className="h-7 text-xs gap-1"
+                disabled={isSavingWork}
+                onClick={async () => {
+                  setIsSavingWork(true);
+                  try {
+                    await updateClientMutation.mutateAsync({
+                      id: clientId,
+                      isWorking: workingForm.isWorking,
+                      workStartDate: workingForm.workStartDate,
+                      pcDraftDate: workingForm.pcDraftDate,
+                      mobileDraftDate: workingForm.mobileDraftDate,
+                      finalDeliveryDate: workingForm.finalDeliveryDate,
+                    });
+                    await refetchClient();
+                    setWorkingForm(null);
+                    toast.success('작업 현황이 저장되었습니다.');
+                  } catch {
+                    toast.error('저장에 실패했습니다.');
+                  } finally {
+                    setIsSavingWork(false);
+                  }
+                }}
+              >
+                {isSavingWork ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
+                저장
+              </Button>
+            </div>
+          ) : (
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-7 text-xs text-muted-foreground gap-1"
+              onClick={() => setWorkingForm({
+                isWorking: client.isWorking ?? false,
+                workStartDate: client.workStartDate ?? '',
+                pcDraftDate: client.pcDraftDate ?? '',
+                mobileDraftDate: client.mobileDraftDate ?? '',
+                finalDeliveryDate: client.finalDeliveryDate ?? '',
+              })}
+            >
+              <Edit className="w-3 h-3" />
+              편집
+            </Button>
+          )}
+        </div>
+
+        {workingForm ? (
+          <div className="space-y-3">
+            {/* 작업중 토글 */}
+            <div className="flex items-center gap-3">
+              <Switch
+                checked={workingForm.isWorking}
+                onCheckedChange={(v) => setWorkingForm(f => f ? { ...f, isWorking: v } : f)}
+              />
+              <span className="text-sm font-medium text-foreground">작업중</span>
+            </div>
+            <div className="grid grid-cols-1 gap-3 mt-3">
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-1 block">시작일</label>
+                <Input
+                  type="date"
+                  value={workingForm.workStartDate}
+                  onChange={(e) => setWorkingForm(f => f ? { ...f, workStartDate: e.target.value } : f)}
+                  className="h-8 text-sm bg-background"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-1 block">PC 시안 전달 예정일</label>
+                <Input
+                  type="date"
+                  value={workingForm.pcDraftDate}
+                  onChange={(e) => setWorkingForm(f => f ? { ...f, pcDraftDate: e.target.value } : f)}
+                  className="h-8 text-sm bg-background"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-1 block">모바일 시안 전달 예정일</label>
+                <Input
+                  type="date"
+                  value={workingForm.mobileDraftDate}
+                  onChange={(e) => setWorkingForm(f => f ? { ...f, mobileDraftDate: e.target.value } : f)}
+                  className="h-8 text-sm bg-background"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-1 block">완성 전달 예정일</label>
+                <Input
+                  type="date"
+                  value={workingForm.finalDeliveryDate}
+                  onChange={(e) => setWorkingForm(f => f ? { ...f, finalDeliveryDate: e.target.value } : f)}
+                  className="h-8 text-sm bg-background"
+                />
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {/* 작업중 상태 */}
+            <div className="flex items-center gap-2">
+              <span className={`w-2 h-2 rounded-full flex-shrink-0 ${client.isWorking ? 'bg-emerald-500' : 'bg-muted-foreground/30'}`} />
+              <span className="text-sm text-foreground font-medium">
+                {client.isWorking ? '작업중' : '작업 없음'}
+              </span>
+            </div>
+            {/* 일정 */}
+            {(client.workStartDate || client.pcDraftDate || client.mobileDraftDate || client.finalDeliveryDate) ? (
+              <div className="mt-2 space-y-1.5 pl-4">
+                {client.workStartDate && (
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-muted-foreground">시작일</span>
+                    <span className="font-medium text-foreground">{client.workStartDate}</span>
+                  </div>
+                )}
+                {client.pcDraftDate && (
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-muted-foreground">PC 시안 전달</span>
+                    <span className="font-medium text-foreground">{client.pcDraftDate}</span>
+                  </div>
+                )}
+                {client.mobileDraftDate && (
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-muted-foreground">모바일 시안 전달</span>
+                    <span className="font-medium text-foreground">{client.mobileDraftDate}</span>
+                  </div>
+                )}
+                {client.finalDeliveryDate && (
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-muted-foreground">완성 전달</span>
+                    <span className="font-medium text-foreground">{client.finalDeliveryDate}</span>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground pl-4">전달 예정일 없음</p>
+            )}
+          </div>
+        )}
+      </div>
+
       {/* 제안서 연결 */}
       {matchedProposals.length > 0 && (
         <div className="bg-card border border-border rounded-xl p-5">
@@ -263,37 +439,44 @@ export default function ClientDetail({ id }: { id: string }) {
           </h2>
           <div className="space-y-2">
             {matchedProposals.map((doc) => (
-              <div key={doc.id} className="flex items-center justify-between p-3 rounded-lg border border-border bg-muted/20">
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-foreground truncate">
-                    {doc.title || doc.projectName || '(제목 없음)'}
-                  </p>
-                  <div className="flex items-center gap-3 mt-0.5">
-                    {doc.date && (
-                      <span className="text-xs text-muted-foreground flex items-center gap-1">
-                        <CalendarDays className="w-3 h-3" />
-                        {doc.date}
-                      </span>
-                    )}
-                    {doc.totalMin > 0 && (
-                      <span className="text-xs text-muted-foreground flex items-center gap-1">
-                        <CircleDollarSign className="w-3 h-3" />
-                        {doc.totalMin === doc.totalMax || doc.totalMax === 0
-                          ? `${doc.totalMin.toLocaleString('ko-KR')}원`
-                          : `${doc.totalMin.toLocaleString('ko-KR')} ~ ${doc.totalMax.toLocaleString('ko-KR')}원`}
-                      </span>
-                    )}
+              <div key={doc.id} className="rounded-lg border border-border bg-muted/20">
+                <div className="flex items-center justify-between p-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-foreground truncate">
+                      {doc.title || doc.projectName || '(제목 없음)'}
+                    </p>
+                    <div className="flex items-center gap-3 mt-0.5">
+                      {doc.date && (
+                        <span className="text-xs text-muted-foreground flex items-center gap-1">
+                          <CalendarDays className="w-3 h-3" />
+                          {doc.date}
+                        </span>
+                      )}
+                      {doc.totalMin > 0 && (
+                        <span className="text-xs text-muted-foreground flex items-center gap-1">
+                          <CircleDollarSign className="w-3 h-3" />
+                          {doc.totalMin === doc.totalMax || doc.totalMax === 0
+                            ? `${doc.totalMin.toLocaleString('ko-KR')}원`
+                            : `${doc.totalMin.toLocaleString('ko-KR')} ~ ${doc.totalMax.toLocaleString('ko-KR')}원`}
+                        </span>
+                      )}
+                    </div>
                   </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => navigate(`/proposals/${doc.id}`)}
+                    className="h-7 text-xs gap-1 flex-shrink-0 ml-3"
+                  >
+                    <ExternalLink className="w-3 h-3" />
+                    보기
+                  </Button>
                 </div>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => navigate(`/proposals/${doc.id}`)}
-                  className="h-7 text-xs gap-1 flex-shrink-0 ml-3"
-                >
-                  <ExternalLink className="w-3 h-3" />
-                  보기
-                </Button>
+                {(doc as any).memo && (
+                  <p className="px-3 pb-3 text-xs text-muted-foreground border-t border-border/60 pt-2 whitespace-pre-wrap">
+                    {(doc as any).memo}
+                  </p>
+                )}
               </div>
             ))}
           </div>
@@ -301,51 +484,108 @@ export default function ClientDetail({ id }: { id: string }) {
       )}
 
       {/* 계약서 연동 */}
-      {matchedEstimates.length > 0 && (
-        <div className="bg-card border border-border rounded-xl p-5">
-          <h2 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-            <LinkIcon className="w-4 h-4 text-muted-foreground" />
-            연동 가능한 계약서
-            <span className="text-xs text-muted-foreground font-normal">({matchedEstimates.length}건)</span>
-          </h2>
-          <div className="space-y-2">
-            {matchedEstimates.map((est) => (
-              <div key={est.id} className="flex items-center justify-between p-3 rounded-lg border border-border bg-muted/20">
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-foreground truncate">{est.title || '(제목 없음)'}</p>
-                  <div className="flex items-center gap-3 mt-0.5">
-                    {est.date && (
-                      <span className="text-xs text-muted-foreground flex items-center gap-1">
-                        <CalendarDays className="w-3 h-3" />
-                        {est.date}
-                      </span>
-                    )}
-                    {est.totalMin > 0 && (
-                      <span className="text-xs text-muted-foreground flex items-center gap-1">
-                        <CircleDollarSign className="w-3 h-3" />
-                        {est.totalMin.toLocaleString('ko-KR')}원
-                      </span>
-                    )}
-                  </div>
+      {matchedEstimates.length > 0 && (() => {
+        const linkedEst = matchedEstimates.find((e) => e.id === syncedEstimateId);
+        const unlinkedEsts = matchedEstimates.filter((e) => e.id !== syncedEstimateId);
+
+        const renderEstCard = (est: typeof matchedEstimates[0], isLinked: boolean) => (
+          <div
+            key={est.id}
+            className={`rounded-lg border transition-colors ${
+              isLinked
+                ? 'border-emerald-300 bg-emerald-50 dark:border-emerald-700 dark:bg-emerald-900/20'
+                : 'border-border bg-muted/20'
+            }`}
+          >
+            <div className="flex items-center justify-between p-3">
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium text-foreground truncate">{est.title || '(제목 없음)'}</p>
+                <div className="flex items-center gap-3 mt-0.5">
+                  {est.date && (
+                    <span className="text-xs text-muted-foreground flex items-center gap-1">
+                      <CalendarDays className="w-3 h-3" />
+                      {est.date}
+                    </span>
+                  )}
+                  {est.totalMin > 0 && (
+                    <span className="text-xs text-muted-foreground flex items-center gap-1">
+                      <CircleDollarSign className="w-3 h-3" />
+                      {est.totalMin.toLocaleString('ko-KR')}원
+                    </span>
+                  )}
+                  {isLinked && (
+                    <span className="text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-1 font-medium">
+                      <CheckCircle2 className="w-3 h-3" />
+                      연동됨
+                    </span>
+                  )}
                 </div>
+              </div>
+              <div className="flex items-center gap-1.5 ml-3 flex-shrink-0">
                 <Button
                   size="sm"
-                  variant="outline"
-                  onClick={() => handleSyncEstimate(est)}
-                  disabled={syncingEstimateId === est.id}
-                  className="h-7 text-xs gap-1 flex-shrink-0 ml-3"
+                  variant="ghost"
+                  onClick={() => navigate(`/estimates/${est.id}`)}
+                  className="h-7 text-xs gap-1 text-muted-foreground hover:text-foreground"
                 >
-                  {syncingEstimateId === est.id
-                    ? <Loader2 className="w-3 h-3 animate-spin" />
-                    : <LinkIcon className="w-3 h-3" />}
-                  연동
+                  <ExternalLink className="w-3 h-3" />
+                  열기
                 </Button>
+                {isLinked ? (
+                  <div className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 px-2">
+                    <CheckCircle2 className="w-4 h-4" />
+                  </div>
+                ) : (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleSyncEstimate(est)}
+                    disabled={syncingEstimateId === est.id}
+                    className="h-7 text-xs gap-1"
+                  >
+                    {syncingEstimateId === est.id
+                      ? <Loader2 className="w-3 h-3 animate-spin" />
+                      : <LinkIcon className="w-3 h-3" />}
+                    연동
+                  </Button>
+                )}
               </div>
-            ))}
+            </div>
+            {(est as any).memo && (
+              <p className="px-3 pb-3 text-xs text-muted-foreground border-t border-border/60 pt-2 whitespace-pre-wrap">
+                {(est as any).memo}
+              </p>
+            )}
           </div>
-          <p className="text-[11px] text-muted-foreground/60 mt-2">연동하면 계약일자와 계약금액이 계약서 정보로 업데이트됩니다.</p>
-        </div>
-      )}
+        );
+
+        return (
+          <>
+            {linkedEst && (
+              <div className="bg-card border border-border rounded-xl p-5">
+                <h2 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                  연동된 계약서
+                </h2>
+                {renderEstCard(linkedEst, true)}
+              </div>
+            )}
+            {unlinkedEsts.length > 0 && (
+              <div className="bg-card border border-border rounded-xl p-5">
+                <h2 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                  <LinkIcon className="w-4 h-4 text-muted-foreground" />
+                  연동 가능한 계약서
+                  <span className="text-xs text-muted-foreground font-normal">({unlinkedEsts.length}건)</span>
+                </h2>
+                <div className="space-y-2">
+                  {unlinkedEsts.map((est) => renderEstCard(est, false))}
+                </div>
+                <p className="text-[11px] text-muted-foreground/60 mt-2">연동하면 계약일자와 계약금액이 계약서 정보로 업데이트됩니다.</p>
+              </div>
+            )}
+          </>
+        );
+      })()}
 
       {/* 상담 이력 */}
       <div className="bg-card border border-border rounded-xl p-5">
