@@ -16,6 +16,7 @@ import Clients from "./pages/Clients";
 import ClientDetail from "./pages/ClientDetail";
 import HKTBInvoice from "./pages/HKTBInvoice";
 import HKTBRetainerInvoice from "./pages/HKTBRetainerInvoice";
+import CalendarPage from "./pages/CalendarPage";
 import Sidebar from "./components/Sidebar";
 import { useAuth } from "@/_core/hooks/useAuth";
 import LoginPage from "./pages/LoginPage";
@@ -65,6 +66,7 @@ function Router() {
       <Route path="/clients/:id">
         {(params) => <ClientDetail id={params.id} />}
       </Route>
+      <Route path="/calendar" component={CalendarPage} />
       <Route path="/sales" component={MonthlySales} />
       <Route path="/hktb-invoice" component={HKTBInvoice} />
       <Route path="/hktb-retainer" component={HKTBRetainerInvoice} />
