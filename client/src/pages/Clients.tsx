@@ -3,7 +3,7 @@ import { useLocation } from 'wouter';
 import { trpc } from '@/lib/trpc';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Building2, Edit, Trash2, Plus, Save, X, Loader2, Phone, User, CalendarDays, CircleDollarSign, Search, FileText } from 'lucide-react';
+import { Building2, Edit, Trash2, Plus, Save, X, Loader2, Phone, User, CalendarDays, CircleDollarSign, Search, FileText, Hash } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { ko } from 'date-fns/locale';
@@ -21,6 +21,41 @@ interface ClientForm {
 }
 
 const emptyForm: ClientForm = { name: '', contactName: '', contactPhone: '', businessNumber: '', contractDate: '', contractAmount: '', memo: '' };
+
+type WorkflowStatus = '상담' | '작업진행중' | 'PC검수' | '모바일작업중' | '고객전달' | '완료';
+
+const WORKFLOW_BADGE: Record<Exclude<WorkflowStatus, '상담'>, { label: string; cls: string }> = {
+  '작업진행중': { label: '작업 진행중', cls: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400' },
+  'PC검수':     { label: 'PC 검수',    cls: 'bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-400' },
+  '모바일작업중': { label: '모바일 작업중', cls: 'bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-400' },
+  '고객전달':   { label: '고객 전달',  cls: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400' },
+  '완료':       { label: '완료',       cls: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400' },
+};
+
+function WorkflowBadge({ workflowStatus, isWorking }: { workflowStatus: string; isWorking: boolean }) {
+  const effective = (isWorking && workflowStatus === '상담') ? '작업진행중' : workflowStatus;
+  if (effective === '상담') return null;
+  const badge = WORKFLOW_BADGE[effective as Exclude<WorkflowStatus, '상담'>];
+  if (!badge) return null;
+  return (
+    <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${badge.cls}`}>
+      {badge.label}
+    </span>
+  );
+}
+
+function Highlight({ text, query }: { text: string; query: string }) {
+  if (!query || !text) return <>{text}</>;
+  const idx = text.toLowerCase().indexOf(query.toLowerCase());
+  if (idx === -1) return <>{text}</>;
+  return (
+    <>
+      {text.slice(0, idx)}
+      <mark className="bg-yellow-200 dark:bg-yellow-700/60 text-inherit rounded-sm px-0.5">{text.slice(idx, idx + query.length)}</mark>
+      {text.slice(idx + query.length)}
+    </>
+  );
+}
 
 export default function Clients() {
   const [, navigate] = useLocation();
@@ -310,7 +345,7 @@ export default function Clients() {
             >
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <p className="font-semibold text-sm text-foreground">{client.name}</p>
+                  <p className="font-semibold text-sm text-foreground"><Highlight text={client.name} query={search} /></p>
                   {client.status === '완료' ? (
                     <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400">
                       완료
@@ -323,32 +358,24 @@ export default function Clients() {
                     <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400">
                       제안서
                     </span>
-                  ) : client.status === '완료' ? (
-                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400">
-                      완료
-                    </span>
                   ) : (
                     <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">
                       상담
                     </span>
                   )}
-                  {(client as any).isWorking && (
-                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400">
-                      작업중
-                    </span>
-                  )}
+                  <WorkflowBadge workflowStatus={(client as any).workflowStatus ?? '상담'} isWorking={(client as any).isWorking ?? false} />
                 </div>
                 <div className="flex flex-wrap items-center gap-3 mt-1">
                   {client.contactName && (
                     <span className="flex items-center gap-1 text-xs text-muted-foreground">
                       <User className="w-3 h-3" />
-                      {client.contactName}
+                      <Highlight text={client.contactName} query={search} />
                     </span>
                   )}
                   {client.contactPhone && (
                     <span className="flex items-center gap-1 text-xs text-muted-foreground">
                       <Phone className="w-3 h-3" />
-                      {client.contactPhone}
+                      <Highlight text={client.contactPhone} query={search} />
                     </span>
                   )}
                   {client.contractDate && (
@@ -364,7 +391,10 @@ export default function Clients() {
                     </span>
                   )}
                   {client.businessNumber && (
-                    <span className="text-xs text-muted-foreground">{client.businessNumber}</span>
+                    <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                      <Hash className="w-3 h-3" />
+                      <Highlight text={client.businessNumber} query={search} />
+                    </span>
                   )}
                 </div>
                 {(proposalsByClient[client.name]?.length > 0 || estimatesByClient[client.name]?.length > 0) && (
