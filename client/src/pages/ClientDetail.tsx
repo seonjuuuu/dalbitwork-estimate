@@ -9,7 +9,7 @@ import { ko } from 'date-fns/locale';
 import {
   ArrowLeft, Plus, Trash2, Save, X, Loader2,
   Phone, User, CalendarDays, CircleDollarSign,
-  MessageSquare, ChevronDown, ChevronUp, Edit, LinkIcon, FileText, ExternalLink,
+  MessageSquare, ChevronDown, ChevronUp, Edit, LinkIcon, FileText, ExternalLink, Hash,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -70,12 +70,28 @@ export default function ClientDetail({ id }: { id: string }) {
       setFinalPaymentDate(client.finalPaymentDate ?? '');
       setFinalPaymentAmount(client.finalPaymentAmount ? client.finalPaymentAmount.toLocaleString('ko-KR') : '');
       setEditingFinal(!client.finalPaymentDate);
+      setInfoForm({
+        name: client.name ?? '',
+        contactName: client.contactName ?? '',
+        contactPhone: client.contactPhone ?? '',
+        businessNumber: client.businessNumber ?? '',
+        contractDate: client.contractDate ?? '',
+        contractAmount: client.contractAmount ? client.contractAmount.toLocaleString('ko-KR') : '',
+        memo: client.memo ?? '',
+      });
     }
   }, [client?.id]);
   const [calendarMonth, setCalendarMonth] = useState<Date | undefined>(undefined);
   const [statusPopoverOpen, setStatusPopoverOpen] = useState(false);
   const [syncingEstimateId, setSyncingEstimateId] = useState<number | null>(null);
   const [syncedEstimateId, setSyncedEstimateId] = useState<number | null>(null);
+  const [editingInfo, setEditingInfo] = useState(false);
+  const [infoForm, setInfoForm] = useState({
+    name: '', contactName: '', contactPhone: '', businessNumber: '',
+    contractDate: '', contractAmount: '', memo: '',
+  });
+  const [isSavingInfo, setIsSavingInfo] = useState(false);
+
   const [workingForm, setWorkingForm] = useState<{
     isWorking: boolean;
     workStartDate: string;
@@ -145,6 +161,30 @@ export default function ClientDetail({ id }: { id: string }) {
       toast.error('저장에 실패했습니다.');
     } finally {
       setIsSavingFinal(false);
+    }
+  };
+
+  const handleSaveInfo = async () => {
+    if (!infoForm.name.trim()) { toast.error('고객사명을 입력해주세요.'); return; }
+    setIsSavingInfo(true);
+    try {
+      await updateClientMutation.mutateAsync({
+        id: clientId,
+        name: infoForm.name.trim(),
+        contactName: infoForm.contactName,
+        contactPhone: infoForm.contactPhone,
+        businessNumber: infoForm.businessNumber,
+        contractDate: infoForm.contractDate,
+        contractAmount: infoForm.contractAmount ? Number(infoForm.contractAmount.replace(/,/g, '')) : 0,
+        memo: infoForm.memo,
+      });
+      await refetchClient();
+      setEditingInfo(false);
+      toast.success('기본 정보가 저장되었습니다.');
+    } catch {
+      toast.error('저장에 실패했습니다.');
+    } finally {
+      setIsSavingInfo(false);
     }
   };
 
@@ -283,38 +323,109 @@ export default function ClientDetail({ id }: { id: string }) {
 
       {/* 고객 기본 정보 */}
       <div className="bg-card border border-border rounded-xl p-5">
-        <h2 className="text-sm font-semibold text-foreground mb-3">기본 정보</h2>
-        <div className="grid grid-cols-2 gap-3 text-sm">
-          {client.contactName && (
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <User className="w-3.5 h-3.5 flex-shrink-0" />
-              <span>{client.contactName}</span>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-sm font-semibold text-foreground">기본 정보</h2>
+          {!editingInfo ? (
+            <Button size="sm" variant="outline" onClick={() => setEditingInfo(true)} className="h-7 text-xs gap-1">
+              <Edit className="w-3 h-3" />수정
+            </Button>
+          ) : (
+            <div className="flex gap-1.5">
+              <Button size="sm" variant="ghost" onClick={() => { setEditingInfo(false); }} className="h-7 text-xs gap-1">
+                <X className="w-3 h-3" />취소
+              </Button>
+              <Button size="sm" onClick={handleSaveInfo} disabled={isSavingInfo} className="h-7 text-xs gap-1">
+                {isSavingInfo ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}저장
+              </Button>
             </div>
-          )}
-          {client.contactPhone && (
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <Phone className="w-3.5 h-3.5 flex-shrink-0" />
-              <span>{client.contactPhone}</span>
-            </div>
-          )}
-          {client.contractDate && (
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <CalendarDays className="w-3.5 h-3.5 flex-shrink-0" />
-              <span>{client.contractDate}</span>
-            </div>
-          )}
-          {client.contractAmount > 0 && (
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <CircleDollarSign className="w-3.5 h-3.5 flex-shrink-0" />
-              <span className="font-semibold text-foreground">{client.contractAmount.toLocaleString('ko-KR')}원</span>
-            </div>
-          )}
-          {client.businessNumber && (
-            <div className="col-span-2 text-muted-foreground text-xs">{client.businessNumber}</div>
           )}
         </div>
-        {client.memo && (
-          <p className="mt-3 text-xs text-muted-foreground/80 border-t border-border pt-3 whitespace-pre-wrap">{client.memo}</p>
+
+        {editingInfo ? (
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">고객사명 *</label>
+                <Input value={infoForm.name} onChange={e => setInfoForm(f => ({ ...f, name: e.target.value }))} className="text-sm" />
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">사업자번호</label>
+                <Input value={infoForm.businessNumber} onChange={e => setInfoForm(f => ({ ...f, businessNumber: e.target.value }))} className="text-sm" placeholder="000-00-00000" />
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">담당자</label>
+                <Input value={infoForm.contactName} onChange={e => setInfoForm(f => ({ ...f, contactName: e.target.value }))} className="text-sm" />
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">연락처</label>
+                <Input value={infoForm.contactPhone} onChange={e => setInfoForm(f => ({ ...f, contactPhone: e.target.value }))} className="text-sm" placeholder="010-0000-0000" />
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">계약일</label>
+                <Input value={infoForm.contractDate} onChange={e => setInfoForm(f => ({ ...f, contractDate: e.target.value }))} className="text-sm" placeholder="2026.01.01" />
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">계약금액 (원)</label>
+                <Input
+                  value={infoForm.contractAmount}
+                  onChange={e => {
+                    const raw = e.target.value.replace(/[^0-9]/g, '');
+                    setInfoForm(f => ({ ...f, contractAmount: raw ? Number(raw).toLocaleString('ko-KR') : '' }));
+                  }}
+                  className="text-sm text-right"
+                  placeholder="0"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">메모</label>
+              <textarea
+                value={infoForm.memo}
+                onChange={e => setInfoForm(f => ({ ...f, memo: e.target.value }))}
+                rows={3}
+                className="w-full text-sm bg-background border border-input rounded-md px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-ring"
+                placeholder="메모를 입력하세요"
+              />
+            </div>
+          </div>
+        ) : (
+          <>
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              {client.contactName && (
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <User className="w-3.5 h-3.5 flex-shrink-0" />
+                  <span>{client.contactName}</span>
+                </div>
+              )}
+              {client.contactPhone && (
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Phone className="w-3.5 h-3.5 flex-shrink-0" />
+                  <span>{client.contactPhone}</span>
+                </div>
+              )}
+              {client.contractDate && (
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <CalendarDays className="w-3.5 h-3.5 flex-shrink-0" />
+                  <span>{client.contractDate}</span>
+                </div>
+              )}
+              {client.contractAmount > 0 && (
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <CircleDollarSign className="w-3.5 h-3.5 flex-shrink-0" />
+                  <span className="font-semibold text-foreground">{client.contractAmount.toLocaleString('ko-KR')}원</span>
+                </div>
+              )}
+              {client.businessNumber && (
+                <div className="col-span-2 flex items-center gap-2 text-muted-foreground text-sm">
+                  <Hash className="w-3.5 h-3.5 flex-shrink-0" />
+                  <span>{client.businessNumber}</span>
+                </div>
+              )}
+            </div>
+            {client.memo && (
+              <p className="mt-3 text-xs text-muted-foreground/80 border-t border-border pt-3 whitespace-pre-wrap">{client.memo}</p>
+            )}
+          </>
         )}
       </div>
 
