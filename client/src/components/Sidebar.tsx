@@ -88,6 +88,13 @@ export default function Sidebar() {
       onClick: () => navigate('/calendar'),
     },
     {
+      icon: CalendarDays,
+      label: '진행 일정',
+      id: 'schedule',
+      active: location === '/schedule',
+      onClick: () => navigate('/schedule'),
+    },
+    {
       icon: BarChart3,
       label: '월별 매출',
       id: 'monthly-sales',
