@@ -1,4 +1,20 @@
 import { useEstimate } from '@/contexts/EstimateContext';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { nanoid } from 'nanoid';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -37,22 +53,6 @@ import {
 } from '@/components/ui/dialog';
 import { getDocTypeLabel, autoFormatNumber, parseAmount, calcTotalOriginal, calcTotalFinal, calcTotalDiscount, hasAnyDiscount } from '@/lib/types';
 import { formatPhone } from '@/lib/utils';
-import {
-  DndContext,
-  closestCenter,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-} from '@dnd-kit/core';
-import {
-  SortableContext,
-  sortableKeyboardCoordinates,
-  useSortable,
-  verticalListSortingStrategy,
-} from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
 
 // 숫자 입력 핸들러 - 입력 시 자동 콤마
 function handleNumberInput(value: string, callback: (formatted: string) => void) {
@@ -511,6 +511,21 @@ function NoteTemplateActions({
   );
 }
 
+function SortableItemRow({ id, children }: { id: string; children: (dragHandleProps: React.HTMLAttributes<HTMLElement>) => React.ReactNode }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 10 : undefined,
+  };
+  return (
+    <div ref={setNodeRef} style={style}>
+      {children({ ...attributes, ...listeners })}
+    </div>
+  );
+}
+
 export default function EstimateForm() {
   const {
     currentDoc,
@@ -518,6 +533,7 @@ export default function EstimateForm() {
     addItem,
     removeItem,
     updateItem,
+    reorderItems,
     addNote,
     removeNote,
     updateNote,
@@ -535,6 +551,19 @@ export default function EstimateForm() {
 
   const [servicePickerOpen, setServicePickerOpen] = useState(false);
   const [copyDialogOpen, setCopyDialogOpen] = useState(false);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+
+  const handleItemDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = currentDoc.items.findIndex((i) => i.id === active.id);
+    const newIndex = currentDoc.items.findIndex((i) => i.id === over.id);
+    if (oldIndex !== -1 && newIndex !== -1) reorderItems(oldIndex, newIndex);
+  };
 
   const handleAddServiceItem = (item: { name: string; unitPrice: string; originalPrice: string }) => {
     setCurrentDoc((prev) => ({
@@ -625,12 +654,6 @@ export default function EstimateForm() {
       };
     });
   }, [totalOriginal, totalFinal, showDiscount, isProposal, currentDoc.notesMode, currentDoc.freeformNotes, setCurrentDoc]);
-
-  // 드래그앤드롭 센서
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
-  );
 
   // 참고사항 ID 생성 (인덱스 기반)
   const noteIds = currentDoc.notes.map((_: string, i: number) => `note-${i}`);
@@ -881,7 +904,8 @@ export default function EstimateForm() {
         </div>
 
         {/* Table Header */}
-        <div className="grid grid-cols-[1.5fr_0.7fr_0.7fr_0.8fr_0.8fr_0.8fr_auto] gap-1.5 mb-2 mt-5 overflow-x-auto">
+        <div className="grid grid-cols-[16px_1.5fr_0.7fr_0.7fr_0.8fr_0.8fr_0.8fr_auto] gap-1.5 mb-2 mt-5 overflow-x-auto">
+          <span />
           <span className="text-[11px] font-medium text-muted-foreground px-1">항목명</span>
           <span className="text-[11px] font-medium text-muted-foreground px-1">수량</span>
           <span className="text-[11px] font-medium text-muted-foreground px-1">단가(원)</span>
@@ -892,12 +916,22 @@ export default function EstimateForm() {
         </div>
 
         {/* Items */}
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleItemDragEnd}>
+          <SortableContext items={currentDoc.items.map((i) => i.id)} strategy={verticalListSortingStrategy}>
         <div className="space-y-2">
           {currentDoc.items.map((item) => (
+            <SortableItemRow key={item.id} id={item.id}>
+              {(dragHandleProps) => (
             <div
-              key={item.id}
-              className="grid grid-cols-[1.5fr_0.7fr_0.7fr_0.8fr_0.8fr_0.8fr_auto] gap-1.5 items-center group"
+              className="grid grid-cols-[16px_1.5fr_0.7fr_0.7fr_0.8fr_0.8fr_0.8fr_auto] gap-1.5 items-center group"
             >
+              <button
+                {...dragHandleProps}
+                className="cursor-grab active:cursor-grabbing text-muted-foreground/40 hover:text-muted-foreground transition-colors touch-none"
+                tabIndex={-1}
+              >
+                <GripVertical className="w-3.5 h-3.5" />
+              </button>
               <Input
                 value={item.name}
                 onChange={(e) => updateItem(item.id, 'name', e.target.value)}
@@ -1063,8 +1097,12 @@ export default function EstimateForm() {
                 <Trash2 className="w-3.5 h-3.5" />
               </button>
             </div>
+              )}
+            </SortableItemRow>
           ))}
         </div>
+          </SortableContext>
+        </DndContext>
 
         {/* 자동 계산 요약 - 할인색상 골드(#F7AE00) */}
         {showDiscount && (

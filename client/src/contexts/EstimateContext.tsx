@@ -19,6 +19,7 @@ interface EstimateContextType {
   removeNote: (index: number) => void;
   updateNote: (index: number, value: string) => void;
   reorderNotes: (oldIndex: number, newIndex: number) => void;
+  reorderItems: (oldIndex: number, newIndex: number) => void;
   copyFromDocument: (doc: DocumentData) => void;
   isLoadingDocuments: boolean;
   isSaving: boolean;
@@ -295,6 +296,15 @@ export function EstimateProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const reorderItems = useCallback((oldIndex: number, newIndex: number) => {
+    setCurrentDoc((prev) => {
+      const newItems = [...prev.items];
+      const [removed] = newItems.splice(oldIndex, 1);
+      newItems.splice(newIndex, 0, removed);
+      return { ...prev, items: newItems };
+    });
+  }, []);
+
   return (
     <EstimateContext.Provider
       value={{
@@ -315,6 +325,7 @@ export function EstimateProvider({ children }: { children: ReactNode }) {
         removeNote,
         updateNote,
         reorderNotes,
+        reorderItems,
         isSaving,
       }}
     >
