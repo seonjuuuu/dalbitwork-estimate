@@ -30,10 +30,12 @@ export default function MonthlySales() {
 
   const payments = data?.payments ?? [];
   const hktbInvoices = data?.hktbInvoices ?? [];
+  const finalPayments = data?.finalPayments ?? [];
 
   const paymentTotal = payments.reduce((s, p) => s + p.amount, 0);
   const hktbTotal = hktbInvoices.reduce((s, h) => s + h.totalAmount, 0);
-  const grandTotal = paymentTotal + hktbTotal;
+  const finalPaymentTotal = finalPayments.reduce((s, f) => s + (f.finalPaymentAmount ?? f.contractAmount ?? 0), 0);
+  const grandTotal = paymentTotal + hktbTotal + finalPaymentTotal;
 
   const monthString = `${selectedYear}년 ${selectedMonth}월`;
 
@@ -60,11 +62,11 @@ export default function MonthlySales() {
       </Card>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-4 gap-4 mb-6">
         <Card className="p-5">
           <div className="text-xs font-medium text-muted-foreground mb-1">총 매출</div>
           <div className="text-2xl font-bold text-foreground">{fmt(grandTotal)}</div>
-          <p className="text-xs text-muted-foreground mt-1">{payments.length + hktbInvoices.length}건</p>
+          <p className="text-xs text-muted-foreground mt-1">{payments.length + hktbInvoices.length + finalPayments.length}건</p>
         </Card>
         <Card className="p-5">
           <div className="text-xs font-medium text-muted-foreground mb-1">일반 결제</div>
@@ -75,6 +77,11 @@ export default function MonthlySales() {
           <div className="text-xs font-medium text-muted-foreground mb-1">HKTB 인보이스</div>
           <div className="text-2xl font-bold text-foreground">{fmt(hktbTotal)}</div>
           <p className="text-xs text-muted-foreground mt-1">{hktbInvoices.length}건</p>
+        </Card>
+        <Card className="p-5">
+          <div className="text-xs font-medium text-muted-foreground mb-1">잔금 수령</div>
+          <div className="text-2xl font-bold text-foreground">{fmt(finalPaymentTotal)}</div>
+          <p className="text-xs text-muted-foreground mt-1">{finalPayments.length}건</p>
         </Card>
       </div>
 
@@ -102,6 +109,35 @@ export default function MonthlySales() {
                   <td className="py-2.5 px-3 font-mono text-xs">{inv.invoiceNo}</td>
                   <td className="py-2.5 px-3 text-xs text-muted-foreground">{inv.invoiceDate}</td>
                   <td className="py-2.5 px-3 text-right font-semibold">{fmt(inv.totalAmount)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </Card>
+      )}
+
+      {/* Final payments */}
+      {finalPayments.length > 0 && (
+        <Card className="p-5 mb-4">
+          <h3 className="text-sm font-semibold text-foreground mb-3">잔금 수령</h3>
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border">
+                <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground">수령일</th>
+                <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground">고객사</th>
+                <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground">담당자</th>
+                <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground">잔금</th>
+              </tr>
+            </thead>
+            <tbody>
+              {finalPayments.map(f => (
+                <tr key={f.id} className="border-b border-border/50 hover:bg-muted/30 transition-colors">
+                  <td className="py-2.5 px-3 text-xs text-muted-foreground">{f.finalPaymentDate}</td>
+                  <td className="py-2.5 px-3 text-xs font-medium">{f.name}</td>
+                  <td className="py-2.5 px-3 text-xs text-muted-foreground">{f.contactName || '-'}</td>
+                  <td className="py-2.5 px-3 text-right font-semibold">
+                    {fmt(f.finalPaymentAmount ?? f.contractAmount ?? 0)}
+                  </td>
                 </tr>
               ))}
             </tbody>
