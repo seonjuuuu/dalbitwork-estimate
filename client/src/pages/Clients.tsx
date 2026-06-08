@@ -29,7 +29,14 @@ export default function Clients() {
     search ? { search } : undefined
   );
   const { data: allProposals = [] } = trpc.documents.list.useQuery({ type: 'proposal' });
+  const { data: allEstimates = [] } = trpc.documents.list.useQuery({ type: 'estimate' });
+
   const proposalsByClient = allProposals.reduce<Record<string, typeof allProposals>>((acc, doc) => {
+    if (!doc.clientName) return acc;
+    (acc[doc.clientName] ??= []).push(doc);
+    return acc;
+  }, {});
+  const estimatesByClient = allEstimates.reduce<Record<string, typeof allEstimates>>((acc, doc) => {
     if (!doc.clientName) return acc;
     (acc[doc.clientName] ??= []).push(doc);
     return acc;
@@ -304,7 +311,11 @@ export default function Clients() {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <p className="font-semibold text-sm text-foreground">{client.name}</p>
-                  {client.status === '계약' ? (
+                  {client.status === '완료' ? (
+                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400">
+                      완료
+                    </span>
+                  ) : client.status === '계약' ? (
                     <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400">
                       계약
                     </span>
@@ -356,9 +367,9 @@ export default function Clients() {
                     <span className="text-xs text-muted-foreground">{client.businessNumber}</span>
                   )}
                 </div>
-                {proposalsByClient[client.name]?.length > 0 && (
+                {(proposalsByClient[client.name]?.length > 0 || estimatesByClient[client.name]?.length > 0) && (
                   <div className="flex flex-wrap gap-1 mt-1.5">
-                    {proposalsByClient[client.name].map((doc) => (
+                    {proposalsByClient[client.name]?.map((doc) => (
                       <button
                         key={doc.id}
                         onClick={(e) => { e.stopPropagation(); navigate(`/proposals/${doc.id}`); }}
@@ -366,6 +377,16 @@ export default function Clients() {
                       >
                         <FileText className="w-2.5 h-2.5" />
                         {doc.title || doc.projectName || '제안서'}
+                      </button>
+                    ))}
+                    {estimatesByClient[client.name]?.map((doc) => (
+                      <button
+                        key={doc.id}
+                        onClick={(e) => { e.stopPropagation(); navigate(`/estimates/${doc.id}`); }}
+                        className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 transition-colors dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800"
+                      >
+                        <FileText className="w-2.5 h-2.5" />
+                        {doc.title || doc.projectName || '계약서'}
                       </button>
                     ))}
                   </div>
