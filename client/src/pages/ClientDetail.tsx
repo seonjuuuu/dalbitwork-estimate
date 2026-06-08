@@ -3,14 +3,13 @@ import { useLocation } from 'wouter';
 import { trpc } from '@/lib/trpc';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Switch } from '@/components/ui/switch';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { ko } from 'date-fns/locale';
 import {
   ArrowLeft, Plus, Trash2, Save, X, Loader2,
   Phone, User, CalendarDays, CircleDollarSign,
-  MessageSquare, ChevronDown, ChevronUp, Edit, LinkIcon, FileText, ExternalLink, CheckCircle2,
+  MessageSquare, ChevronDown, ChevronUp, Edit, LinkIcon, FileText, ExternalLink,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -48,6 +47,7 @@ export default function ClientDetail({ id }: { id: string }) {
     { enabled: !!client?.name }
   );
   const updateClientMutation = trpc.clients.update.useMutation();
+  const updateDocumentMutation = trpc.documents.update.useMutation();
   const createMutation = trpc.consultations.create.useMutation();
   const updateMutation = trpc.consultations.update.useMutation();
   const deleteMutation = trpc.consultations.delete.useMutation();
@@ -57,6 +57,21 @@ export default function ClientDetail({ id }: { id: string }) {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [editingMemoId, setEditingMemoId] = useState<number | null>(null);
+  const [memoDraft, setMemoDraft] = useState('');
+  const [savingMemoId, setSavingMemoId] = useState<number | null>(null);
+  const [finalPaymentDate, setFinalPaymentDate] = useState('');
+  const [finalPaymentAmount, setFinalPaymentAmount] = useState('');
+  const [isSavingFinal, setIsSavingFinal] = useState(false);
+  const [editingFinal, setEditingFinal] = useState(false);
+
+  useEffect(() => {
+    if (client) {
+      setFinalPaymentDate(client.finalPaymentDate ?? '');
+      setFinalPaymentAmount(client.finalPaymentAmount ? client.finalPaymentAmount.toLocaleString('ko-KR') : '');
+      setEditingFinal(!client.finalPaymentDate);
+    }
+  }, [client?.id]);
   const [calendarMonth, setCalendarMonth] = useState<Date | undefined>(undefined);
   const [statusPopoverOpen, setStatusPopoverOpen] = useState(false);
   const [syncingEstimateId, setSyncingEstimateId] = useState<number | null>(null);
@@ -103,7 +118,6 @@ export default function ClientDetail({ id }: { id: string }) {
         id: clientId,
         contractDate: est.date || '',
         contractAmount: est.totalMin || 0,
-        linkedEstimateId: est.id,
       });
       await refetchClient();
       setSyncedEstimateId(est.id);
@@ -112,6 +126,38 @@ export default function ClientDetail({ id }: { id: string }) {
       toast.error('연동에 실패했습니다.');
     } finally {
       setSyncingEstimateId(null);
+    }
+  };
+
+  const handleSaveFinalPayment = async () => {
+    setIsSavingFinal(true);
+    try {
+      const amount = finalPaymentAmount ? Number(finalPaymentAmount.replace(/,/g, '')) : null;
+      await updateClientMutation.mutateAsync({
+        id: clientId,
+        finalPaymentDate: finalPaymentDate || null,
+        finalPaymentAmount: amount,
+      });
+      await refetchClient();
+      setEditingFinal(false);
+      toast.success('잔금 정보가 저장되었습니다.');
+    } catch {
+      toast.error('저장에 실패했습니다.');
+    } finally {
+      setIsSavingFinal(false);
+    }
+  };
+
+  const handleSaveMemo = async (estId: number) => {
+    setSavingMemoId(estId);
+    try {
+      await updateDocumentMutation.mutateAsync({ id: estId, data: { memo: memoDraft } });
+      setEditingMemoId(null);
+      toast.success('메모가 저장되었습니다.');
+    } catch {
+      toast.error('메모 저장에 실패했습니다.');
+    } finally {
+      setSavingMemoId(null);
     }
   };
 
@@ -272,163 +318,6 @@ export default function ClientDetail({ id }: { id: string }) {
         )}
       </div>
 
-      {/* 작업 현황 */}
-      <div className="bg-card border border-border rounded-xl p-5">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
-            작업 현황
-          </h2>
-          {workingForm ? (
-            <div className="flex gap-2">
-              <Button
-                size="sm"
-                variant="ghost"
-                className="h-7 text-xs text-muted-foreground"
-                onClick={() => setWorkingForm(null)}
-              >
-                취소
-              </Button>
-              <Button
-                size="sm"
-                className="h-7 text-xs gap-1"
-                disabled={isSavingWork}
-                onClick={async () => {
-                  setIsSavingWork(true);
-                  try {
-                    await updateClientMutation.mutateAsync({
-                      id: clientId,
-                      isWorking: workingForm.isWorking,
-                      workStartDate: workingForm.workStartDate,
-                      pcDraftDate: workingForm.pcDraftDate,
-                      mobileDraftDate: workingForm.mobileDraftDate,
-                      finalDeliveryDate: workingForm.finalDeliveryDate,
-                    });
-                    await refetchClient();
-                    setWorkingForm(null);
-                    toast.success('작업 현황이 저장되었습니다.');
-                  } catch {
-                    toast.error('저장에 실패했습니다.');
-                  } finally {
-                    setIsSavingWork(false);
-                  }
-                }}
-              >
-                {isSavingWork ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
-                저장
-              </Button>
-            </div>
-          ) : (
-            <Button
-              size="sm"
-              variant="ghost"
-              className="h-7 text-xs text-muted-foreground gap-1"
-              onClick={() => setWorkingForm({
-                isWorking: client.isWorking ?? false,
-                workStartDate: client.workStartDate ?? '',
-                pcDraftDate: client.pcDraftDate ?? '',
-                mobileDraftDate: client.mobileDraftDate ?? '',
-                finalDeliveryDate: client.finalDeliveryDate ?? '',
-              })}
-            >
-              <Edit className="w-3 h-3" />
-              편집
-            </Button>
-          )}
-        </div>
-
-        {workingForm ? (
-          <div className="space-y-3">
-            {/* 작업중 토글 */}
-            <div className="flex items-center gap-3">
-              <Switch
-                checked={workingForm.isWorking}
-                onCheckedChange={(v) => setWorkingForm(f => f ? { ...f, isWorking: v } : f)}
-              />
-              <span className="text-sm font-medium text-foreground">작업중</span>
-            </div>
-            <div className="grid grid-cols-1 gap-3 mt-3">
-              <div>
-                <label className="text-xs font-medium text-muted-foreground mb-1 block">시작일</label>
-                <Input
-                  type="date"
-                  value={workingForm.workStartDate}
-                  onChange={(e) => setWorkingForm(f => f ? { ...f, workStartDate: e.target.value } : f)}
-                  className="h-8 text-sm bg-background"
-                />
-              </div>
-              <div>
-                <label className="text-xs font-medium text-muted-foreground mb-1 block">PC 시안 전달 예정일</label>
-                <Input
-                  type="date"
-                  value={workingForm.pcDraftDate}
-                  onChange={(e) => setWorkingForm(f => f ? { ...f, pcDraftDate: e.target.value } : f)}
-                  className="h-8 text-sm bg-background"
-                />
-              </div>
-              <div>
-                <label className="text-xs font-medium text-muted-foreground mb-1 block">모바일 시안 전달 예정일</label>
-                <Input
-                  type="date"
-                  value={workingForm.mobileDraftDate}
-                  onChange={(e) => setWorkingForm(f => f ? { ...f, mobileDraftDate: e.target.value } : f)}
-                  className="h-8 text-sm bg-background"
-                />
-              </div>
-              <div>
-                <label className="text-xs font-medium text-muted-foreground mb-1 block">완성 전달 예정일</label>
-                <Input
-                  type="date"
-                  value={workingForm.finalDeliveryDate}
-                  onChange={(e) => setWorkingForm(f => f ? { ...f, finalDeliveryDate: e.target.value } : f)}
-                  className="h-8 text-sm bg-background"
-                />
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {/* 작업중 상태 */}
-            <div className="flex items-center gap-2">
-              <span className={`w-2 h-2 rounded-full flex-shrink-0 ${client.isWorking ? 'bg-emerald-500' : 'bg-muted-foreground/30'}`} />
-              <span className="text-sm text-foreground font-medium">
-                {client.isWorking ? '작업중' : '작업 없음'}
-              </span>
-            </div>
-            {/* 일정 */}
-            {(client.workStartDate || client.pcDraftDate || client.mobileDraftDate || client.finalDeliveryDate) ? (
-              <div className="mt-2 space-y-1.5 pl-4">
-                {client.workStartDate && (
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-muted-foreground">시작일</span>
-                    <span className="font-medium text-foreground">{client.workStartDate}</span>
-                  </div>
-                )}
-                {client.pcDraftDate && (
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-muted-foreground">PC 시안 전달</span>
-                    <span className="font-medium text-foreground">{client.pcDraftDate}</span>
-                  </div>
-                )}
-                {client.mobileDraftDate && (
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-muted-foreground">모바일 시안 전달</span>
-                    <span className="font-medium text-foreground">{client.mobileDraftDate}</span>
-                  </div>
-                )}
-                {client.finalDeliveryDate && (
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-muted-foreground">완성 전달</span>
-                    <span className="font-medium text-foreground">{client.finalDeliveryDate}</span>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <p className="text-xs text-muted-foreground pl-4">전달 예정일 없음</p>
-            )}
-          </div>
-        )}
-      </div>
-
       {/* 제안서 연결 */}
       {matchedProposals.length > 0 && (
         <div className="bg-card border border-border rounded-xl p-5">
@@ -439,7 +328,7 @@ export default function ClientDetail({ id }: { id: string }) {
           </h2>
           <div className="space-y-2">
             {matchedProposals.map((doc) => (
-              <div key={doc.id} className="rounded-lg border border-border bg-muted/20">
+              <div key={doc.id} className="rounded-lg border border-border bg-muted/20 overflow-hidden">
                 <div className="flex items-center justify-between p-3">
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium text-foreground truncate">
@@ -472,11 +361,45 @@ export default function ClientDetail({ id }: { id: string }) {
                     보기
                   </Button>
                 </div>
-                {(doc as any).memo && (
-                  <p className="px-3 pb-3 text-xs text-muted-foreground border-t border-border/60 pt-2 whitespace-pre-wrap">
-                    {(doc as any).memo}
-                  </p>
-                )}
+
+                {/* 메모 영역 */}
+                <div className="border-t border-border/60 px-3 py-2.5 bg-muted/10">
+                  {editingMemoId === doc.id ? (
+                    <div className="space-y-2">
+                      <textarea
+                        value={memoDraft}
+                        onChange={e => setMemoDraft(e.target.value)}
+                        rows={3}
+                        className="w-full text-xs bg-background border border-input rounded-md px-2.5 py-1.5 resize-none focus:outline-none focus:ring-2 focus:ring-ring"
+                        placeholder="메모를 입력하세요"
+                        autoFocus
+                      />
+                      <div className="flex justify-end gap-1.5">
+                        <Button variant="ghost" size="sm" className="h-6 text-xs px-2"
+                          onClick={() => setEditingMemoId(null)}>
+                          취소
+                        </Button>
+                        <Button size="sm" className="h-6 text-xs px-2 gap-1"
+                          disabled={savingMemoId === doc.id}
+                          onClick={() => handleSaveMemo(doc.id)}>
+                          {savingMemoId === doc.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
+                          저장
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button
+                      className="w-full text-left group/memo"
+                      onClick={() => { setEditingMemoId(doc.id); setMemoDraft(doc.memo ?? ''); }}
+                    >
+                      {doc.memo ? (
+                        <p className="text-xs text-muted-foreground whitespace-pre-wrap group-hover/memo:text-foreground transition-colors">{doc.memo}</p>
+                      ) : (
+                        <p className="text-xs text-muted-foreground/40 italic group-hover/memo:text-muted-foreground transition-colors">메모 추가...</p>
+                      )}
+                    </button>
+                  )}
+                </div>
               </div>
             ))}
           </div>
@@ -484,108 +407,249 @@ export default function ClientDetail({ id }: { id: string }) {
       )}
 
       {/* 계약서 연동 */}
-      {matchedEstimates.length > 0 && (() => {
-        const linkedEst = matchedEstimates.find((e) => e.id === syncedEstimateId);
-        const unlinkedEsts = matchedEstimates.filter((e) => e.id !== syncedEstimateId);
+      {matchedEstimates.length > 0 && (
+        <div className="bg-card border border-border rounded-xl p-5">
+          <h2 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+            <LinkIcon className="w-4 h-4 text-muted-foreground" />
+            연동 가능한 계약서
+            <span className="text-xs text-muted-foreground font-normal">({matchedEstimates.length}건)</span>
+          </h2>
+          <div className="space-y-2">
+            {matchedEstimates.map((est) => {
+              const isSynced =
+                syncedEstimateId === est.id ||
+                (!!client.contractDate && client.contractDate === est.date && client.contractAmount === est.totalMin);
+              return (
+              <div key={est.id} className={`rounded-lg border overflow-hidden transition-colors ${isSynced ? 'border-emerald-300 bg-emerald-50/50 dark:border-emerald-700 dark:bg-emerald-900/10' : 'border-border bg-muted/20'}`}>
+                <div className="flex items-center justify-between p-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-medium text-foreground truncate">{est.title || '(제목 없음)'}</p>
+                      {isSynced && (
+                        <span className="flex-shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400">
+                          연동됨
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-3 mt-0.5">
+                      {est.date && (
+                        <span className="text-xs text-muted-foreground flex items-center gap-1">
+                          <CalendarDays className="w-3 h-3" />
+                          {est.date}
+                        </span>
+                      )}
+                      {est.totalMin > 0 && (
+                        <span className="text-xs text-muted-foreground flex items-center gap-1">
+                          <CircleDollarSign className="w-3 h-3" />
+                          {est.totalMin.toLocaleString('ko-KR')}원
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex gap-1.5 flex-shrink-0 ml-3">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => navigate(`/estimates/${est.id}`)}
+                      className="h-7 text-xs gap-1"
+                    >
+                      <ExternalLink className="w-3 h-3" />
+                      보기
+                    </Button>
+                    {isSynced ? (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleSyncEstimate(est)}
+                        disabled={syncingEstimateId === est.id}
+                        className="h-7 text-xs gap-1 border-emerald-300 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-700 dark:text-emerald-400"
+                      >
+                        {syncingEstimateId === est.id
+                          ? <Loader2 className="w-3 h-3 animate-spin" />
+                          : <LinkIcon className="w-3 h-3" />}
+                        재연동
+                      </Button>
+                    ) : (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleSyncEstimate(est)}
+                        disabled={syncingEstimateId === est.id}
+                        className="h-7 text-xs gap-1"
+                      >
+                        {syncingEstimateId === est.id
+                          ? <Loader2 className="w-3 h-3 animate-spin" />
+                          : <LinkIcon className="w-3 h-3" />}
+                        연동
+                      </Button>
+                    )}
+                  </div>
+                </div>
 
-        const renderEstCard = (est: typeof matchedEstimates[0], isLinked: boolean) => (
-          <div
-            key={est.id}
-            className={`rounded-lg border transition-colors ${
-              isLinked
-                ? 'border-emerald-300 bg-emerald-50 dark:border-emerald-700 dark:bg-emerald-900/20'
-                : 'border-border bg-muted/20'
-            }`}
-          >
-            <div className="flex items-center justify-between p-3">
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium text-foreground truncate">{est.title || '(제목 없음)'}</p>
-                <div className="flex items-center gap-3 mt-0.5">
-                  {est.date && (
-                    <span className="text-xs text-muted-foreground flex items-center gap-1">
-                      <CalendarDays className="w-3 h-3" />
-                      {est.date}
-                    </span>
-                  )}
-                  {est.totalMin > 0 && (
-                    <span className="text-xs text-muted-foreground flex items-center gap-1">
-                      <CircleDollarSign className="w-3 h-3" />
-                      {est.totalMin.toLocaleString('ko-KR')}원
-                    </span>
-                  )}
-                  {isLinked && (
-                    <span className="text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-1 font-medium">
-                      <CheckCircle2 className="w-3 h-3" />
-                      연동됨
-                    </span>
+                {/* 메모 영역 */}
+                <div className="border-t border-border/60 px-3 py-2.5 bg-muted/10">
+                  {editingMemoId === est.id ? (
+                    <div className="space-y-2">
+                      <textarea
+                        value={memoDraft}
+                        onChange={e => setMemoDraft(e.target.value)}
+                        rows={3}
+                        className="w-full text-xs bg-background border border-input rounded-md px-2.5 py-1.5 resize-none focus:outline-none focus:ring-2 focus:ring-ring"
+                        placeholder="메모를 입력하세요"
+                        autoFocus
+                      />
+                      <div className="flex justify-end gap-1.5">
+                        <Button variant="ghost" size="sm" className="h-6 text-xs px-2"
+                          onClick={() => setEditingMemoId(null)}>
+                          취소
+                        </Button>
+                        <Button size="sm" className="h-6 text-xs px-2 gap-1"
+                          disabled={savingMemoId === est.id}
+                          onClick={() => handleSaveMemo(est.id)}>
+                          {savingMemoId === est.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
+                          저장
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button
+                      className="w-full text-left group/memo"
+                      onClick={() => { setEditingMemoId(est.id); setMemoDraft(est.memo ?? ''); }}
+                    >
+                      {est.memo ? (
+                        <p className="text-xs text-muted-foreground whitespace-pre-wrap group-hover/memo:text-foreground transition-colors">{est.memo}</p>
+                      ) : (
+                        <p className="text-xs text-muted-foreground/40 italic group-hover/memo:text-muted-foreground transition-colors">메모 추가...</p>
+                      )}
+                    </button>
                   )}
                 </div>
               </div>
-              <div className="flex items-center gap-1.5 ml-3 flex-shrink-0">
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => navigate(`/estimates/${est.id}`)}
-                  className="h-7 text-xs gap-1 text-muted-foreground hover:text-foreground"
-                >
-                  <ExternalLink className="w-3 h-3" />
-                  열기
-                </Button>
-                {isLinked ? (
-                  <div className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 px-2">
-                    <CheckCircle2 className="w-4 h-4" />
-                  </div>
-                ) : (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleSyncEstimate(est)}
-                    disabled={syncingEstimateId === est.id}
-                    className="h-7 text-xs gap-1"
-                  >
-                    {syncingEstimateId === est.id
-                      ? <Loader2 className="w-3 h-3 animate-spin" />
-                      : <LinkIcon className="w-3 h-3" />}
-                    연동
-                  </Button>
-                )}
-              </div>
-            </div>
-            {(est as any).memo && (
-              <p className="px-3 pb-3 text-xs text-muted-foreground border-t border-border/60 pt-2 whitespace-pre-wrap">
-                {(est as any).memo}
-              </p>
+            );
+            })}
+          </div>
+          <p className="text-[11px] text-muted-foreground/60 mt-2">연동하면 계약일자와 계약금액이 계약서 정보로 업데이트됩니다.</p>
+        </div>
+      )}
+
+      {/* 잔금 정산 — 완료 상태일 때만 표시 */}
+      {client?.status === '완료' && (
+        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-5 dark:bg-emerald-900/10 dark:border-emerald-800">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-sm font-semibold text-emerald-800 dark:text-emerald-400 flex items-center gap-2">
+              <CircleDollarSign className="w-4 h-4" />
+              잔금 정산
+            </h2>
+            {!editingFinal && (
+              <Button size="sm" variant="outline" onClick={() => setEditingFinal(true)} className="h-7 text-xs gap-1 border-emerald-300 text-emerald-700 hover:bg-emerald-100">
+                <Edit className="w-3 h-3" />
+                수정
+              </Button>
             )}
           </div>
-        );
 
-        return (
-          <>
-            {linkedEst && (
-              <div className="bg-card border border-border rounded-xl p-5">
-                <h2 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                  연동된 계약서
-                </h2>
-                {renderEstCard(linkedEst, true)}
-              </div>
-            )}
-            {unlinkedEsts.length > 0 && (
-              <div className="bg-card border border-border rounded-xl p-5">
-                <h2 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-                  <LinkIcon className="w-4 h-4 text-muted-foreground" />
-                  연동 가능한 계약서
-                  <span className="text-xs text-muted-foreground font-normal">({unlinkedEsts.length}건)</span>
-                </h2>
-                <div className="space-y-2">
-                  {unlinkedEsts.map((est) => renderEstCard(est, false))}
+          {editingFinal ? (
+            <>
+              <div className="grid grid-cols-2 gap-3 mb-4">
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">잔금 수령일</label>
+                  <div className="flex gap-2">
+                    <Input
+                      type="text"
+                      value={finalPaymentDate}
+                      onChange={e => {
+                        const digits = e.target.value.replace(/[^0-9]/g, '').slice(0, 8);
+                        let formatted = digits;
+                        if (digits.length > 4) formatted = digits.slice(0, 4) + '.' + digits.slice(4);
+                        if (digits.length > 6) formatted = digits.slice(0, 4) + '.' + digits.slice(4, 6) + '.' + digits.slice(6);
+                        setFinalPaymentDate(formatted);
+                      }}
+                      placeholder="2026.06.30"
+                      maxLength={10}
+                      className="text-sm"
+                    />
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <button className="h-9 w-9 flex items-center justify-center rounded-md border border-input text-muted-foreground hover:text-foreground hover:bg-accent transition-colors flex-shrink-0">
+                          <CalendarDays className="w-4 h-4" />
+                        </button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="end">
+                        <Calendar
+                          mode="single"
+                          locale={ko}
+                          selected={parseDateString(finalPaymentDate)}
+                          onSelect={date => {
+                            if (!date) return;
+                            const y = date.getFullYear();
+                            const m = String(date.getMonth() + 1).padStart(2, '0');
+                            const d = String(date.getDate()).padStart(2, '0');
+                            setFinalPaymentDate(`${y}.${m}.${d}`);
+                          }}
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
                 </div>
-                <p className="text-[11px] text-muted-foreground/60 mt-2">연동하면 계약일자와 계약금액이 계약서 정보로 업데이트됩니다.</p>
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">잔금 금액 (원)</label>
+                  <Input
+                    value={finalPaymentAmount}
+                    onChange={e => {
+                      const raw = e.target.value.replace(/[^0-9]/g, '');
+                      setFinalPaymentAmount(raw ? Number(raw).toLocaleString('ko-KR') : '');
+                    }}
+                    placeholder="예: 1,250,000"
+                    className="text-sm text-right"
+                  />
+                </div>
               </div>
-            )}
-          </>
-        );
-      })()}
+              <div className="flex justify-end gap-2">
+                {client.finalPaymentDate && (
+                  <Button size="sm" variant="outline" onClick={() => {
+                    setFinalPaymentDate(client.finalPaymentDate ?? '');
+                    setFinalPaymentAmount(client.finalPaymentAmount ? client.finalPaymentAmount.toLocaleString('ko-KR') : '');
+                    setEditingFinal(false);
+                  }} className="h-8 text-xs gap-1">
+                    <X className="w-3.5 h-3.5" />
+                    취소
+                  </Button>
+                )}
+                <Button size="sm" onClick={handleSaveFinalPayment} disabled={isSavingFinal} className="h-8 text-xs gap-1 bg-emerald-600 hover:bg-emerald-700 text-white">
+                  {isSavingFinal ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                  저장
+                </Button>
+              </div>
+            </>
+          ) : (
+            <div className="space-y-2">
+              {client.finalPaymentDate ? (
+                <>
+                  <div className="flex items-center gap-2">
+                    <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                    <span className="text-sm font-semibold text-emerald-800 dark:text-emerald-400">수령 완료</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 mt-2">
+                    <div className="bg-white dark:bg-emerald-900/20 rounded-lg px-4 py-3 border border-emerald-200 dark:border-emerald-800">
+                      <p className="text-[10px] text-muted-foreground mb-0.5">수령일</p>
+                      <p className="text-sm font-semibold text-foreground">{client.finalPaymentDate}</p>
+                    </div>
+                    <div className="bg-white dark:bg-emerald-900/20 rounded-lg px-4 py-3 border border-emerald-200 dark:border-emerald-800">
+                      <p className="text-[10px] text-muted-foreground mb-0.5">금액</p>
+                      <p className="text-sm font-semibold text-foreground">
+                        {client.finalPaymentAmount ? `${client.finalPaymentAmount.toLocaleString('ko-KR')}원` : '-'}
+                      </p>
+                    </div>
+                  </div>
+                  <p className="text-[11px] text-emerald-600 dark:text-emerald-500 mt-1">월별 매출에 반영됩니다.</p>
+                </>
+              ) : (
+                <p className="text-xs text-muted-foreground">아직 잔금 수령 정보가 없습니다.</p>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* 상담 이력 */}
       <div className="bg-card border border-border rounded-xl p-5">
