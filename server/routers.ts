@@ -295,6 +295,18 @@ export const appRouter = router({
       .query(async ({ ctx, input }) => {
         return db.getDocumentPayments(input.documentId, ctx.user.id);
       }),
+
+    /** Get IDs of documents that already have a deposit recorded */
+    getDepositedDocumentIds: protectedProcedure
+      .query(async ({ ctx }) => {
+        return db.getDepositedDocumentIds(ctx.user.id);
+      }),
+
+    /** Get IDs of documents that already have a final payment recorded */
+    getFinalPaidDocumentIds: protectedProcedure
+      .query(async ({ ctx }) => {
+        return db.getFinalPaidDocumentIds(ctx.user.id);
+      }),
   }),
 
   clients: router({
@@ -365,11 +377,6 @@ export const appRouter = router({
       .input(z.object({ id: z.number() }))
       .mutation(async ({ ctx, input }) => {
         return db.deleteClient(input.id, ctx.user.id);
-      }),
-
-    getCalendarEvents: protectedProcedure
-      .query(async ({ ctx }) => {
-        return db.getCalendarEvents(ctx.user.id);
       }),
 
     upsertFromDocument: protectedProcedure
@@ -512,6 +519,20 @@ export const appRouter = router({
     getData: protectedProcedure.query(async ({ ctx }) => {
       return db.getDashboardData(ctx.user.id);
     }),
+  }),
+
+  kanban: router({
+    getClients: protectedProcedure.query(async ({ ctx }) => {
+      return db.getKanbanClients(ctx.user.id);
+    }),
+    updateStatus: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        workflowStatus: z.enum(['상담', '작업진행중', 'PC검수', '모바일작업중', '고객전달', '완료']),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        return db.updateClientWorkflowStatus(input.id, ctx.user.id, input.workflowStatus);
+      }),
   }),
 
   sales: router({

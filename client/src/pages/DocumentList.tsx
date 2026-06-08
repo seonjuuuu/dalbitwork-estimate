@@ -1,12 +1,13 @@
 import { useEstimate } from '@/contexts/EstimateContext';
 import { Button } from '@/components/ui/button';
-import { FileText, Trash2, Edit, FileCheck, Loader2, Copy, CreditCard } from 'lucide-react';
+import { FileText, Trash2, Edit, FileCheck, Loader2, Copy, CreditCard, CheckCircle2 } from 'lucide-react';
 import { useLocation } from 'wouter';
 import { type DocumentType, getDocTypeLabel } from '@/lib/types';
 import { toast } from 'sonner';
 import { useState } from 'react';
 import { trpc } from '@/lib/trpc';
 import DepositConfirmDialog from '@/components/DepositConfirmDialog';
+import FinalPaymentConfirmDialog from '@/components/FinalPaymentConfirmDialog';
 
 interface DocumentListProps {
   type: DocumentType;
@@ -18,9 +19,14 @@ export default function DocumentList({ type }: DocumentListProps) {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [duplicatingId, setDuplicatingId] = useState<string | null>(null);
   const [depositDialogOpen, setDepositDialogOpen] = useState(false);
+  const [finalDialogOpen, setFinalDialogOpen] = useState(false);
   const [selectedDocId, setSelectedDocId] = useState<number | null>(null);
   const [selectedDocData, setSelectedDocData] = useState<{ totalMax: number; clientName: string } | null>(null);
   const duplicateMutation = trpc.documents.duplicateAsEstimate.useMutation();
+  const { data: depositedIds = [] } = trpc.documents.getDepositedDocumentIds.useQuery(undefined, { enabled: type === 'estimate' });
+  const { data: finalPaidIds = [] } = trpc.documents.getFinalPaidDocumentIds.useQuery(undefined, { enabled: type === 'estimate' });
+  const depositedSet = new Set(depositedIds);
+  const finalPaidSet = new Set(finalPaidIds);
   const utils = trpc.useUtils();
 
   const documents = type === 'proposal' ? proposals : estimates;
@@ -68,6 +74,18 @@ export default function DocumentList({ type }: DocumentListProps) {
 
   const handleDepositSuccess = () => {
     utils.documents.list.invalidate();
+    utils.documents.getDepositedDocumentIds.invalidate();
+  };
+
+  const handleFinalSuccess = () => {
+    utils.documents.list.invalidate();
+    utils.documents.getFinalPaidDocumentIds.invalidate();
+  };
+
+  const handleOpenFinalDialog = (docId: number, totalMax: number, clientName: string) => {
+    setSelectedDocId(docId);
+    setSelectedDocData({ totalMax, clientName });
+    setFinalDialogOpen(true);
   };
 
   return (
@@ -141,15 +159,40 @@ export default function DocumentList({ type }: DocumentListProps) {
                     </Button>
                   )}
                   {type === 'estimate' && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleOpenDepositDialog(parseInt(doc.id!), doc.totalMax, doc.clientName)}
-                      className="text-xs gap-1 text-amber-600 hover:text-amber-700"
-                    >
-                      <CreditCard className="w-3.5 h-3.5" />
-                      계약금 확정
-                    </Button>
+                    <>
+                      {depositedSet.has(parseInt(doc.id!)) ? (
+                        <span className="flex items-center gap-1 text-xs font-medium text-emerald-600 dark:text-emerald-400 px-2 py-1 rounded-md bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800">
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          계약금 확정됨
+                        </span>
+                      ) : (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleOpenDepositDialog(parseInt(doc.id!), doc.totalMax, doc.clientName)}
+                          className="text-xs gap-1 text-amber-600 hover:text-amber-700"
+                        >
+                          <CreditCard className="w-3.5 h-3.5" />
+                          계약금 확정
+                        </Button>
+                      )}
+                      {finalPaidSet.has(parseInt(doc.id!)) ? (
+                        <span className="flex items-center gap-1 text-xs font-medium text-blue-600 dark:text-blue-400 px-2 py-1 rounded-md bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          잔금 완료
+                        </span>
+                      ) : depositedSet.has(parseInt(doc.id!)) && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleOpenFinalDialog(parseInt(doc.id!), doc.totalMax, doc.clientName)}
+                          className="text-xs gap-1 text-blue-600 hover:text-blue-700"
+                        >
+                          <CreditCard className="w-3.5 h-3.5" />
+                          잔금 확정
+                        </Button>
+                      )}
+                    </>
                   )}
                   <Button
                     variant="outline"
@@ -179,6 +222,17 @@ export default function DocumentList({ type }: DocumentListProps) {
           totalAmount={selectedDocData.totalMax}
           clientName={selectedDocData.clientName}
           onSuccess={handleDepositSuccess}
+        />
+      )}
+      {selectedDocId && selectedDocData && (
+        <FinalPaymentConfirmDialog
+          isOpen={finalDialogOpen}
+          onClose={() => setFinalDialogOpen(false)}
+          documentId={selectedDocId}
+          totalAmount={selectedDocData.totalMax}
+          depositAmount={Math.round(selectedDocData.totalMax * 0.5)}
+          clientName={selectedDocData.clientName}
+          onSuccess={handleFinalSuccess}
         />
       )}
     </div>

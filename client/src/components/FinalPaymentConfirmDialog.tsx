@@ -10,11 +10,12 @@ import { CalendarDays, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { trpc } from '@/lib/trpc';
 
-interface DepositConfirmDialogProps {
+interface FinalPaymentConfirmDialogProps {
   isOpen: boolean;
   onClose: () => void;
   documentId: number;
   totalAmount: number;
+  depositAmount: number;
   clientName: string;
   onSuccess?: () => void;
 }
@@ -42,17 +43,17 @@ function dotStrToIso(str: string): string {
   return `${parts[0]}-${parts[1]}-${parts[2]}`;
 }
 
-export default function DepositConfirmDialog({
+export default function FinalPaymentConfirmDialog({
   isOpen,
   onClose,
   documentId,
   totalAmount,
+  depositAmount,
   clientName,
   onSuccess,
-}: DepositConfirmDialogProps) {
-  const [depositAmount, setDepositAmount] = useState<string>(
-    Math.round(totalAmount * 0.5).toString()
-  );
+}: FinalPaymentConfirmDialogProps) {
+  const remaining = Math.max(0, totalAmount - depositAmount);
+  const [finalAmount, setFinalAmount] = useState<string>(remaining.toString());
   const [paymentDate, setPaymentDate] = useState(todayDotStr());
   const [isLoading, setIsLoading] = useState(false);
   const recordPaymentMutation = trpc.documents.recordPayment.useMutation();
@@ -67,7 +68,7 @@ export default function DepositConfirmDialog({
   };
 
   const handleConfirm = async () => {
-    const amount = Math.round(Number(depositAmount));
+    const amount = Number(finalAmount.replace(/,/g, ''));
     if (!amount || amount <= 0) {
       toast.error('유효한 금액을 입력해주세요.');
       return;
@@ -80,18 +81,18 @@ export default function DepositConfirmDialog({
     try {
       await recordPaymentMutation.mutateAsync({
         documentId,
-        type: 'deposit',
+        type: 'final',
         amount,
         paymentDate: dotStrToIso(paymentDate),
-        notes: `${clientName} 계약금 입금`,
+        notes: `${clientName} 잔금 입금`,
       });
       await utils.documents.list.invalidate();
       await utils.documents.getPayments.invalidate({ documentId });
-      toast.success('계약금이 확정되었습니다.');
+      toast.success('잔금이 확정되었습니다.');
       onClose();
       onSuccess?.();
     } catch {
-      toast.error('계약금 확정에 실패했습니다.');
+      toast.error('잔금 확정에 실패했습니다.');
     } finally {
       setIsLoading(false);
     }
@@ -101,28 +102,34 @@ export default function DepositConfirmDialog({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>계약금 확정</DialogTitle>
-          <DialogDescription>{clientName} 고객사의 계약금을 확정합니다.</DialogDescription>
+          <DialogTitle>잔금 확정</DialogTitle>
+          <DialogDescription>{clientName} 고객사의 잔금을 확정합니다.</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
-          <div>
-            <Label>총 계약금액</Label>
-            <p className="text-lg font-semibold text-foreground mt-1">{totalAmount.toLocaleString('ko-KR')}원</p>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <p className="text-xs text-muted-foreground mb-1">총 계약금액</p>
+              <p className="text-sm font-semibold">{totalAmount.toLocaleString('ko-KR')}원</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground mb-1">기납부 계약금</p>
+              <p className="text-sm font-semibold">{depositAmount.toLocaleString('ko-KR')}원</p>
+            </div>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="deposit-amount">계약금 (기본값: 50%)</Label>
+            <Label htmlFor="final-amount">잔금 금액 (기본값: 잔여분)</Label>
             <Input
-              id="deposit-amount"
+              id="final-amount"
               type="text"
-              value={depositAmount ? Number(depositAmount).toLocaleString('ko-KR') : ''}
-              onChange={e => setDepositAmount(e.target.value.replace(/[^0-9]/g, ''))}
-              placeholder="계약금을 입력하세요"
+              value={finalAmount ? Number(finalAmount.replace(/,/g, '')).toLocaleString('ko-KR') : ''}
+              onChange={e => setFinalAmount(e.target.value.replace(/[^0-9]/g, ''))}
+              placeholder="잔금을 입력하세요"
               className="text-right"
             />
             <p className="text-xs text-muted-foreground">
-              잔금: {(totalAmount - Number(depositAmount || 0)).toLocaleString('ko-KR')}원
+              입금 후 총 수령액: {(depositAmount + Number(finalAmount.replace(/,/g, '') || 0)).toLocaleString('ko-KR')}원
             </p>
           </div>
 
@@ -162,7 +169,7 @@ export default function DepositConfirmDialog({
         </div>
 
         <DialogFooter className="gap-2">
-          <Button variant="outline" onClick={() => { setDepositAmount(Math.round(totalAmount * 0.5).toString()); setPaymentDate(todayDotStr()); }} disabled={isLoading}>
+          <Button variant="outline" onClick={() => { setFinalAmount(remaining.toString()); setPaymentDate(todayDotStr()); }} disabled={isLoading}>
             초기화
           </Button>
           <Button variant="outline" onClick={onClose} disabled={isLoading}>취소</Button>
