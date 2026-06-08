@@ -253,7 +253,7 @@ export default function CalendarPage() {
   const selectedEvents = selectedDay ? (eventMap.get(selectedDay) || []) : [];
 
   return (
-    <div className="flex flex-col h-screen overflow-hidden">
+    <div className="flex flex-col h-full overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-card flex-shrink-0">
         <div className="flex items-center gap-4">
@@ -307,7 +307,7 @@ export default function CalendarPage() {
         </div>
 
         {/* Center: main calendar */}
-        <div className="flex-1 flex flex-col min-h-0 border-l border-r border-border/60 mx-4">
+        <div className="flex-1 flex flex-col min-h-0 border-l border-r border-border/60 mx-2 min-w-0">
           <MainCalendar
             year={year}
             month={month}
@@ -318,7 +318,7 @@ export default function CalendarPage() {
         </div>
 
         {/* Right panel: next month mini + day detail */}
-        <div className={`flex flex-col flex-shrink-0 border-l border-border bg-card overflow-hidden transition-all duration-300 ${rightOpen ? 'w-64' : 'w-0'}`}>
+        <div className={`flex flex-col flex-shrink-0 border-l border-border bg-card overflow-hidden transition-all duration-300 ${rightOpen ? 'w-72' : 'w-0'}`}>
           {rightOpen && (
             <>
               <div className="p-4 border-b border-border">
