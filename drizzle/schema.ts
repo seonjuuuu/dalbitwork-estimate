@@ -116,6 +116,8 @@ export const clients = pgTable("clients", {
   mobileDraftDate: varchar("mobileDraftDate", { length: 20 }).default("").notNull(),
   finalDeliveryDate: varchar("finalDeliveryDate", { length: 20 }).default("").notNull(),
   linkedEstimateId: integer("linkedEstimateId"),
+  finalPaymentDate: varchar("finalPaymentDate", { length: 20 }),
+  finalPaymentAmount: integer("finalPaymentAmount"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull().$onUpdateFn(() => new Date()),
 });

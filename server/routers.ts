@@ -341,6 +341,8 @@ export const appRouter = router({
         mobileDraftDate: z.string().optional(),
         finalDeliveryDate: z.string().optional(),
         linkedEstimateId: z.number().nullable().optional(),
+        finalPaymentDate: z.string().nullable().optional(),
+        finalPaymentAmount: z.number().nullable().optional(),
       }))
       .mutation(async ({ ctx, input }) => {
         const { id, ...data } = input;
@@ -363,6 +365,11 @@ export const appRouter = router({
       .input(z.object({ id: z.number() }))
       .mutation(async ({ ctx, input }) => {
         return db.deleteClient(input.id, ctx.user.id);
+      }),
+
+    getCalendarEvents: protectedProcedure
+      .query(async ({ ctx }) => {
+        return db.getCalendarEvents(ctx.user.id);
       }),
 
     upsertFromDocument: protectedProcedure

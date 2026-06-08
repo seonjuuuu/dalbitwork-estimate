@@ -156,7 +156,7 @@ export async function getDocumentPayments(documentId: number, userId: number) {
 
 export async function getMonthlySalesData(userId: number, year: number, month: number) {
   const db = await getDb();
-  if (!db) return { payments: [], hktbInvoices: [] };
+  if (!db) return { payments: [], hktbInvoices: [], finalPayments: [] };
   const startDate = `${year}-${String(month).padStart(2, "0")}-01`;
   const endDate = new Date(year, month, 0).toISOString().split("T")[0];
   const revenueMonth = `${year}-${String(month).padStart(2, "0")}`;
@@ -173,7 +173,31 @@ export async function getMonthlySalesData(userId: number, year: number, month: n
     .from(hktbInvoices)
     .where(and(eq(hktbInvoices.userId, userId), eq(hktbInvoices.revenueMonth, revenueMonth)));
 
-  return { payments: paymentRows, hktbInvoices: hktbRows };
+  const mm = String(month).padStart(2, "0");
+  const lastDay = new Date(year, month, 0).getDate();
+  const startDateDot = `${year}.${mm}.01`;
+  const endDateDot = `${year}.${mm}.${String(lastDay).padStart(2, "0")}`;
+
+  const finalPaymentRows = await db
+    .select({
+      id: clients.id,
+      name: clients.name,
+      contactName: clients.contactName,
+      contractAmount: clients.contractAmount,
+      finalPaymentDate: clients.finalPaymentDate,
+      finalPaymentAmount: clients.finalPaymentAmount,
+    })
+    .from(clients)
+    .where(
+      and(
+        eq(clients.userId, userId),
+        eq(clients.status, '완료'),
+        gte(clients.finalPaymentDate, startDateDot),
+        lte(clients.finalPaymentDate, endDateDot)
+      )
+    );
+
+  return { payments: paymentRows, hktbInvoices: hktbRows, finalPayments: finalPaymentRows };
 }
 
 // ─── Dashboard ───────────────────────────────────────────────────
@@ -245,7 +269,7 @@ export async function getDashboardData(userId: number) {
 
   // 상담 → 제안서 → 계약 단계별 고객 수
   const allClients = await db.select({ status: clients.status }).from(clients).where(eq(clients.userId, userId));
-  const statusCounts = { '상담': 0, '제안서': 0, '계약': 0 };
+  const statusCounts = { '상담': 0, '제안서': 0, '계약': 0, '완료': 0 };
   allClients.forEach(c => { statusCounts[c.status ?? '상담']++; });
 
   return {
@@ -532,6 +556,39 @@ export async function getProposalsByClientName(clientName: string, userId: numbe
   }).from(documents)
     .where(and(eq(documents.userId, userId), eq(documents.type, 'proposal'), eq(documents.clientName, clientName)))
     .orderBy(desc(documents.updatedAt));
+}
+
+export async function getCalendarEvents(userId: number) {
+  const db = await getDb();
+  if (!db) return { consultations: [], clients: [] };
+
+  const consultationRows = await db
+    .select({
+      id: consultations.id,
+      date: consultations.date,
+      content: consultations.content,
+      nextAction: consultations.nextAction,
+      clientId: consultations.clientId,
+      clientName: clients.name,
+    })
+    .from(consultations)
+    .innerJoin(clients, eq(consultations.clientId, clients.id))
+    .where(eq(consultations.userId, userId))
+    .orderBy(desc(consultations.date));
+
+  const clientRows = await db
+    .select({
+      id: clients.id,
+      name: clients.name,
+      contractDate: clients.contractDate,
+      contractAmount: clients.contractAmount,
+      finalPaymentDate: clients.finalPaymentDate,
+      finalPaymentAmount: clients.finalPaymentAmount,
+    })
+    .from(clients)
+    .where(eq(clients.userId, userId));
+
+  return { consultations: consultationRows, clients: clientRows };
 }
 
 async function getPaymentById(id: number) {
