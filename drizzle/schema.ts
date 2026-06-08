@@ -98,6 +98,7 @@ export type Payment = typeof payments.$inferSelect;
 export type InsertPayment = typeof payments.$inferInsert;
 
 export const clientStatusEnum = pgEnum("client_status", ["상담", "제안서", "계약", "완료"]);
+export const workflowStatusEnum = pgEnum("workflow_status", ["상담", "작업진행중", "PC검수", "모바일작업중", "고객전달", "완료"]);
 
 export const clients = pgTable("clients", {
   id: serial("id").primaryKey(),
@@ -116,6 +117,7 @@ export const clients = pgTable("clients", {
   mobileDraftDate: varchar("mobileDraftDate", { length: 20 }).default("").notNull(),
   finalDeliveryDate: varchar("finalDeliveryDate", { length: 20 }).default("").notNull(),
   linkedEstimateId: integer("linkedEstimateId"),
+  workflowStatus: workflowStatusEnum("workflowStatus").default("상담").notNull(),
   finalPaymentDate: varchar("finalPaymentDate", { length: 20 }),
   finalPaymentAmount: integer("finalPaymentAmount"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),

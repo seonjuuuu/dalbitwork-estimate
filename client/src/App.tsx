@@ -17,7 +17,7 @@ import ClientDetail from "./pages/ClientDetail";
 import HKTBInvoice from "./pages/HKTBInvoice";
 import HKTBRetainerInvoice from "./pages/HKTBRetainerInvoice";
 import CalendarPage from "./pages/CalendarPage";
-import Schedule from "./pages/Schedule";
+import KanbanPage from "./pages/KanbanPage";
 import Sidebar from "./components/Sidebar";
 import { useAuth } from "@/_core/hooks/useAuth";
 import LoginPage from "./pages/LoginPage";
@@ -67,8 +67,8 @@ function Router() {
       <Route path="/clients/:id">
         {(params) => <ClientDetail id={params.id} />}
       </Route>
+      <Route path="/kanban" component={KanbanPage} />
       <Route path="/calendar" component={CalendarPage} />
-      <Route path="/schedule" component={Schedule} />
       <Route path="/sales" component={MonthlySales} />
       <Route path="/hktb-invoice" component={HKTBInvoice} />
       <Route path="/hktb-retainer" component={HKTBRetainerInvoice} />
@@ -88,7 +88,7 @@ function App() {
             <EstimateProvider>
               <div className="flex h-screen overflow-hidden">
                 <Sidebar />
-                <main className="flex-1 overflow-y-auto">
+                <main className="flex-1 overflow-y-auto h-full">
                   <Router />
                 </main>
               </div>

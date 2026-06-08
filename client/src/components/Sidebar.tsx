@@ -1,5 +1,5 @@
 import { useEstimate } from '@/contexts/EstimateContext';
-import { FilePlus, FileText, List, ChevronLeft, ChevronRight, FileCheck, LogOut, User, BookOpen, BarChart3, Boxes, Building2, LayoutDashboard, Globe, CalendarDays } from 'lucide-react';
+import { FilePlus, FileText, List, ChevronLeft, ChevronRight, FileCheck, LogOut, User, BookOpen, BarChart3, Boxes, Building2, LayoutDashboard, Globe, CalendarDays, KanbanSquare } from 'lucide-react';
 import { useState } from 'react';
 import { useLocation } from 'wouter';
 import { useAuth } from '@/_core/hooks/useAuth';
@@ -81,18 +81,18 @@ export default function Sidebar() {
       onClick: () => navigate('/clients'),
     },
     {
+      icon: KanbanSquare,
+      label: '프로젝트 현황',
+      id: 'kanban',
+      active: location === '/kanban',
+      onClick: () => navigate('/kanban'),
+    },
+    {
       icon: CalendarDays,
       label: '일정 캘린더',
       id: 'calendar',
       active: location === '/calendar',
       onClick: () => navigate('/calendar'),
-    },
-    {
-      icon: CalendarDays,
-      label: '진행 일정',
-      id: 'schedule',
-      active: location === '/schedule',
-      onClick: () => navigate('/schedule'),
     },
     {
       icon: BarChart3,
@@ -189,7 +189,7 @@ export default function Sidebar() {
             관리
           </p>
         )}
-        {navItems.slice(3, 9).map((item) => (
+        {navItems.slice(3, 10).map((item) => (
           <button
             key={item.id}
             onClick={item.onClick}
@@ -213,7 +213,7 @@ export default function Sidebar() {
             분석
           </p>
         )}
-        {navItems.slice(9).map((item) => (
+        {navItems.slice(10).map((item) => (
           <button
             key={item.id}
             onClick={item.onClick}

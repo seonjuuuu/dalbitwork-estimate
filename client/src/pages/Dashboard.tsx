@@ -1,6 +1,7 @@
 import { useLocation } from 'wouter';
 import { trpc } from '@/lib/trpc';
 import { FileText, FileCheck, Building2, TrendingUp, AlertCircle, Loader2, Edit } from 'lucide-react';
+import KanbanBoard from '@/components/KanbanBoard';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend,
@@ -80,13 +81,13 @@ export default function Dashboard() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <SummaryCard
           icon={FileCheck}
-          label={`${monthLabel} 계약 건수`}
+          label="진행중 계약 건수"
           value={`${thisMonthContractCount}건`}
           color="bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400"
         />
         <SummaryCard
           icon={TrendingUp}
-          label={`${monthLabel} 계약 금액`}
+          label="진행중 계약 금액"
           value={`${formatAmount(thisMonthContractAmount)}원`}
           sub={thisMonthContractAmount > 0 ? `${thisMonthContractAmount.toLocaleString('ko-KR')}원` : undefined}
           color="bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400"
@@ -192,6 +193,12 @@ export default function Dashboard() {
             </>
           )}
         </div>
+      </div>
+
+      {/* 칸반 보드 */}
+      <div className="bg-card border border-border rounded-xl p-5">
+        <h2 className="text-sm font-semibold text-foreground mb-4">프로젝트 진행 현황</h2>
+        <KanbanBoard />
       </div>
 
       {/* 월별 매출 막대 차트 */}

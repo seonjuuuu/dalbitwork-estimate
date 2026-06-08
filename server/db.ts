@@ -1,4 +1,4 @@
-import { eq, and, desc, asc, gte, lte } from "drizzle-orm";
+import { eq, and, or, ne, desc, asc, gte, lte } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import { InsertUser, users, documents, InsertDocument, noteTemplates, InsertNoteTemplate, payments, serviceItems, clients, consultations, hktbInvoices } from "../drizzle/schema";
@@ -154,6 +154,26 @@ export async function getDocumentPayments(documentId: number, userId: number) {
   return db.select().from(payments).where(and(eq(payments.documentId, documentId), eq(payments.userId, userId))).orderBy(desc(payments.paymentDate));
 }
 
+export async function getDepositedDocumentIds(userId: number): Promise<number[]> {
+  const db = await getDb();
+  if (!db) return [];
+  const rows = await db
+    .selectDistinct({ documentId: payments.documentId })
+    .from(payments)
+    .where(and(eq(payments.userId, userId), eq(payments.type, 'deposit')));
+  return rows.map(r => r.documentId);
+}
+
+export async function getFinalPaidDocumentIds(userId: number): Promise<number[]> {
+  const db = await getDb();
+  if (!db) return [];
+  const rows = await db
+    .selectDistinct({ documentId: payments.documentId })
+    .from(payments)
+    .where(and(eq(payments.userId, userId), eq(payments.type, 'final')));
+  return rows.map(r => r.documentId);
+}
+
 export async function getMonthlySalesData(userId: number, year: number, month: number) {
   const db = await getDb();
   if (!db) return { payments: [], hktbInvoices: [], finalPayments: [] };
@@ -210,35 +230,36 @@ export async function getDashboardData(userId: number) {
   const year = now.getFullYear();
   const month = now.getMonth() + 1;
   const monthStart = `${year}-${String(month).padStart(2, '0')}-01`;
-  const monthEnd = new Date(year, month, 0).toISOString().split('T')[0];
+  const monthEnd = `${year}-${String(month).padStart(2, '0')}-${String(new Date(year, month, 0).getDate()).padStart(2, '0')}`;
 
-  // 이번 달 계약서 (estimate)
-  const thisMonthDocs = await db.select({
-    id: documents.id, type: documents.type, title: documents.title,
-    clientName: documents.clientName, date: documents.date,
-    totalMin: documents.totalMin, totalMax: documents.totalMax,
-    updatedAt: documents.updatedAt,
-  }).from(documents)
-    .where(and(eq(documents.userId, userId), eq(documents.type, 'estimate'), gte(documents.date, monthStart), lte(documents.date, monthEnd)));
+  // 이번 달 계약 건수/금액: clients.contractDate 기준, status가 계약 또는 완료인 고객
+  const allClients = await db.select({
+    id: clients.id,
+    status: clients.status,
+    contractDate: clients.contractDate,
+    contractAmount: clients.contractAmount,
+    linkedEstimateId: clients.linkedEstimateId,
+  }).from(clients).where(eq(clients.userId, userId));
 
-  const thisMonthContractCount = thisMonthDocs.length;
-  const thisMonthContractAmount = thisMonthDocs.reduce((s, d) => s + (d.totalMin || 0), 0);
+  // contractDate는 "2026.06.08" 또는 "2026-06-08" 혼용 → 비교 전 하이픈으로 통일
+  const normDate = (d: string) => (d || '').replace(/\./g, '-');
 
-  // 총 입금액 (payments)
-  const allPayments = await db.select({ amount: payments.amount, documentId: payments.documentId })
+  // 진행중 계약 (status='계약') 전체
+  const activeContractClients = allClients.filter(c => c.status === '계약');
+  const thisMonthContractCount = activeContractClients.length;
+  const thisMonthContractAmount = activeContractClients.reduce((s, c) => s + (c.contractAmount || 0), 0);
+
+  // 상담 중 고객: 계약·완료 제외
+  const consultingCount = allClients.filter(c => c.status === '상담' || c.status === '제안서').length;
+
+  // 미수금: 계약 상태 고객들의 계약금 합산 - 실제 입금 합산
+  const contractClients = allClients.filter(c => c.status === '계약');
+  const totalContractAmount = contractClients.reduce((s, c) => s + (c.contractAmount || 0), 0);
+
+  const allPayments = await db.select({ amount: payments.amount })
     .from(payments).where(eq(payments.userId, userId));
   const totalPaid = allPayments.reduce((s, p) => s + p.amount, 0);
-
-  // 전체 계약서 합산
-  const allEstimates = await db.select({ totalMin: documents.totalMin })
-    .from(documents).where(and(eq(documents.userId, userId), eq(documents.type, 'estimate')));
-  const totalContractAmount = allEstimates.reduce((s, d) => s + (d.totalMin || 0), 0);
-  const unpaidAmount = totalContractAmount - totalPaid;
-
-  // 상담 중 고객 수 (계약 전 = 상담 + 제안서 단계)
-  const consultingClients = await db.select({ id: clients.id, status: clients.status })
-    .from(clients).where(eq(clients.userId, userId));
-  const consultingCount = consultingClients.filter(c => c.status !== '계약').length;
+  const unpaidAmount = Math.max(0, totalContractAmount - totalPaid);
 
   // 최근 문서 10개
   const recentDocs = await db.select({
@@ -251,24 +272,24 @@ export async function getDashboardData(userId: number) {
     .orderBy(desc(documents.updatedAt))
     .limit(10);
 
-  // 최근 6개월 월별 계약 금액
+  // 최근 6개월 월별 계약 금액: clients.contractDate + contractAmount 기준
   const months: { year: number; month: number }[] = [];
   for (let i = 5; i >= 0; i--) {
     const d = new Date(year, month - 1 - i, 1);
     months.push({ year: d.getFullYear(), month: d.getMonth() + 1 });
   }
 
-  const monthlySummary = await Promise.all(months.map(async ({ year: y, month: m }) => {
+  const contractedClients = allClients.filter(c => c.status === '계약' || c.status === '완료');
+  const monthlySummary = months.map(({ year: y, month: m }) => {
     const start = `${y}-${String(m).padStart(2, '0')}-01`;
-    const end = new Date(y, m, 0).toISOString().split('T')[0];
-    const rows = await db.select({ totalMin: documents.totalMin })
-      .from(documents)
-      .where(and(eq(documents.userId, userId), eq(documents.type, 'estimate'), gte(documents.date, start), lte(documents.date, end)));
-    return { label: `${m}월`, amount: rows.reduce((s, r) => s + (r.totalMin || 0), 0) };
-  }));
+    const end = `${y}-${String(m).padStart(2, '0')}-${String(new Date(y, m, 0).getDate()).padStart(2, '0')}`;
+    const amount = contractedClients
+      .filter(c => normDate(c.contractDate) >= start && normDate(c.contractDate) <= end)
+      .reduce((s, c) => s + (c.contractAmount || 0), 0);
+    return { label: `${m}월`, amount };
+  });
 
   // 상담 → 제안서 → 계약 단계별 고객 수
-  const allClients = await db.select({ status: clients.status }).from(clients).where(eq(clients.userId, userId));
   const statusCounts = { '상담': 0, '제안서': 0, '계약': 0, '완료': 0 };
   allClients.forEach(c => { statusCounts[c.status ?? '상담']++; });
 
@@ -435,16 +456,49 @@ export async function deleteServiceItem(id: number, userId: number) {
   return { success: true };
 }
 
+// ─── Kanban ──────────────────────────────────────────────────────
+
+export async function getKanbanClients(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  const rows = await db.select({
+    id: clients.id,
+    name: clients.name,
+    contactName: clients.contactName,
+    contractAmount: clients.contractAmount,
+    workflowStatus: clients.workflowStatus,
+    isWorking: clients.isWorking,
+    status: clients.status,
+  }).from(clients)
+    .where(and(
+      eq(clients.userId, userId),
+      or(eq(clients.isWorking, true), ne(clients.workflowStatus, '상담')),
+    ))
+    .orderBy(asc(clients.name));
+
+  return rows.map(r => ({
+    ...r,
+    workflowStatus: (r.isWorking && r.workflowStatus === '상담' ? '작업진행중' : r.workflowStatus) as typeof r.workflowStatus,
+  }));
+}
+
+export async function updateClientWorkflowStatus(id: number, userId: number, workflowStatus: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(clients).set({ workflowStatus: workflowStatus as any }).where(and(eq(clients.id, id), eq(clients.userId, userId)));
+  return { success: true };
+}
+
 // ─── Clients CRUD ────────────────────────────────────────────────
 
 export async function listClients(userId: number, search?: string) {
   const db = await getDb();
   if (!db) return [];
   if (search) {
-    const { ilike, or } = await import("drizzle-orm");
+    const { ilike } = await import("drizzle-orm");
     const pattern = `%${search}%`;
     return db.select().from(clients)
-      .where(and(eq(clients.userId, userId), or(ilike(clients.name, pattern), ilike(clients.contactPhone, pattern), ilike(clients.contactName, pattern))))
+      .where(and(eq(clients.userId, userId), or(ilike(clients.name, pattern), ilike(clients.contactPhone, pattern), ilike(clients.contactName, pattern), ilike(clients.businessNumber, pattern))))
       .orderBy(asc(clients.name));
   }
   return db.select().from(clients).where(eq(clients.userId, userId)).orderBy(asc(clients.name));
@@ -556,39 +610,6 @@ export async function getProposalsByClientName(clientName: string, userId: numbe
   }).from(documents)
     .where(and(eq(documents.userId, userId), eq(documents.type, 'proposal'), eq(documents.clientName, clientName)))
     .orderBy(desc(documents.updatedAt));
-}
-
-export async function getCalendarEvents(userId: number) {
-  const db = await getDb();
-  if (!db) return { consultations: [], clients: [] };
-
-  const consultationRows = await db
-    .select({
-      id: consultations.id,
-      date: consultations.date,
-      content: consultations.content,
-      nextAction: consultations.nextAction,
-      clientId: consultations.clientId,
-      clientName: clients.name,
-    })
-    .from(consultations)
-    .innerJoin(clients, eq(consultations.clientId, clients.id))
-    .where(eq(consultations.userId, userId))
-    .orderBy(desc(consultations.date));
-
-  const clientRows = await db
-    .select({
-      id: clients.id,
-      name: clients.name,
-      contractDate: clients.contractDate,
-      contractAmount: clients.contractAmount,
-      finalPaymentDate: clients.finalPaymentDate,
-      finalPaymentAmount: clients.finalPaymentAmount,
-    })
-    .from(clients)
-    .where(eq(clients.userId, userId));
-
-  return { consultations: consultationRows, clients: clientRows };
 }
 
 async function getPaymentById(id: number) {
