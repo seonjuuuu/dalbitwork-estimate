@@ -467,6 +467,7 @@ export async function getKanbanClients(userId: number) {
     contactName: clients.contactName,
     contractAmount: clients.contractAmount,
     workflowStatus: clients.workflowStatus,
+    workflowCompletedAt: clients.workflowCompletedAt,
     isWorking: clients.isWorking,
     status: clients.status,
   }).from(clients)
@@ -478,14 +479,17 @@ export async function getKanbanClients(userId: number) {
 
   return rows.map(r => ({
     ...r,
-    workflowStatus: (r.isWorking && r.workflowStatus === '상담' ? '작업진행중' : r.workflowStatus) as typeof r.workflowStatus,
+    workflowStatus: (r.isWorking && r.workflowStatus === '상담' ? '진행대기' : r.workflowStatus) as typeof r.workflowStatus,
   }));
 }
 
 export async function updateClientWorkflowStatus(id: number, userId: number, workflowStatus: string) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  await db.update(clients).set({ workflowStatus: workflowStatus as any }).where(and(eq(clients.id, id), eq(clients.userId, userId)));
+  const extra = workflowStatus === '완료'
+    ? { workflowCompletedAt: new Date() }
+    : { workflowCompletedAt: null };
+  await db.update(clients).set({ workflowStatus: workflowStatus as any, ...extra }).where(and(eq(clients.id, id), eq(clients.userId, userId)));
   return { success: true };
 }
 

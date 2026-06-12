@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
   DndContext,
   DragOverlay,
@@ -13,16 +13,17 @@ import {
 import { useLocation } from 'wouter';
 import { trpc } from '@/lib/trpc';
 import { toast } from 'sonner';
-import { GripVertical, ExternalLink } from 'lucide-react';
+import { GripVertical, ExternalLink, CheckCircle2 } from 'lucide-react';
 
 // ─── Column config ────────────────────────────────────────────────
 
-type WorkflowStatus = '상담' | '작업진행중' | 'PC검수' | '모바일작업중' | '고객전달' | '완료';
+type WorkflowStatus = '상담' | '진행대기' | '작업진행중' | 'PC검수' | '모바일작업중' | '고객전달' | '완료';
 
-const COLUMNS: { id: WorkflowStatus; label: string; color: string; dot: string }[] = [
+const ALL_COLUMNS: { id: WorkflowStatus; label: string; color: string; dot: string }[] = [
+  { id: '진행대기',   label: '진행 대기',               color: 'bg-slate-100 dark:bg-slate-800/60',   dot: 'bg-slate-400' },
   { id: '작업진행중', label: '작업 진행중',             color: 'bg-blue-50 dark:bg-blue-900/20',      dot: 'bg-blue-500' },
   { id: 'PC검수',     label: 'PC ver 검수 및 수정',     color: 'bg-violet-50 dark:bg-violet-900/20',  dot: 'bg-violet-500' },
-  { id: '모바일작업중',label: '모바일 ver 작업중',       color: 'bg-sky-50 dark:bg-sky-900/20',        dot: 'bg-sky-500' },
+  { id: '모바일작업중',label: '모바일 ver 작업중',      color: 'bg-sky-50 dark:bg-sky-900/20',        dot: 'bg-sky-500' },
   { id: '고객전달',   label: '고객 전달',               color: 'bg-amber-50 dark:bg-amber-900/20',    dot: 'bg-amber-500' },
   { id: '완료',       label: '완료',                    color: 'bg-emerald-50 dark:bg-emerald-900/20',dot: 'bg-emerald-500' },
 ];
@@ -35,7 +36,16 @@ interface KanbanClient {
   contactName: string;
   contractAmount: number;
   workflowStatus: WorkflowStatus;
+  workflowCompletedAt: Date | string | null;
   status: string;
+}
+
+const THREE_DAYS_MS = 3 * 24 * 60 * 60 * 1000;
+
+function isArchivedComplete(client: KanbanClient) {
+  if (client.workflowStatus !== '완료') return false;
+  if (!client.workflowCompletedAt) return false;
+  return Date.now() - new Date(client.workflowCompletedAt).getTime() > THREE_DAYS_MS;
 }
 
 // ─── Card ─────────────────────────────────────────────────────────
@@ -104,7 +114,7 @@ function KanbanColumn({
   clients,
   draggingId,
 }: {
-  col: typeof COLUMNS[number];
+  col: typeof ALL_COLUMNS[number];
   clients: KanbanClient[];
   draggingId: number | null;
 }) {
@@ -136,9 +146,51 @@ function KanbanColumn({
   );
 }
 
+// ─── Completed list ───────────────────────────────────────────────
+
+function CompletedList({ clients }: { clients: KanbanClient[] }) {
+  const [, navigate] = useLocation();
+  if (clients.length === 0) return null;
+
+  return (
+    <div className="mt-6">
+      <div className="flex items-center gap-2 mb-3">
+        <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+        <span className="text-sm font-semibold text-foreground">완료</span>
+        <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full">{clients.length}</span>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2">
+        {clients.map(c => (
+          <div
+            key={c.id}
+            className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg border border-border bg-muted/40 text-sm"
+          >
+            <div className="min-w-0">
+              <p className="font-medium text-foreground truncate">{c.name}</p>
+              {c.contactName && <p className="text-xs text-muted-foreground truncate">{c.contactName}</p>}
+              {c.workflowCompletedAt && (
+                <p className="text-[10px] text-muted-foreground mt-0.5">
+                  완료 {new Date(c.workflowCompletedAt).toLocaleDateString('ko-KR', { month: 'long', day: 'numeric' })}
+                </p>
+              )}
+            </div>
+            <button
+              onClick={() => navigate(`/clients/${c.id}`)}
+              className="text-muted-foreground/40 hover:text-muted-foreground transition-colors flex-shrink-0"
+            >
+              <ExternalLink className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ─── Board ────────────────────────────────────────────────────────
 
-export default function KanbanBoard() {
+export default function KanbanBoard({ hide }: { hide?: WorkflowStatus[] } = {}) {
+  const COLUMNS = hide ? ALL_COLUMNS.filter(c => !hide.includes(c.id)) : ALL_COLUMNS;
   const { data: rawClients = [], refetch } = trpc.kanban.getClients.useQuery();
   const updateStatusMutation = trpc.kanban.updateStatus.useMutation();
   const [draggingId, setDraggingId] = useState<number | null>(null);
@@ -148,12 +200,18 @@ export default function KanbanBoard() {
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
   );
 
-  const clients: KanbanClient[] = rawClients.map(c => ({
+  const allClients: KanbanClient[] = rawClients.map(c => ({
     ...c,
     workflowStatus: (optimistic[c.id] ?? c.workflowStatus ?? '상담') as WorkflowStatus,
   }));
 
-  const draggingClient = draggingId ? clients.find(c => c.id === draggingId) : null;
+  // 3일 경과 완료 → 하단 리스트, 나머지 → 컬럼
+  const { activeClients, archivedClients } = useMemo(() => ({
+    activeClients: allClients.filter(c => !isArchivedComplete(c)),
+    archivedClients: allClients.filter(c => isArchivedComplete(c)),
+  }), [allClients]);
+
+  const draggingClient = draggingId ? activeClients.find(c => c.id === draggingId) : null;
 
   const handleDragStart = (e: DragStartEvent) => {
     setDraggingId(e.active.id as number);
@@ -165,7 +223,7 @@ export default function KanbanBoard() {
     if (!over) return;
     const clientId = active.id as number;
     const newStatus = over.id as WorkflowStatus;
-    const current = clients.find(c => c.id === clientId);
+    const current = activeClients.find(c => c.id === clientId);
     if (!current || current.workflowStatus === newStatus) return;
 
     setOptimistic(prev => ({ ...prev, [clientId]: newStatus }));
@@ -179,21 +237,24 @@ export default function KanbanBoard() {
   };
 
   return (
-    <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-      <div className="flex gap-3 overflow-x-auto pb-2">
-        {COLUMNS.map(col => (
-          <KanbanColumn
-            key={col.id}
-            col={col}
-            clients={clients.filter(c => c.workflowStatus === col.id)}
-            draggingId={draggingId}
-          />
-        ))}
-      </div>
+    <div>
+      <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+        <div className="flex gap-3 overflow-x-auto pb-2">
+          {COLUMNS.map(col => (
+            <KanbanColumn
+              key={col.id}
+              col={col}
+              clients={activeClients.filter(c => c.workflowStatus === col.id)}
+              draggingId={draggingId}
+            />
+          ))}
+        </div>
+        <DragOverlay>
+          {draggingClient ? <DragCard client={draggingClient} /> : null}
+        </DragOverlay>
+      </DndContext>
 
-      <DragOverlay>
-        {draggingClient ? <DragCard client={draggingClient} /> : null}
-      </DragOverlay>
-    </DndContext>
+      <CompletedList clients={archivedClients} />
+    </div>
   );
 }

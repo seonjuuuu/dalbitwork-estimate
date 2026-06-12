@@ -22,9 +22,10 @@ interface ClientForm {
 
 const emptyForm: ClientForm = { name: '', contactName: '', contactPhone: '', businessNumber: '', contractDate: '', contractAmount: '', memo: '' };
 
-type WorkflowStatus = '상담' | '작업진행중' | 'PC검수' | '모바일작업중' | '고객전달' | '완료';
+type WorkflowStatus = '상담' | '진행대기' | '작업진행중' | 'PC검수' | '모바일작업중' | '고객전달' | '완료';
 
 const WORKFLOW_BADGE: Record<Exclude<WorkflowStatus, '상담'>, { label: string; cls: string }> = {
+  '진행대기':   { label: '진행 대기',   cls: 'bg-slate-100 text-slate-600 dark:bg-slate-800/60 dark:text-slate-400' },
   '작업진행중': { label: '작업 진행중', cls: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400' },
   'PC검수':     { label: 'PC 검수',    cls: 'bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-400' },
   '모바일작업중': { label: '모바일 작업중', cls: 'bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-400' },
@@ -33,7 +34,7 @@ const WORKFLOW_BADGE: Record<Exclude<WorkflowStatus, '상담'>, { label: string;
 };
 
 function WorkflowBadge({ workflowStatus, isWorking }: { workflowStatus: string; isWorking: boolean }) {
-  const effective = (isWorking && workflowStatus === '상담') ? '작업진행중' : workflowStatus;
+  const effective = (isWorking && workflowStatus === '상담') ? '진행대기' : workflowStatus;
   if (effective === '상담') return null;
   const badge = WORKFLOW_BADGE[effective as Exclude<WorkflowStatus, '상담'>];
   if (!badge) return null;

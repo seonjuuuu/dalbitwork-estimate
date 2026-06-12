@@ -198,7 +198,7 @@ export default function Dashboard() {
       {/* 칸반 보드 */}
       <div className="bg-card border border-border rounded-xl p-5">
         <h2 className="text-sm font-semibold text-foreground mb-4">프로젝트 진행 현황</h2>
-        <KanbanBoard />
+        <KanbanBoard hide={['완료']} />
       </div>
 
       {/* 월별 매출 막대 차트 */}

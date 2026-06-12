@@ -528,7 +528,7 @@ export const appRouter = router({
     updateStatus: protectedProcedure
       .input(z.object({
         id: z.number(),
-        workflowStatus: z.enum(['상담', '작업진행중', 'PC검수', '모바일작업중', '고객전달', '완료']),
+        workflowStatus: z.enum(['상담', '진행대기', '작업진행중', 'PC검수', '모바일작업중', '고객전달', '완료']),
       }))
       .mutation(async ({ ctx, input }) => {
         return db.updateClientWorkflowStatus(input.id, ctx.user.id, input.workflowStatus);
