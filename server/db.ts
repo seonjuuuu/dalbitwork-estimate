@@ -1,8 +1,8 @@
 import { eq, and, or, ne, desc, asc, gte, lte } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
-import { InsertUser, users, documents, InsertDocument, noteTemplates, InsertNoteTemplate, payments, serviceItems, clients, consultations, hktbInvoices } from "../drizzle/schema";
-import type { InsertPayment, InsertServiceItem, InsertClient, InsertConsultation, InsertHktbInvoice } from "../drizzle/schema";
+import { InsertUser, users, documents, InsertDocument, noteTemplates, InsertNoteTemplate, payments, serviceItems, clients, consultations, hktbInvoices, pdfFiles } from "../drizzle/schema";
+import type { InsertPayment, InsertServiceItem, InsertClient, InsertConsultation, InsertHktbInvoice, InsertPdfFile } from "../drizzle/schema";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
@@ -461,26 +461,30 @@ export async function deleteServiceItem(id: number, userId: number) {
 export async function getKanbanClients(userId: number) {
   const db = await getDb();
   if (!db) return [];
-  const rows = await db.select({
+  return db.select({
     id: clients.id,
     name: clients.name,
     contactName: clients.contactName,
     contractAmount: clients.contractAmount,
     workflowStatus: clients.workflowStatus,
     workflowCompletedAt: clients.workflowCompletedAt,
-    isWorking: clients.isWorking,
     status: clients.status,
   }).from(clients)
+    .where(and(eq(clients.userId, userId), ne(clients.workflowStatus, '상담')))
+    .orderBy(asc(clients.name));
+}
+
+// 계약금 확정 시: 연결된 고객 status → '계약', workflowStatus → '진행대기'
+export async function confirmDepositForClient(documentId: number, userId: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(clients)
+    .set({ status: '계약', workflowStatus: '진행대기' })
     .where(and(
       eq(clients.userId, userId),
-      or(eq(clients.isWorking, true), ne(clients.workflowStatus, '상담')),
-    ))
-    .orderBy(asc(clients.name));
-
-  return rows.map(r => ({
-    ...r,
-    workflowStatus: (r.isWorking && r.workflowStatus === '상담' ? '진행대기' : r.workflowStatus) as typeof r.workflowStatus,
-  }));
+      eq(clients.linkedEstimateId, documentId),
+      eq(clients.workflowStatus, '상담'),
+    ));
 }
 
 export async function updateClientWorkflowStatus(id: number, userId: number, workflowStatus: string) {
@@ -654,5 +658,35 @@ export async function deleteHktbInvoice(id: number, userId: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   await db.delete(hktbInvoices).where(and(eq(hktbInvoices.id, id), eq(hktbInvoices.userId, userId)));
+  return { success: true };
+}
+
+// ─── PDF Files ───────────────────────────────────────────────────
+
+export async function listPdfFiles(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select({ id: pdfFiles.id, name: pdfFiles.name, fileSize: pdfFiles.fileSize, createdAt: pdfFiles.createdAt })
+    .from(pdfFiles).where(eq(pdfFiles.userId, userId)).orderBy(desc(pdfFiles.createdAt));
+}
+
+export async function uploadPdfFile(userId: number, name: string, fileSize: number, data: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(pdfFiles).values({ userId, name, fileSize, data }).returning({ id: pdfFiles.id });
+  return result[0];
+}
+
+export async function getPdfFile(id: number, userId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const rows = await db.select().from(pdfFiles).where(and(eq(pdfFiles.id, id), eq(pdfFiles.userId, userId))).limit(1);
+  return rows[0] ?? null;
+}
+
+export async function deletePdfFile(id: number, userId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(pdfFiles).where(and(eq(pdfFiles.id, id), eq(pdfFiles.userId, userId)));
   return { success: true };
 }

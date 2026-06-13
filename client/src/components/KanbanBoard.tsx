@@ -37,7 +37,7 @@ interface KanbanClient {
   contractAmount: number;
   workflowStatus: WorkflowStatus;
   workflowCompletedAt: Date | string | null;
-  status: string;
+  status: string | null;
 }
 
 const THREE_DAYS_MS = 3 * 24 * 60 * 60 * 1000;

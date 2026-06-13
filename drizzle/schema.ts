@@ -174,3 +174,15 @@ export const hktbInvoices = pgTable("hktb_invoices", {
 
 export type HktbInvoice = typeof hktbInvoices.$inferSelect;
 export type InsertHktbInvoice = typeof hktbInvoices.$inferInsert;
+
+export const pdfFiles = pgTable("pdf_files", {
+  id: serial("id").primaryKey(),
+  userId: integer("userId").notNull(),
+  name: varchar("name", { length: 500 }).notNull(),
+  fileSize: integer("fileSize").notNull(),
+  data: text("data").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type PdfFile = typeof pdfFiles.$inferSelect;
+export type InsertPdfFile = typeof pdfFiles.$inferInsert;

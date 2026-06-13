@@ -33,10 +33,9 @@ const WORKFLOW_BADGE: Record<Exclude<WorkflowStatus, '상담'>, { label: string;
   '완료':       { label: '완료',       cls: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400' },
 };
 
-function WorkflowBadge({ workflowStatus, isWorking }: { workflowStatus: string; isWorking: boolean }) {
-  const effective = (isWorking && workflowStatus === '상담') ? '진행대기' : workflowStatus;
-  if (effective === '상담') return null;
-  const badge = WORKFLOW_BADGE[effective as Exclude<WorkflowStatus, '상담'>];
+function WorkflowBadge({ workflowStatus }: { workflowStatus: string }) {
+  if (workflowStatus === '상담') return null;
+  const badge = WORKFLOW_BADGE[workflowStatus as Exclude<WorkflowStatus, '상담'>];
   if (!badge) return null;
   return (
     <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${badge.cls}`}>
@@ -364,7 +363,7 @@ export default function Clients() {
                       상담
                     </span>
                   )}
-                  <WorkflowBadge workflowStatus={(client as any).workflowStatus ?? '상담'} isWorking={(client as any).isWorking ?? false} />
+                  <WorkflowBadge workflowStatus={(client as any).workflowStatus ?? '상담'} />
                 </div>
                 <div className="flex flex-wrap items-center gap-3 mt-1">
                   {client.contactName && (

@@ -279,7 +279,7 @@ export const appRouter = router({
           throw new Error("Document not found or not authorized");
         }
 
-        return db.createPayment({
+        const payment = await db.createPayment({
           userId: ctx.user.id,
           documentId: input.documentId,
           type: input.type,
@@ -287,6 +287,10 @@ export const appRouter = router({
           paymentDate: input.paymentDate,
           notes: input.notes || null,
         });
+        if (input.type === 'deposit') {
+          await db.confirmDepositForClient(input.documentId, ctx.user.id);
+        }
+        return payment;
       }),
 
     /** Get all payments for a document */
@@ -556,6 +560,31 @@ export const appRouter = router({
     getWorkRanges: protectedProcedure.query(async ({ ctx }) => {
       return db.getWorkRanges(ctx.user.id);
     }),
+  }),
+
+  pdfFiles: router({
+    list: protectedProcedure.query(async ({ ctx }) => {
+      return db.listPdfFiles(ctx.user.id);
+    }),
+    upload: protectedProcedure
+      .input(z.object({
+        name: z.string().min(1),
+        fileSize: z.number(),
+        data: z.string(), // base64
+      }))
+      .mutation(async ({ ctx, input }) => {
+        return db.uploadPdfFile(ctx.user.id, input.name, input.fileSize, input.data);
+      }),
+    get: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        return db.getPdfFile(input.id, ctx.user.id);
+      }),
+    delete: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        return db.deletePdfFile(input.id, ctx.user.id);
+      }),
   }),
 });
 

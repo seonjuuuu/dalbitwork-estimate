@@ -92,14 +92,6 @@ export default function ClientDetail({ id }: { id: string }) {
   });
   const [isSavingInfo, setIsSavingInfo] = useState(false);
 
-  const [workingForm, setWorkingForm] = useState<{
-    isWorking: boolean;
-    workStartDate: string;
-    pcDraftDate: string;
-    mobileDraftDate: string;
-    finalDeliveryDate: string;
-  } | null>(null);
-  const [isSavingWork, setIsSavingWork] = useState(false);
 
   useEffect(() => {
     if (client && (client as any).linkedEstimateId) {
