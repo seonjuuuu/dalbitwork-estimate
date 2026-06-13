@@ -123,7 +123,7 @@ export default function DocumentList({ type }: DocumentListProps) {
           ))}
         </div>
       ) : documents.length === 0 ? (
-        <div className="text-center py-16 border border-border rounded-lg">
+        <div className="text-left py-16 border border-border rounded-lg">
           <IconComponent className="w-12 h-12 text-muted-foreground mx-auto mb-4 opacity-40" />
           <p className="text-muted-foreground">아직 {docLabel}가 없습니다.</p>
         </div>
@@ -131,151 +131,163 @@ export default function DocumentList({ type }: DocumentListProps) {
         <>
           {/* Table */}
           <div className="border border-border rounded-lg overflow-hidden">
-            {/* Header */}
-            <div className="grid grid-cols-[2fr_1.4fr_0.8fr_1.4fr_auto] bg-muted/50 border-b border-border px-4 py-2.5 text-xs font-semibold text-muted-foreground">
-              <span>제목</span>
-              <span>고객사</span>
-              <span>날짜</span>
-              <span>금액</span>
-              <span className="min-w-[190px] text-right">작업</span>
-            </div>
+            <table className="w-full border-collapse text-sm">
+              <colgroup>
+                <col className="w-[35%]" />
+                <col className="w-[18%]" />
+                <col className="w-[12%]" />
+                <col className="w-[18%]" />
+                <col className="w-[17%]" />
+              </colgroup>
+              <thead>
+                <tr className="bg-muted/50 border-b border-border">
+                  <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-2.5">제목</th>
+                  <th className="text-left text-xs font-semibold text-muted-foreground px-3 py-2.5">고객사</th>
+                  <th className="text-left text-xs font-semibold text-muted-foreground px-3 py-2.5">날짜</th>
+                  <th className="text-left text-xs font-semibold text-muted-foreground px-3 py-2.5">금액</th>
+                  <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-2.5">작업</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pagedDocs.map((doc, idx) => {
+                  const docIdNum = parseInt(doc.id!);
+                  const isDeposited = depositedSet.has(docIdNum);
+                  const isFinalPaid = finalPaidSet.has(docIdNum);
 
-            {/* Rows */}
-            {pagedDocs.map((doc, idx) => {
-              const docIdNum = parseInt(doc.id!);
-              const isDeposited = depositedSet.has(docIdNum);
-              const isFinalPaid = finalPaidSet.has(docIdNum);
-
-              return (
-                <div
-                  key={doc.id}
-                  className={`grid grid-cols-[2fr_1.4fr_0.8fr_1.4fr_auto] items-center px-4 py-3 border-b border-border last:border-0 hover:bg-accent/30 transition-colors ${idx % 2 !== 0 ? 'bg-muted/10' : ''}`}
-                >
-                  {/* 제목 */}
-                  <div className="min-w-0 pr-3">
-                    <button
-                      onClick={() => handleEdit(doc.id!)}
-                      className="text-sm font-medium text-foreground hover:text-primary truncate block text-left w-full"
+                  return (
+                    <tr
+                      key={doc.id}
+                      className={`border-b border-border last:border-0 hover:bg-accent/30 transition-colors ${idx % 2 !== 0 ? 'bg-muted/10' : ''}`}
                     >
-                      {doc.title || '(제목 없음)'}
-                    </button>
-                  </div>
+                      {/* 제목 */}
+                      <td className="px-4 py-3 max-w-0 text-left">
+                        <button
+                          onClick={() => handleEdit(doc.id!)}
+                          className="font-medium text-foreground hover:text-primary truncate block text-left w-full"
+                        >
+                          {doc.title || '(제목 없음)'}
+                        </button>
+                      </td>
 
-                  {/* 고객사 */}
-                  <div className="min-w-0 pr-3">
-                    <span className="text-sm text-muted-foreground truncate block">
-                      {doc.clientName || '—'}
-                    </span>
-                  </div>
+                      {/* 고객사 */}
+                      <td className="px-3 py-3 max-w-0 text-left">
+                        <span className="text-muted-foreground truncate block text-left">
+                          {doc.clientName || '—'}
+                        </span>
+                      </td>
 
-                  {/* 날짜 */}
-                  <div className="pr-3">
-                    <span className="text-sm text-muted-foreground">{doc.date}</span>
-                  </div>
+                      {/* 날짜 */}
+                      <td className="px-3 py-3 whitespace-nowrap text-left">
+                        <span className="text-muted-foreground">{doc.date}</span>
+                      </td>
 
-                  {/* 금액 */}
-                  <div className="pr-3">
-                    <span className="text-sm text-foreground/80">
-                      {doc.totalMin === doc.totalMax
-                        ? `${doc.totalMin.toLocaleString('ko-KR')}원`
-                        : `${doc.totalMin.toLocaleString('ko-KR')} ~ ${doc.totalMax.toLocaleString('ko-KR')}원`}
-                    </span>
-                  </div>
+                      {/* 금액 */}
+                      <td className="px-3 py-3 text-left">
+                        <span className="text-foreground/80">
+                          {doc.totalMin === doc.totalMax
+                            ? `${doc.totalMin.toLocaleString('ko-KR')}원`
+                            : `${doc.totalMin.toLocaleString('ko-KR')} ~ ${doc.totalMax.toLocaleString('ko-KR')}원`}
+                        </span>
+                      </td>
 
-                  {/* 작업 버튼 */}
-                  <div className="flex items-center gap-1 justify-end min-w-[190px]">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleEdit(doc.id!)}
-                      className="h-7 px-2 text-xs gap-1"
-                    >
-                      <Edit className="w-3 h-3" />
-                      편집
-                    </Button>
-
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setNotesDialogDoc(doc)}
-                      className="h-7 px-2 text-xs gap-1 text-violet-600 hover:text-violet-700"
-                    >
-                      <FileDown className="w-3 h-3" />
-                      PDF
-                    </Button>
-
-                    {type === 'proposal' && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDuplicateAsEstimate(doc.id!)}
-                        disabled={duplicatingId === doc.id}
-                        className="h-7 px-2 text-xs gap-1"
-                      >
-                        {duplicatingId === doc.id ? (
-                          <Loader2 className="w-3 h-3 animate-spin" />
-                        ) : (
-                          <Copy className="w-3 h-3" />
-                        )}
-                        변환
-                      </Button>
-                    )}
-
-                    {type === 'estimate' && (
-                      <>
-                        {isDeposited ? (
-                          <span className="flex items-center gap-1 text-[10px] font-medium text-emerald-600 px-1.5 py-1 rounded bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 whitespace-nowrap">
-                            <CheckCircle2 className="w-3 h-3" />
-                            계약금
-                          </span>
-                        ) : (
+                      {/* 작업 버튼 */}
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-1 justify-start">
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => handleOpenDepositDialog(docIdNum, doc.totalMax, doc.clientName)}
-                            className="h-7 px-2 text-xs gap-1 text-amber-600 hover:text-amber-700"
+                            onClick={() => handleEdit(doc.id!)}
+                            className="h-7 px-2 text-xs gap-1"
                           >
-                            <CreditCard className="w-3 h-3" />
-                            계약금
+                            <Edit className="w-3 h-3" />
+                            편집
                           </Button>
-                        )}
 
-                        {isFinalPaid ? (
-                          <span className="flex items-center gap-1 text-[10px] font-medium text-blue-600 px-1.5 py-1 rounded bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 whitespace-nowrap">
-                            <CheckCircle2 className="w-3 h-3" />
-                            잔금
-                          </span>
-                        ) : isDeposited && (
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => handleOpenFinalDialog(docIdNum, doc.totalMax, doc.clientName)}
-                            className="h-7 px-2 text-xs gap-1 text-blue-600 hover:text-blue-700"
+                            onClick={() => setNotesDialogDoc(doc)}
+                            className="h-7 px-2 text-xs gap-1 text-violet-600 hover:text-violet-700"
                           >
-                            <CreditCard className="w-3 h-3" />
-                            잔금
+                            <FileDown className="w-3 h-3" />
+                            PDF
                           </Button>
-                        )}
-                      </>
-                    )}
 
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleDelete(doc.id!)}
-                      disabled={deletingId === doc.id}
-                      className="h-7 w-7 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
-                    >
-                      {deletingId === doc.id ? (
-                        <Loader2 className="w-3 h-3 animate-spin" />
-                      ) : (
-                        <Trash2 className="w-3 h-3" />
-                      )}
-                    </Button>
-                  </div>
-                </div>
-              );
-            })}
+                          {type === 'proposal' && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDuplicateAsEstimate(doc.id!)}
+                              disabled={duplicatingId === doc.id}
+                              className="h-7 px-2 text-xs gap-1"
+                            >
+                              {duplicatingId === doc.id ? (
+                                <Loader2 className="w-3 h-3 animate-spin" />
+                              ) : (
+                                <Copy className="w-3 h-3" />
+                              )}
+                              변환
+                            </Button>
+                          )}
+
+                          {type === 'estimate' && (
+                            <>
+                              {isDeposited ? (
+                                <span className="flex items-center gap-1 text-[10px] font-medium text-emerald-600 px-1.5 py-1 rounded bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 whitespace-nowrap">
+                                  <CheckCircle2 className="w-3 h-3" />
+                                  계약금
+                                </span>
+                              ) : (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleOpenDepositDialog(docIdNum, doc.totalMax, doc.clientName)}
+                                  className="h-7 px-2 text-xs gap-1 text-amber-600 hover:text-amber-700"
+                                >
+                                  <CreditCard className="w-3 h-3" />
+                                  계약금
+                                </Button>
+                              )}
+
+                              {isFinalPaid ? (
+                                <span className="flex items-center gap-1 text-[10px] font-medium text-blue-600 px-1.5 py-1 rounded bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 whitespace-nowrap">
+                                  <CheckCircle2 className="w-3 h-3" />
+                                  잔금
+                                </span>
+                              ) : isDeposited && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleOpenFinalDialog(docIdNum, doc.totalMax, doc.clientName)}
+                                  className="h-7 px-2 text-xs gap-1 text-blue-600 hover:text-blue-700"
+                                >
+                                  <CreditCard className="w-3 h-3" />
+                                  잔금
+                                </Button>
+                              )}
+                            </>
+                          )}
+
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDelete(doc.id!)}
+                            disabled={deletingId === doc.id}
+                            className="h-7 w-7 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                          >
+                            {deletingId === doc.id ? (
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                            ) : (
+                              <Trash2 className="w-3 h-3" />
+                            )}
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
 
           {/* Pagination */}
