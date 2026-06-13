@@ -1,5 +1,5 @@
 import { useEstimate } from '@/contexts/EstimateContext';
-import { FilePlus, FileText, List, ChevronLeft, ChevronRight, FileCheck, LogOut, User, BookOpen, BarChart3, Boxes, Building2, LayoutDashboard, Globe, CalendarDays, KanbanSquare } from 'lucide-react';
+import { FilePlus, FileText, List, ChevronLeft, ChevronRight, FileCheck, LogOut, User, BookOpen, BarChart3, Boxes, Building2, LayoutDashboard, Globe, CalendarDays, KanbanSquare, FolderOpen } from 'lucide-react';
 import { useState } from 'react';
 import { useLocation } from 'wouter';
 import { useAuth } from '@/_core/hooks/useAuth';
@@ -86,6 +86,13 @@ export default function Sidebar() {
       id: 'kanban',
       active: location === '/kanban',
       onClick: () => navigate('/kanban'),
+    },
+    {
+      icon: FolderOpen,
+      label: '내 PDF 파일',
+      id: 'my-pdfs',
+      active: location === '/my-pdfs',
+      onClick: () => navigate('/my-pdfs'),
     },
     {
       icon: CalendarDays,
@@ -189,7 +196,7 @@ export default function Sidebar() {
             관리
           </p>
         )}
-        {navItems.slice(3, 10).map((item) => (
+        {navItems.slice(3, 11).map((item) => (
           <button
             key={item.id}
             onClick={item.onClick}
@@ -213,7 +220,7 @@ export default function Sidebar() {
             분석
           </p>
         )}
-        {navItems.slice(10).map((item) => (
+        {navItems.slice(11).map((item) => (
           <button
             key={item.id}
             onClick={item.onClick}

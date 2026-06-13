@@ -18,6 +18,7 @@ import HKTBInvoice from "./pages/HKTBInvoice";
 import HKTBRetainerInvoice from "./pages/HKTBRetainerInvoice";
 import CalendarPage from "./pages/CalendarPage";
 import KanbanPage from "./pages/KanbanPage";
+import MyPdfFiles from "./pages/MyPdfFiles";
 import Sidebar from "./components/Sidebar";
 import { useAuth } from "@/_core/hooks/useAuth";
 import LoginPage from "./pages/LoginPage";
@@ -68,6 +69,7 @@ function Router() {
         {(params) => <ClientDetail id={params.id} />}
       </Route>
       <Route path="/kanban" component={KanbanPage} />
+      <Route path="/my-pdfs" component={MyPdfFiles} />
       <Route path="/calendar" component={CalendarPage} />
       <Route path="/sales" component={MonthlySales} />
       <Route path="/hktb-invoice" component={HKTBInvoice} />
