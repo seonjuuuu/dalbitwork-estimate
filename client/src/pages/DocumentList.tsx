@@ -30,6 +30,8 @@ export default function DocumentList({ type }: DocumentListProps) {
   const [currentPage, setCurrentPage] = useState(1);
 
   const duplicateMutation = trpc.documents.duplicateAsEstimate.useMutation();
+  const copyMutation = trpc.documents.copyDocument.useMutation();
+  const [copyingId, setCopyingId] = useState<string | null>(null);
   const { data: depositedIds = [] } = trpc.documents.getDepositedDocumentIds.useQuery(undefined, { enabled: type === 'estimate' });
   const { data: finalPaidIds = [] } = trpc.documents.getFinalPaidDocumentIds.useQuery(undefined, { enabled: type === 'estimate' });
   const depositedSet = new Set(depositedIds);
@@ -74,6 +76,22 @@ export default function DocumentList({ type }: DocumentListProps) {
       toast.error('변환에 실패했습니다.');
     } finally {
       setDuplicatingId(null);
+    }
+  };
+
+  const handleCopy = async (id: string) => {
+    setCopyingId(id);
+    try {
+      const copied = await copyMutation.mutateAsync({ id: parseInt(id) });
+      await utils.documents.list.invalidate();
+      if (copied?.id) {
+        navigate(type === 'proposal' ? `/proposals/${copied.id}` : `/estimates/${copied.id}`);
+        toast.success('복사되었습니다. 제목과 고객 정보를 입력해 주세요.');
+      }
+    } catch {
+      toast.error('복사에 실패했습니다.');
+    } finally {
+      setCopyingId(null);
     }
   };
 
@@ -203,6 +221,21 @@ export default function DocumentList({ type }: DocumentListProps) {
                           >
                             <Edit className="w-3 h-3" />
                             편집
+                          </Button>
+
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleCopy(doc.id!)}
+                            disabled={copyingId === doc.id}
+                            className="h-7 px-2 text-xs gap-1 text-sky-600 hover:text-sky-700"
+                          >
+                            {copyingId === doc.id ? (
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                            ) : (
+                              <Copy className="w-3 h-3" />
+                            )}
+                            복사
                           </Button>
 
                           <Button

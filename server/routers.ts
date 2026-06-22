@@ -273,6 +273,39 @@ export const appRouter = router({
         return estimate;
       }),
 
+    /** 제목·메모·고객 정보 제거 후 동일 타입으로 복사 */
+    copyDocument: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        const original = await db.getDocument(input.id, ctx.user.id);
+        if (!original) throw new Error("Document not found");
+
+        const copy = await db.createDocument({
+          userId: ctx.user.id,
+          type: original.type,
+          title: '',
+          memo: null,
+          clientName: '',
+          contactName: '',
+          contactPhone: '',
+          businessType: '',
+          projectName: original.projectName,
+          platform: original.platform,
+          date: new Date().toISOString().split('T')[0],
+          items: original.items as DocumentItemRow[],
+          notes: original.notes,
+          notesMode: original.notesMode,
+          freeformNotes: original.freeformNotes,
+          templateVariables: original.templateVariables,
+          totalMin: original.totalMin,
+          totalMax: original.totalMax,
+          useRange: (original as any).useRange ?? true,
+          extraDiscountType: (original as any).extraDiscountType ?? null,
+          extraDiscountValue: (original as any).extraDiscountValue ?? 0,
+        });
+        return copy;
+      }),
+
     /** Record a payment (계약금 확정) */
     recordPayment: protectedProcedure
       .input(
