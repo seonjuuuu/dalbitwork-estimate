@@ -514,6 +514,32 @@ export default function PdfDocument({ doc }: PdfDocumentProps) {
   const showDiscount = hasAnyDiscount(doc.items);
   const discountPercent = totalOriginal > 0 ? Math.round((totalDiscount / totalOriginal) * 100) : 0;
 
+  // 전체 추가 할인
+  const extraDiscountType = doc.extraDiscountType || null;
+  const extraDiscountValue = doc.extraDiscountValue || 0;
+  const baseItemAmount = showDiscount ? totalFinal : totalOriginal;
+  const extraDiscountAmount = (extraDiscountType && extraDiscountType !== 'direct' && extraDiscountValue > 0)
+    ? (extraDiscountType === 'percent'
+        ? Math.round(baseItemAmount * extraDiscountValue / 100)
+        : extraDiscountValue)
+    : 0;
+  const hasExtraDiscount = !isProposal && extraDiscountAmount > 0;
+  // 직접 입력 할인: % / 금액 할인 모드가 아닌 상태에서 totalMin < baseItemAmount면 표시
+  const directFinalAmount = doc.totalMin || 0;
+  const directDiscountAmount =
+    !isProposal &&
+    extraDiscountType !== 'percent' &&
+    extraDiscountType !== 'amount' &&
+    directFinalAmount > 0 &&
+    baseItemAmount > 0 &&
+    directFinalAmount < baseItemAmount
+      ? baseItemAmount - directFinalAmount
+      : 0;
+  const directDiscountPct = baseItemAmount > 0 && directDiscountAmount > 0
+    ? Math.round(directDiscountAmount / baseItemAmount * 1000) / 10
+    : 0;
+  const hasDirectDiscount = directDiscountAmount > 0;
+
   // 단가가 입력된 항목이 하나라도 있는지 확인
   const hasAnyUnitPrice = doc.items.some(item => item.unitPrice && item.unitPrice.trim() !== '');
   
@@ -727,11 +753,59 @@ export default function PdfDocument({ doc }: PdfDocumentProps) {
             </>
           )}
 
+          {/* 추가 할인: 항목 합계 기준선 (% 또는 금액 모드, 아이템 할인 없을 때) */}
+          {hasExtraDiscount && !(showDiscount || hasAnyDiscountAmount) && (
+            <View style={[s.footerSubRow, { borderTopWidth: 2, borderTopColor: '#323232' }]}>
+              <Text style={{ flex: 1 }}></Text>
+              <Text style={{ width: 55 }}></Text>
+              {hasAnyUnitPrice && <Text style={{...s.thQty, width: 50}} />}
+              <Text style={{ flex: 1, textAlign: 'right', fontSize: 10, color: '#aaaaaa' }}>항목 합계 {formatNumber(baseItemAmount)}</Text>
+            </View>
+          )}
+          {/* 추가 할인: 할인 금액/율 행 */}
+          {hasExtraDiscount && (
+            <View style={s.footerSubRow}>
+              <Text style={{ flex: 1 }}></Text>
+              <Text style={{ width: 55 }}></Text>
+              {hasAnyUnitPrice && <Text style={{...s.thQty, width: 50}} />}
+              {(showDiscount || hasAnyDiscountAmount) && <Text style={s.thOrigPrice} />}
+              {(showDiscount || hasAnyDiscountAmount) && <Text style={s.thDiscAmount} />}
+              <Text style={{ flex: 1, textAlign: 'right', fontSize: 10, color: '#e05555', fontWeight: 600 }}>
+                {extraDiscountType === 'percent'
+                  ? `추가 할인 (${extraDiscountValue}%) -${formatNumber(extraDiscountAmount)}`
+                  : `추가 할인 (${Math.round(extraDiscountValue / baseItemAmount * 1000) / 10}%) -${formatNumber(extraDiscountAmount)}`}
+              </Text>
+            </View>
+          )}
+
+          {/* 직접 입력 할인: 항목 합계 기준선 (아이템 할인 없을 때만) */}
+          {hasDirectDiscount && !(showDiscount || hasAnyDiscountAmount) && (
+            <View style={[s.footerSubRow, { borderTopWidth: 2, borderTopColor: '#323232' }]}>
+              <Text style={{ flex: 1 }}></Text>
+              <Text style={{ width: 55 }}></Text>
+              {hasAnyUnitPrice && <Text style={{...s.thQty, width: 50}} />}
+              <Text style={{ flex: 1, textAlign: 'right', fontSize: 10, color: '#aaaaaa' }}>항목 합계 {formatNumber(baseItemAmount)}</Text>
+            </View>
+          )}
+          {/* 직접 입력 할인: 할인 금액/율 행 */}
+          {hasDirectDiscount && (
+            <View style={s.footerSubRow}>
+              <Text style={{ flex: 1 }}></Text>
+              <Text style={{ width: 55 }}></Text>
+              {hasAnyUnitPrice && <Text style={{...s.thQty, width: 50}} />}
+              {(showDiscount || hasAnyDiscountAmount) && <Text style={s.thOrigPrice} />}
+              {(showDiscount || hasAnyDiscountAmount) && <Text style={s.thDiscAmount} />}
+              <Text style={{ flex: 1, textAlign: 'right', fontSize: 10, color: '#e05555', fontWeight: 600 }}>
+                {`할인 (${directDiscountPct}%) -${formatNumber(directDiscountAmount)}`}
+              </Text>
+            </View>
+          )}
+
           {/* Footer total */}
-          <View style={showDiscount ? [s.footerRow, s.footerRowDiscount] : s.footerRow}>
+          <View style={(showDiscount || hasExtraDiscount || hasDirectDiscount) ? [s.footerRow, s.footerRowDiscount] : s.footerRow}>
             <Text style={{ flex: 1 }}></Text>
-            <Text style={{ width: showDiscount ? 55 : 55, textAlign: 'right', fontWeight: 700, color: '#555555', fontSize: 10 }}>합    계</Text>
-            <Text style={{ width: showDiscount ? 170 : 90, textAlign: 'right', fontWeight: 700, fontSize: 10, color: '#1a1a1a' }}>
+            <Text style={{ width: 55, textAlign: 'right', fontWeight: 700, color: '#555555', fontSize: 10 }}>합    계</Text>
+            <Text style={{ width: (showDiscount || hasExtraDiscount || hasDirectDiscount) ? 170 : 90, textAlign: 'right', fontWeight: 700, fontSize: 10, color: '#1a1a1a' }}>
               {footerTotalDisplay}
             </Text>
           </View>

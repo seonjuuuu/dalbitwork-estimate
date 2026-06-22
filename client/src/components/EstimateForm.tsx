@@ -545,10 +545,27 @@ export default function EstimateForm() {
   const docLabel = getDocTypeLabel(currentDoc.type);
   const isProposal = currentDoc.type === 'proposal';
 
+  const isRangeManual = useRef(false);
+  const prevDocId = useRef(currentDoc.id);
+
+  if (prevDocId.current !== currentDoc.id) {
+    prevDocId.current = currentDoc.id;
+    isRangeManual.current = false;
+  }
+
+  // 추가 할인: currentDoc 기반 display string (로컬 상태 제거)
+  const extraDiscountDisplayStr = (() => {
+    const type = currentDoc.extraDiscountType;
+    const val = currentDoc.extraDiscountValue || 0;
+    if (!type || val <= 0) return '';
+    return type === 'amount' ? val.toLocaleString('ko-KR') : String(val);
+  })();
+
   const updateField = (field: string, value: string | number) => {
     setCurrentDoc((prev) => ({ ...prev, [field]: value }));
   };
 
+  const utils = trpc.useUtils();
   const [servicePickerOpen, setServicePickerOpen] = useState(false);
   const [copyDialogOpen, setCopyDialogOpen] = useState(false);
 
@@ -572,7 +589,33 @@ export default function EstimateForm() {
     }));
   };
 
-  const upsertClientMutation = trpc.clients.upsertFromDocument.useMutation();
+  const upsertClientMutation = trpc.clients.upsertFromDocument.useMutation({
+    onSuccess: () => {
+      utils.clients.list.invalidate();
+      toast.success('고객사가 저장되었습니다.');
+    },
+    onError: () => {
+      toast.error('고객사 저장에 실패했습니다.');
+    },
+  });
+
+  const handleSaveClient = () => {
+    if (!currentDoc.clientName.trim()) {
+      toast.error('수신처(고객사명)를 입력해주세요.');
+      return;
+    }
+    const isEstimate = currentDoc.type === 'estimate';
+    upsertClientMutation.mutate({
+      name: currentDoc.clientName.trim(),
+      contactName: currentDoc.contactName || '',
+      contactPhone: currentDoc.contactPhone || '',
+      isEstimate,
+      ...(isEstimate && {
+        contractDate: currentDoc.date || '',
+        contractAmount: currentDoc.totalMin || 0,
+      }),
+    });
+  };
 
   const handleSave = async () => {
     if (!currentDoc.clientName.trim()) {
@@ -582,20 +625,6 @@ export default function EstimateForm() {
     try {
       await saveDocument();
       toast.success(`${docLabel}가 저장되었습니다.`);
-      // 고객사 자동 등록
-      if (currentDoc.clientName.trim()) {
-        const isEstimate = currentDoc.type === 'estimate';
-        upsertClientMutation.mutate({
-          name: currentDoc.clientName.trim(),
-          contactName: currentDoc.contactName || '',
-          contactPhone: currentDoc.contactPhone || '',
-          isEstimate,
-          ...(isEstimate && {
-            contractDate: currentDoc.date || '',
-            contractAmount: currentDoc.totalMin || 0,
-          }),
-        });
-      }
     } catch (err) {
       toast.error('저장에 실패했습니다. 다시 시도해주세요.');
     }
@@ -608,28 +637,79 @@ export default function EstimateForm() {
   const showDiscount = hasAnyDiscount(currentDoc.items);
   const discountPercent = totalOriginal > 0 ? Math.round((totalDiscount / totalOriginal) * 100) : 0;
 
-  // 예산 범위 자동계산 (항목 변경 시)
+  // 추가 할인 계산 (currentDoc 기반)
+  const extraDiscountType = currentDoc.extraDiscountType as 'percent' | 'amount' | 'direct' | null;
+  const extraDiscountValue = currentDoc.extraDiscountValue || 0;
+  const baseItemAmount = showDiscount ? totalFinal : totalOriginal;
+  const extraDiscountAmount = (extraDiscountType && extraDiscountType !== 'direct' && extraDiscountValue > 0)
+    ? (extraDiscountType === 'percent'
+        ? Math.round(baseItemAmount * extraDiscountValue / 100)
+        : extraDiscountValue)
+    : 0;
+  const totalAfterExtraDiscount = Math.max(0, baseItemAmount - extraDiscountAmount);
+  // 직접 입력 모드에서 역산된 할인 정보
+  // % / 금액 할인 모드가 아닌 상태에서 totalMin이 baseItemAmount보다 작으면 직접 할인으로 처리
+  const directFinalAmount = currentDoc.totalMin || 0;
+  const directDiscountAmount =
+    !isProposal &&
+    extraDiscountType !== 'percent' &&
+    extraDiscountType !== 'amount' &&
+    directFinalAmount > 0 &&
+    baseItemAmount > 0 &&
+    directFinalAmount < baseItemAmount
+      ? baseItemAmount - directFinalAmount
+      : 0;
+  const directDiscountPct = baseItemAmount > 0 && directDiscountAmount > 0
+    ? Math.round(directDiscountAmount / baseItemAmount * 1000) / 10
+    : 0;
+
+  // 예산 범위 자동계산 (항목 변경 시, 수동 입력 시에는 덮어쓰지 않음)
   useEffect(() => {
+    if (isRangeManual.current) return;
     const baseAmount = showDiscount ? totalFinal : totalOriginal;
-    
+
     if (baseAmount > 0) {
       if (isProposal) {
-        // 제안서: ±10% 범위
-        const minBudget = Math.round(baseAmount * 0.9);
-        const maxBudget = Math.round(baseAmount * 1.1);
-        setCurrentDoc((prev) => {
-          // 항상 자동 계산
-          return { ...prev, totalMin: minBudget, totalMax: maxBudget };
-        });
+        if (currentDoc.useRange !== false) {
+          const minBudget = Math.round(baseAmount * 0.9);
+          const maxBudget = Math.round(baseAmount * 1.1);
+          setCurrentDoc((prev) => ({ ...prev, totalMin: minBudget, totalMax: maxBudget }));
+        } else {
+          setCurrentDoc((prev) => ({ ...prev, totalMin: baseAmount, totalMax: baseAmount }));
+        }
       } else {
-        // 견적서: 정가 또는 할인가 기준
+        setCurrentDoc((prev) => ({ ...prev, totalMin: baseAmount, totalMax: baseAmount }));
+      }
+    }
+  }, [totalOriginal, totalFinal, showDiscount, isProposal, currentDoc.useRange, setCurrentDoc]);
+
+  // 추가 할인 적용 시 최종 금액 업데이트
+  useEffect(() => {
+    if (isProposal) return;
+
+    if (extraDiscountType === 'direct') {
+      // 직접 입력 모드: auto-calc 방지
+      isRangeManual.current = true;
+      return;
+    }
+
+    if (!extraDiscountType || extraDiscountValue <= 0) {
+      // 할인 없음: 기본 합계로 복원
+      isRangeManual.current = false;
+      const baseAmount = showDiscount ? totalFinal : totalOriginal;
+      if (baseAmount > 0) {
         setCurrentDoc((prev) => {
-          // 항상 자동 계산
+          if (prev.totalMin === baseAmount && prev.totalMax === baseAmount) return prev;
           return { ...prev, totalMin: baseAmount, totalMax: baseAmount };
         });
       }
+      return;
     }
-  }, [totalOriginal, totalFinal, showDiscount, isProposal, setCurrentDoc]);
+
+    // % 또는 금액 모드: 할인 적용
+    isRangeManual.current = true;
+    setCurrentDoc((prev) => ({ ...prev, totalMin: totalAfterExtraDiscount, totalMax: totalAfterExtraDiscount }));
+  }, [totalAfterExtraDiscount, extraDiscountValue, extraDiscountType, isProposal, setCurrentDoc, showDiscount, totalFinal, totalOriginal]);
 
   // 계약서이고 자유형식 참고사항에 {{총금액}} 변수가 있으면 항목 합계로 자동 채우기
   useEffect(() => {
@@ -813,7 +893,24 @@ export default function EstimateForm() {
 
       {/* Header Info */}
       <div className="bg-card rounded-lg border border-border p-5">
-        <h3 className="text-sm font-semibold text-foreground mb-4 section-title">기본 정보</h3>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-sm font-semibold text-foreground section-title">기본 정보</h3>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={handleSaveClient}
+            disabled={!currentDoc.clientName.trim() || upsertClientMutation.isPending}
+            className="text-xs h-7 px-2 gap-1"
+          >
+            {upsertClientMutation.isPending ? (
+              <Loader2 className="w-3 h-3 animate-spin" />
+            ) : (
+              <Plus className="w-3 h-3" />
+            )}
+            고객사 저장
+          </Button>
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-5">
           <div>
             <label className="text-xs font-medium text-muted-foreground mb-1.5 block">수신처 (고객사)</label>
@@ -1140,50 +1237,254 @@ export default function EstimateForm() {
                 <p className="text-xs text-muted-foreground mb-1">총합</p>
                 <p className="text-lg font-bold text-foreground">{(showDiscount ? totalFinal : totalOriginal).toLocaleString('ko-KR')}원</p>
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-1.5 block">최소 범위 (-10%)</label>
-                  <Input
-                    type="number"
-                    value={currentDoc.totalMin}
-                    onChange={(e) => updateField('totalMin', Number(e.target.value))}
-                    placeholder="2000000"
-                    className="bg-background amount"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-1.5 block">최대 범위 (+10%)</label>
-                  <Input
-                    type="number"
-                    value={currentDoc.totalMax}
-                    onChange={(e) => updateField('totalMax', Number(e.target.value))}
-                    placeholder="2250000"
-                    className="bg-background amount"
-                  />
-                </div>
+              <div className="flex items-center gap-2">
+                <input
+                  id="useRange"
+                  type="checkbox"
+                  checked={currentDoc.useRange !== false}
+                  onChange={(e) => {
+                    isRangeManual.current = false;
+                    setCurrentDoc((prev) => ({ ...prev, useRange: e.target.checked }));
+                  }}
+                  className="w-4 h-4 accent-primary cursor-pointer"
+                />
+                <label htmlFor="useRange" className="text-xs text-muted-foreground cursor-pointer select-none">
+                  범위 금액 사용 (최소 / 최대)
+                </label>
               </div>
+              {currentDoc.useRange !== false && (
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground mb-1.5 block">최소 범위 (-10%)</label>
+                    <Input
+                      type="text"
+                      inputMode="numeric"
+                      value={currentDoc.totalMin ? currentDoc.totalMin.toLocaleString('ko-KR') : ''}
+                      onChange={(e) => {
+                        isRangeManual.current = true;
+                        const raw = e.target.value.replace(/[^0-9]/g, '');
+                        updateField('totalMin', raw ? Number(raw) : 0);
+                      }}
+                      placeholder="2,000,000"
+                      className="bg-background amount text-right"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground mb-1.5 block">최대 범위 (+10%)</label>
+                    <Input
+                      type="text"
+                      inputMode="numeric"
+                      value={currentDoc.totalMax ? currentDoc.totalMax.toLocaleString('ko-KR') : ''}
+                      onChange={(e) => {
+                        isRangeManual.current = true;
+                        const raw = e.target.value.replace(/[^0-9]/g, '');
+                        updateField('totalMax', raw ? Number(raw) : 0);
+                      }}
+                      placeholder="2,250,000"
+                      className="bg-background amount text-right"
+                    />
+                  </div>
+                </div>
+              )}
             </>
           ) : (
-            <div className="md:col-span-2">
-              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">최종 확정 금액 (원)</label>
-              <Input
-                type="text"
-                value={currentDoc.totalMin ? currentDoc.totalMin.toLocaleString('ko-KR') : ''}
-                onChange={(e) => {
-                  const raw = e.target.value.replace(/[^0-9]/g, '');
-                  const val = raw ? Number(raw) : 0;
-                  updateField('totalMin', val);
-                  updateField('totalMax', val);
-                  if (detectedVariables.includes('총금액')) {
-                    handleVariableChange('총금액', val ? `${val.toLocaleString('ko-KR')}원` : '');
-                    const { deposit, balance } = calculateAmounts(val, 50);
-                    if (detectedVariables.includes('계약금')) handleVariableChange('계약금', deposit);
-                    if (detectedVariables.includes('잔금')) handleVariableChange('잔금', balance);
-                  }
-                }}
-                placeholder="2,125,000"
-                className="bg-background amount text-right"
-              />
+            <div className="md:col-span-2 space-y-3">
+              {/* 항목 합계 요약 (할인이 하나라도 있을 때) */}
+              {(showDiscount || extraDiscountValue > 0 || directDiscountAmount > 0) && (
+                <div className="p-3 bg-muted/40 rounded-lg border border-border text-xs space-y-1">
+                  <div className="flex justify-between text-muted-foreground">
+                    <span>항목 합계</span>
+                    <span className={showDiscount ? 'line-through' : ''}>{totalOriginal.toLocaleString('ko-KR')}원</span>
+                  </div>
+                  {showDiscount && (
+                    <div className="flex justify-between text-muted-foreground">
+                      <span>항목 할인 ({discountPercent}%)</span>
+                      <span>-{totalDiscount.toLocaleString('ko-KR')}원</span>
+                    </div>
+                  )}
+                  {showDiscount && (
+                    <div className="flex justify-between text-muted-foreground font-medium border-t border-border pt-1">
+                      <span>소계</span>
+                      <span>{totalFinal.toLocaleString('ko-KR')}원</span>
+                    </div>
+                  )}
+                  {extraDiscountAmount > 0 && (
+                    <div className="flex justify-between text-rose-600 dark:text-rose-400 font-medium">
+                      <span>추가 할인 {extraDiscountType === 'percent' ? `(${extraDiscountValue}%)` : extraDiscountType === 'amount' ? `(${Math.round(extraDiscountValue / baseItemAmount * 1000) / 10}%)` : ''}</span>
+                      <span>-{extraDiscountAmount.toLocaleString('ko-KR')}원</span>
+                    </div>
+                  )}
+                  {directDiscountAmount > 0 && (
+                    <div className="flex justify-between text-rose-600 dark:text-rose-400 font-medium">
+                      <span>직접 할인 ({directDiscountPct}%)</span>
+                      <span>-{directDiscountAmount.toLocaleString('ko-KR')}원</span>
+                    </div>
+                  )}
+                  {(extraDiscountAmount > 0 || directDiscountAmount > 0) && (
+                    <div className="flex justify-between font-bold text-foreground border-t border-border pt-1">
+                      <span>최종</span>
+                      <span>{(currentDoc.totalMin || 0).toLocaleString('ko-KR')}원</span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* 최종 금액 조정 */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-medium text-muted-foreground">최종 금액 조정 (선택)</label>
+                  {extraDiscountType && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCurrentDoc((prev) => ({ ...prev, extraDiscountType: null, extraDiscountValue: 0 }));
+                        isRangeManual.current = false;
+                      }}
+                      className="text-[11px] text-muted-foreground hover:text-foreground"
+                    >
+                      ✕ 초기화
+                    </button>
+                  )}
+                </div>
+
+                {/* 모드 토글 */}
+                <div className="flex rounded-md border border-input overflow-hidden text-xs w-full">
+                  {(['percent', 'amount', 'direct'] as const).map((mode, i) => {
+                    const labels = { percent: '% 할인', amount: '금액 할인', direct: '직접 입력' };
+                    return (
+                      <button
+                        key={mode}
+                        type="button"
+                        onClick={() => {
+                          setCurrentDoc((prev) => ({
+                            ...prev,
+                            extraDiscountType: prev.extraDiscountType === mode ? null : mode,
+                            extraDiscountValue: 0,
+                          }));
+                          if (mode !== 'direct') isRangeManual.current = false;
+                        }}
+                        className={`flex-1 py-2 transition-colors text-center ${i > 0 ? 'border-l border-input' : ''} ${extraDiscountType === mode ? 'bg-primary text-primary-foreground' : 'bg-background text-muted-foreground hover:bg-muted'}`}
+                      >
+                        {labels[mode]}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* % 할인 입력 */}
+                {extraDiscountType === 'percent' && (
+                  <div className="space-y-1">
+                    <div className="flex gap-2 items-center">
+                      <Input
+                        type="text"
+                        inputMode="numeric"
+                        value={extraDiscountDisplayStr}
+                        onChange={(e) => {
+                          const raw = e.target.value.replace(/[^0-9]/g, '');
+                          const num = raw ? parseInt(raw) : 0;
+                          setCurrentDoc((prev) => ({ ...prev, extraDiscountType: 'percent', extraDiscountValue: num }));
+                        }}
+                        placeholder="예: 10"
+                        className="bg-background amount text-right"
+                      />
+                      <span className="text-sm text-muted-foreground shrink-0 w-5">%</span>
+                    </div>
+                    {extraDiscountValue > 0 && (
+                      <p className="text-[11px] text-rose-600 dark:text-rose-400">
+                        -{extraDiscountAmount.toLocaleString('ko-KR')}원 할인 →{' '}
+                        <strong>최종 {totalAfterExtraDiscount.toLocaleString('ko-KR')}원</strong>
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {/* 금액 할인 입력 */}
+                {extraDiscountType === 'amount' && (
+                  <div className="space-y-1">
+                    <div className="flex gap-2 items-center">
+                      <Input
+                        type="text"
+                        inputMode="numeric"
+                        value={extraDiscountDisplayStr}
+                        onChange={(e) => {
+                          const raw = e.target.value.replace(/[^0-9]/g, '');
+                          const num = raw ? parseInt(raw) : 0;
+                          setCurrentDoc((prev) => ({ ...prev, extraDiscountType: 'amount', extraDiscountValue: num }));
+                        }}
+                        placeholder="예: 100,000"
+                        className="bg-background amount text-right"
+                      />
+                      <span className="text-sm text-muted-foreground shrink-0 w-5">원</span>
+                    </div>
+                    {extraDiscountValue > 0 && baseItemAmount > 0 && (
+                      <p className="text-[11px] text-rose-600 dark:text-rose-400">
+                        {Math.round(extraDiscountValue / baseItemAmount * 1000) / 10}% 할인 →{' '}
+                        <strong>최종 {totalAfterExtraDiscount.toLocaleString('ko-KR')}원</strong>
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {/* 직접 입력 */}
+                {extraDiscountType === 'direct' && (
+                  <div className="space-y-1">
+                    <Input
+                      type="text"
+                      value={currentDoc.totalMin ? currentDoc.totalMin.toLocaleString('ko-KR') : ''}
+                      onChange={(e) => {
+                        const raw = e.target.value.replace(/[^0-9]/g, '');
+                        const val = raw ? Number(raw) : 0;
+                        if (val <= 0) {
+                          // 값 지웠을 때 항목 합계로 복원
+                          isRangeManual.current = false;
+                          const base = showDiscount ? totalFinal : totalOriginal;
+                          updateField('totalMin', base);
+                          updateField('totalMax', base);
+                          if (detectedVariables.includes('총금액')) {
+                            handleVariableChange('총금액', base ? `${base.toLocaleString('ko-KR')}원` : '');
+                            const { deposit, balance } = calculateAmounts(base, 50);
+                            if (detectedVariables.includes('계약금')) handleVariableChange('계약금', deposit);
+                            if (detectedVariables.includes('잔금')) handleVariableChange('잔금', balance);
+                          }
+                        } else {
+                          isRangeManual.current = true;
+                          updateField('totalMin', val);
+                          updateField('totalMax', val);
+                          if (detectedVariables.includes('총금액')) {
+                            handleVariableChange('총금액', `${val.toLocaleString('ko-KR')}원`);
+                            const { deposit, balance } = calculateAmounts(val, 50);
+                            if (detectedVariables.includes('계약금')) handleVariableChange('계약금', deposit);
+                            if (detectedVariables.includes('잔금')) handleVariableChange('잔금', balance);
+                          }
+                        }
+                      }}
+                      placeholder={baseItemAmount > 0 ? baseItemAmount.toLocaleString('ko-KR') : '2,125,000'}
+                      className="bg-background amount text-right"
+                    />
+                    {directDiscountAmount > 0 && (
+                      <p className="text-[11px] text-rose-600 dark:text-rose-400">
+                        항목 합계 {baseItemAmount.toLocaleString('ko-KR')}원 대비{' '}
+                        <strong>-{directDiscountAmount.toLocaleString('ko-KR')}원 할인 ({directDiscountPct}%)</strong>
+                      </p>
+                    )}
+                    {directFinalAmount > 0 && baseItemAmount > 0 && directFinalAmount > baseItemAmount && (
+                      <p className="text-[11px] text-blue-600 dark:text-blue-400">
+                        항목 합계 {baseItemAmount.toLocaleString('ko-KR')}원 대비{' '}
+                        <strong>+{(directFinalAmount - baseItemAmount).toLocaleString('ko-KR')}원 추가</strong>
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {/* 모드 미선택: 자동 계산된 최종 금액 표시 */}
+                {!extraDiscountType && (
+                  <p className="text-[11px] text-muted-foreground">
+                    현재 최종 확정 금액:{' '}
+                    <strong className="text-foreground">{(currentDoc.totalMin || 0).toLocaleString('ko-KR')}원</strong>
+                    {' '}(항목 합계 자동 계산)
+                  </p>
+                )}
+              </div>
             </div>
           )}
         </div>
@@ -1327,6 +1628,7 @@ export default function EstimateForm() {
         onClose={() => setServicePickerOpen(false)}
         onSelect={handleAddServiceItem}
       />
+
     </div>
   );
 }

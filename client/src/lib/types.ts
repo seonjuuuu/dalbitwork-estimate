@@ -29,6 +29,9 @@ export interface DocumentData {
   templateVariables: Record<string, string> | null;
   totalMin: number;
   totalMax: number;
+  useRange: boolean;
+  extraDiscountType?: 'percent' | 'amount' | 'direct' | null;
+  extraDiscountValue?: number;
   contactPhone: string; // 담당자 번호
   businessType: string; // 업종
   optionalItems: OptionalItem[]; // 선택사항
@@ -151,6 +154,9 @@ export const defaultProposal: DocumentData = {
   templateVariables: null,
   totalMin: 0,
   totalMax: 0,
+  useRange: true,
+  extraDiscountType: null,
+  extraDiscountValue: 0,
   contactPhone: '',
   businessType: '',
   optionalItems: [],
@@ -175,6 +181,9 @@ export const defaultEstimate: DocumentData = {
   templateVariables: null,
   totalMin: 0,
   totalMax: 0,
+  useRange: true,
+  extraDiscountType: null,
+  extraDiscountValue: 0,
   contactPhone: '',
   businessType: '',
   optionalItems: [],

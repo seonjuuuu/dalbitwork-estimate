@@ -44,6 +44,7 @@ function dbDocToLocal(doc: {
   freeformNotes: string | null;
   totalMin: number;
   totalMax: number;
+  useRange?: boolean;
   contactPhone: string;
   businessType: string;
   optionalItems?: { id: string; name: string; description: string; quantity: string; price: string; payer: string }[];
@@ -75,6 +76,9 @@ function dbDocToLocal(doc: {
     templateVariables: (doc as any).templateVariables || null,
     totalMin: doc.totalMin || 0,
     totalMax: doc.totalMax || 0,
+    useRange: doc.useRange !== false,
+    extraDiscountType: ((doc as any).extraDiscountType as 'percent' | 'amount' | 'direct') || null,
+    extraDiscountValue: (doc as any).extraDiscountValue || 0,
     contactPhone: doc.contactPhone || '',
     businessType: doc.businessType || '',
     optionalItems: (doc.optionalItems || []).map((item) => ({
@@ -176,6 +180,9 @@ export function EstimateProvider({ children }: { children: ReactNode }) {
         templateVariables: currentDoc.templateVariables,
         totalMin: currentDoc.totalMin,
         totalMax: currentDoc.totalMax,
+        useRange: currentDoc.useRange !== false,
+        extraDiscountType: currentDoc.extraDiscountType || null,
+        extraDiscountValue: currentDoc.extraDiscountValue || 0,
         contactPhone: currentDoc.contactPhone || '',
         businessType: currentDoc.businessType || '',
       };

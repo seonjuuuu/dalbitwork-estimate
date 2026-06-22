@@ -32,6 +32,9 @@ const documentInputSchema = z.object({
   templateVariables: z.record(z.string(), z.string()).nullable().default(null),
   totalMin: z.number().default(0),
   totalMax: z.number().default(0),
+  useRange: z.boolean().default(true),
+  extraDiscountType: z.enum(['percent', 'amount', 'direct']).nullable().optional(),
+  extraDiscountValue: z.number().default(0),
   contactPhone: z.string().default(""),
   businessType: z.string().default(""),
 });
@@ -182,6 +185,9 @@ export const appRouter = router({
           templateVariables: input.templateVariables,
           totalMin: input.totalMin,
           totalMax: input.totalMax,
+          useRange: input.useRange,
+          extraDiscountType: input.extraDiscountType ?? null,
+          extraDiscountValue: input.extraDiscountValue ?? 0,
           contactPhone: input.contactPhone,
           businessType: input.businessType,
         });
@@ -212,6 +218,9 @@ export const appRouter = router({
         if (input.data.templateVariables !== undefined) updateData.templateVariables = input.data.templateVariables;
         if (input.data.totalMin !== undefined) updateData.totalMin = input.data.totalMin;
         if (input.data.totalMax !== undefined) updateData.totalMax = input.data.totalMax;
+        if (input.data.useRange !== undefined) updateData.useRange = input.data.useRange;
+        if (input.data.extraDiscountType !== undefined) updateData.extraDiscountType = input.data.extraDiscountType ?? null;
+        if (input.data.extraDiscountValue !== undefined) updateData.extraDiscountValue = input.data.extraDiscountValue;
         if (input.data.contactPhone !== undefined) updateData.contactPhone = input.data.contactPhone;
         if (input.data.businessType !== undefined) updateData.businessType = input.data.businessType;
         if (input.data.contactName !== undefined) updateData.contactName = input.data.contactName;
@@ -248,6 +257,8 @@ export const appRouter = router({
           title: proposal.title,
           memo: proposal.memo,
           clientName: proposal.clientName,
+          contactName: proposal.contactName,
+          contactPhone: proposal.contactPhone,
           projectName: proposal.projectName,
           platform: proposal.platform,
           date: new Date().toISOString().split('T')[0],
@@ -542,14 +553,30 @@ export const appRouter = router({
   sales: router({
     /** Get monthly sales data */
     getMonthly: protectedProcedure
-      .input(
-        z.object({
-          year: z.number(),
-          month: z.number(),
-        })
-      )
+      .input(z.object({ year: z.number(), month: z.number() }))
       .query(async ({ ctx, input }) => {
         return db.getMonthlySalesData(ctx.user.id, input.year, input.month);
+      }),
+
+    /** 일반 결제 현금영수증 */
+    updatePaymentCashReceipt: protectedProcedure
+      .input(z.object({ id: z.number(), issued: z.boolean(), date: z.string().nullable() }))
+      .mutation(async ({ ctx, input }) => {
+        await db.updatePaymentCashReceipt(input.id, ctx.user.id, input.issued, input.date);
+      }),
+
+    /** HKTB 인보이스 현금영수증 */
+    updateHktbCashReceipt: protectedProcedure
+      .input(z.object({ id: z.number(), issued: z.boolean(), date: z.string().nullable() }))
+      .mutation(async ({ ctx, input }) => {
+        await db.updateHktbCashReceipt(input.id, ctx.user.id, input.issued, input.date);
+      }),
+
+    /** 잔금 수령 현금영수증 (clients 테이블) */
+    updateFinalCashReceipt: protectedProcedure
+      .input(z.object({ id: z.number(), issued: z.boolean(), date: z.string().nullable() }))
+      .mutation(async ({ ctx, input }) => {
+        await db.updateClientCashReceipt(input.id, ctx.user.id, input.issued, input.date);
       }),
   }),
 
