@@ -2,7 +2,7 @@ import { useEstimate } from '@/contexts/EstimateContext';
 import { Button } from '@/components/ui/button';
 import { FileText, Trash2, Edit, FileCheck, Loader2, Copy, CreditCard, CheckCircle2, FileDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useLocation } from 'wouter';
-import { type DocumentType, getDocTypeLabel } from '@/lib/types';
+import { type DocumentType, getDocTypeLabel, calcTotalFinal } from '@/lib/types';
 import { toast } from 'sonner';
 import { useState } from 'react';
 import { trpc } from '@/lib/trpc';
@@ -184,9 +184,11 @@ export default function DocumentList({ type }: DocumentListProps) {
                       {/* 금액 */}
                       <td className="px-3 py-3 text-left">
                         <span className="text-foreground/80">
-                          {doc.totalMin === doc.totalMax
-                            ? `${doc.totalMin.toLocaleString('ko-KR')}원`
-                            : `${doc.totalMin.toLocaleString('ko-KR')} ~ ${doc.totalMax.toLocaleString('ko-KR')}원`}
+                          {type === 'estimate'
+                            ? `${(doc.totalMax || calcTotalFinal(doc.items)).toLocaleString('ko-KR')}원`
+                            : doc.totalMin === doc.totalMax
+                              ? `${doc.totalMin.toLocaleString('ko-KR')}원`
+                              : `${doc.totalMin.toLocaleString('ko-KR')} ~ ${doc.totalMax.toLocaleString('ko-KR')}원`}
                         </span>
                       </td>
 
