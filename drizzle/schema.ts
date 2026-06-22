@@ -1,7 +1,20 @@
-import { boolean, integer, json, pgEnum, pgTable, serial, text, timestamp, varchar } from "drizzle-orm/pg-core";
+import {
+  boolean,
+  integer,
+  json,
+  pgEnum,
+  pgTable,
+  serial,
+  text,
+  timestamp,
+  varchar,
+} from "drizzle-orm/pg-core";
 
 export const roleEnum = pgEnum("role", ["user", "admin"]);
-export const documentTypeEnum = pgEnum("document_type", ["proposal", "estimate"]);
+export const documentTypeEnum = pgEnum("document_type", [
+  "proposal",
+  "estimate",
+]);
 export const notesModeEnum = pgEnum("notes_mode", ["list", "freeform"]);
 export const paymentTypeEnum = pgEnum("payment_type", ["deposit", "final"]);
 
@@ -13,7 +26,10 @@ export const users = pgTable("users", {
   loginMethod: varchar("loginMethod", { length: 64 }),
   role: roleEnum("role").default("user").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().notNull().$onUpdateFn(() => new Date()),
+  updatedAt: timestamp("updatedAt")
+    .defaultNow()
+    .notNull()
+    .$onUpdateFn(() => new Date()),
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
 });
 
@@ -38,11 +54,20 @@ export const documents = pgTable("documents", {
   templateVariables: json("templateVariables").$type<Record<string, string>>(),
   totalMin: integer("totalMin").default(0).notNull(),
   totalMax: integer("totalMax").default(0).notNull(),
+  useRange: boolean("useRange").default(true).notNull(),
+  extraDiscountType: varchar("extraDiscountType", { length: 20 }),
+  extraDiscountValue: integer("extraDiscountValue").default(0).notNull(),
   contactPhone: varchar("contactPhone", { length: 50 }).default("").notNull(),
   businessType: varchar("businessType", { length: 100 }).default("").notNull(),
-  optionalItems: json("optionalItems").$type<OptionalItemRow[]>().default([]).notNull(),
+  optionalItems: json("optionalItems")
+    .$type<OptionalItemRow[]>()
+    .default([])
+    .notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().notNull().$onUpdateFn(() => new Date()),
+  updatedAt: timestamp("updatedAt")
+    .defaultNow()
+    .notNull()
+    .$onUpdateFn(() => new Date()),
 });
 
 export interface OptionalItemRow {
@@ -76,7 +101,10 @@ export const noteTemplates = pgTable("note_templates", {
   freeformNotes: text("freeformNotes"),
   sortOrder: integer("sortOrder").default(0).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().notNull().$onUpdateFn(() => new Date()),
+  updatedAt: timestamp("updatedAt")
+    .defaultNow()
+    .notNull()
+    .$onUpdateFn(() => new Date()),
 });
 
 export type NoteTemplate = typeof noteTemplates.$inferSelect;
@@ -90,15 +118,33 @@ export const payments = pgTable("payments", {
   amount: integer("amount").notNull(),
   paymentDate: varchar("paymentDate", { length: 20 }).notNull(),
   notes: text("notes"),
+  cashReceiptIssued: boolean("cashReceiptIssued").default(false).notNull(),
+  cashReceiptDate: varchar("cashReceiptDate", { length: 20 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().notNull().$onUpdateFn(() => new Date()),
+  updatedAt: timestamp("updatedAt")
+    .defaultNow()
+    .notNull()
+    .$onUpdateFn(() => new Date()),
 });
 
 export type Payment = typeof payments.$inferSelect;
 export type InsertPayment = typeof payments.$inferInsert;
 
-export const clientStatusEnum = pgEnum("client_status", ["상담", "제안서", "계약", "완료"]);
-export const workflowStatusEnum = pgEnum("workflow_status", ["상담", "진행대기", "작업진행중", "PC검수", "모바일작업중", "고객전달", "완료"]);
+export const clientStatusEnum = pgEnum("client_status", [
+  "상담",
+  "제안서",
+  "계약",
+  "완료",
+]);
+export const workflowStatusEnum = pgEnum("workflow_status", [
+  "상담",
+  "진행대기",
+  "작업진행중",
+  "PC검수",
+  "모바일작업중",
+  "고객전달",
+  "완료",
+]);
 
 export const clients = pgTable("clients", {
   id: serial("id").primaryKey(),
@@ -106,7 +152,9 @@ export const clients = pgTable("clients", {
   name: varchar("name", { length: 500 }).notNull(),
   contactName: varchar("contactName", { length: 200 }).default("").notNull(),
   contactPhone: varchar("contactPhone", { length: 50 }).default("").notNull(),
-  businessNumber: varchar("businessNumber", { length: 50 }).default("").notNull(),
+  businessNumber: varchar("businessNumber", { length: 50 })
+    .default("")
+    .notNull(),
   contractDate: varchar("contractDate", { length: 20 }).default("").notNull(),
   contractAmount: integer("contractAmount").default(0).notNull(),
   status: clientStatusEnum("status").default("상담").notNull(),
@@ -114,15 +162,26 @@ export const clients = pgTable("clients", {
   isWorking: boolean("isWorking").default(false).notNull(),
   workStartDate: varchar("workStartDate", { length: 20 }).default("").notNull(),
   pcDraftDate: varchar("pcDraftDate", { length: 20 }).default("").notNull(),
-  mobileDraftDate: varchar("mobileDraftDate", { length: 20 }).default("").notNull(),
-  finalDeliveryDate: varchar("finalDeliveryDate", { length: 20 }).default("").notNull(),
+  mobileDraftDate: varchar("mobileDraftDate", { length: 20 })
+    .default("")
+    .notNull(),
+  finalDeliveryDate: varchar("finalDeliveryDate", { length: 20 })
+    .default("")
+    .notNull(),
   linkedEstimateId: integer("linkedEstimateId"),
-  workflowStatus: workflowStatusEnum("workflowStatus").default("상담").notNull(),
+  workflowStatus: workflowStatusEnum("workflowStatus")
+    .default("상담")
+    .notNull(),
   workflowCompletedAt: timestamp("workflowCompletedAt"),
   finalPaymentDate: varchar("finalPaymentDate", { length: 20 }),
   finalPaymentAmount: integer("finalPaymentAmount"),
+  cashReceiptIssued: boolean("cashReceiptIssued").default(false).notNull(),
+  cashReceiptDate: varchar("cashReceiptDate", { length: 20 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().notNull().$onUpdateFn(() => new Date()),
+  updatedAt: timestamp("updatedAt")
+    .defaultNow()
+    .notNull()
+    .$onUpdateFn(() => new Date()),
 });
 
 export type Client = typeof clients.$inferSelect;
@@ -136,7 +195,10 @@ export const consultations = pgTable("consultations", {
   content: text("content").notNull(),
   nextAction: text("nextAction").default("").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().notNull().$onUpdateFn(() => new Date()),
+  updatedAt: timestamp("updatedAt")
+    .defaultNow()
+    .notNull()
+    .$onUpdateFn(() => new Date()),
 });
 
 export type Consultation = typeof consultations.$inferSelect;
@@ -151,13 +213,19 @@ export const serviceItems = pgTable("service_items", {
   category: varchar("category", { length: 100 }).default("").notNull(),
   sortOrder: integer("sortOrder").default(0).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().notNull().$onUpdateFn(() => new Date()),
+  updatedAt: timestamp("updatedAt")
+    .defaultNow()
+    .notNull()
+    .$onUpdateFn(() => new Date()),
 });
 
 export type ServiceItem = typeof serviceItems.$inferSelect;
 export type InsertServiceItem = typeof serviceItems.$inferInsert;
 
-export const hktbInvoiceTypeEnum = pgEnum("hktb_invoice_type", ["translation", "retainer"]);
+export const hktbInvoiceTypeEnum = pgEnum("hktb_invoice_type", [
+  "translation",
+  "retainer",
+]);
 
 export const hktbInvoices = pgTable("hktb_invoices", {
   id: serial("id").primaryKey(),
@@ -168,8 +236,13 @@ export const hktbInvoices = pgTable("hktb_invoices", {
   items: json("items").notNull(),
   totalAmount: integer("totalAmount").default(0).notNull(),
   revenueMonth: varchar("revenueMonth", { length: 7 }),
+  cashReceiptIssued: boolean("cashReceiptIssued").default(false).notNull(),
+  cashReceiptDate: varchar("cashReceiptDate", { length: 20 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().notNull().$onUpdateFn(() => new Date()),
+  updatedAt: timestamp("updatedAt")
+    .defaultNow()
+    .notNull()
+    .$onUpdateFn(() => new Date()),
 });
 
 export type HktbInvoice = typeof hktbInvoices.$inferSelect;

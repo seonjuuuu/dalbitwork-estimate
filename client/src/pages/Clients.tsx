@@ -80,6 +80,16 @@ export default function Clients() {
   const updateMutation = trpc.clients.update.useMutation();
   const deleteMutation = trpc.clients.delete.useMutation();
 
+  const [statusFilter, setStatusFilter] = useState<string | null>(null);
+  const [workflowFilter, setWorkflowFilter] = useState<string | null>(null);
+
+  const displayedClients = clients.filter((c) => {
+    const ws = (c as any).workflowStatus ?? '상담';
+    const matchStatus = statusFilter ? c.status === statusFilter : true;
+    const matchWorkflow = workflowFilter ? ws === workflowFilter : true;
+    return matchStatus && matchWorkflow;
+  });
+
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState<ClientForm>(emptyForm);
@@ -182,7 +192,7 @@ export default function Clients() {
       </div>
 
       {/* 검색 */}
-      <div className="relative mb-4">
+      <div className="relative mb-3">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
         <Input
           value={search}
@@ -190,6 +200,82 @@ export default function Clients() {
           placeholder="고객사명, 담당자, 연락처로 검색..."
           className="pl-9"
         />
+      </div>
+
+      {/* 필터 */}
+      <div className="flex flex-col sm:flex-row gap-3 mb-4 p-3 bg-muted/30 rounded-lg border border-border relative">
+        {(statusFilter !== null || workflowFilter !== null) && (
+          <button
+            onClick={() => { setStatusFilter(null); setWorkflowFilter(null); }}
+            className="absolute top-2 right-2 text-[11px] text-muted-foreground hover:text-foreground border border-border rounded px-1.5 py-0.5 bg-background hover:bg-muted transition-colors"
+          >
+            초기화
+          </button>
+        )}
+        {/* 고객 상태 */}
+        <div className="flex-1">
+          <p className="text-[11px] font-semibold text-muted-foreground mb-1.5 uppercase tracking-wide">고객 상태</p>
+          <div className="flex flex-wrap gap-1.5">
+            {[
+              { key: null, label: '전체' },
+              { key: '상담', label: '상담' },
+              { key: '제안서', label: '제안서' },
+              { key: '계약', label: '계약' },
+            ].map(({ key, label }) => {
+              const count = key ? clients.filter((c) => c.status === key).length : null;
+              const active = statusFilter === key;
+              return (
+                <button
+                  key={key ?? 'all'}
+                  onClick={() => setStatusFilter(active && key !== null ? null : key)}
+                  className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${
+                    active
+                      ? 'bg-primary text-primary-foreground border-primary'
+                      : 'bg-background text-muted-foreground border-border hover:border-primary/50 hover:text-foreground'
+                  }`}
+                >
+                  {label}
+                  {count !== null && <span className="ml-1 opacity-60">{count}</span>}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="w-px bg-border hidden sm:block" />
+
+        {/* 프로젝트 진행 현황 */}
+        <div className="flex-1">
+          <p className="text-[11px] font-semibold text-muted-foreground mb-1.5 uppercase tracking-wide">진행 현황</p>
+          <div className="flex flex-wrap gap-1.5">
+            {[
+              { key: null, label: '전체' },
+              { key: '진행대기', label: '진행 대기' },
+              { key: '작업진행중', label: '작업 진행중' },
+              { key: 'PC검수', label: 'PC 검수' },
+              { key: '모바일작업중', label: '모바일 작업중' },
+              { key: '고객전달', label: '고객 전달' },
+              { key: '완료', label: '완료' },
+            ].map(({ key, label }) => {
+              const count = key ? clients.filter((c) => ((c as any).workflowStatus ?? '상담') === key).length : null;
+              const active = workflowFilter === key;
+              return (
+                <button
+                  key={key ?? 'wf-all'}
+                  onClick={() => setWorkflowFilter(active && key !== null ? null : key)}
+                  className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${
+                    active
+                      ? 'bg-primary text-primary-foreground border-primary'
+                      : 'bg-background text-muted-foreground border-border hover:border-primary/50 hover:text-foreground'
+                  }`}
+                >
+                  {label}
+                  {count !== null && <span className="ml-1 opacity-60">{count}</span>}
+                </button>
+              );
+            })}
+          </div>
+        </div>
       </div>
 
       {/* 등록/수정 폼 */}
@@ -329,19 +415,25 @@ export default function Clients() {
             </div>
           ))}
         </div>
-      ) : clients.length === 0 ? (
+      ) : displayedClients.length === 0 ? (
         <div className="text-center py-16">
           <Building2 className="w-12 h-12 text-muted-foreground mx-auto mb-4 opacity-40" />
-          <p className="text-muted-foreground text-sm">등록된 고객사가 없습니다.</p>
-          <p className="text-muted-foreground/60 text-xs mt-1">위 버튼으로 고객사를 추가해보세요.</p>
+          <p className="text-muted-foreground text-sm">
+            {statusFilter ? `'${statusFilter}' 상태의 고객사가 없습니다.` : '등록된 고객사가 없습니다.'}
+          </p>
+          {!statusFilter && <p className="text-muted-foreground/60 text-xs mt-1">위 버튼으로 고객사를 추가해보세요.</p>}
         </div>
       ) : (
         <div className="space-y-2">
-          {clients.map((client) => (
+          {displayedClients.map((client) => (
             <div
               key={client.id}
               onClick={() => navigate(`/clients/${client.id}`)}
-              className="group flex items-center justify-between p-4 border border-border rounded-lg hover:bg-accent/40 transition-colors cursor-pointer"
+              className={`group flex items-center justify-between p-4 border rounded-lg transition-colors cursor-pointer ${
+                client.status === '계약'
+                  ? 'border-amber-200 bg-amber-50/50 hover:bg-amber-50 dark:border-amber-800/50 dark:bg-amber-900/10 dark:hover:bg-amber-900/20'
+                  : 'border-border hover:bg-accent/40'
+              }`}
             >
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">

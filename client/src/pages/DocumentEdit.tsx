@@ -14,17 +14,17 @@ export default function DocumentEdit({ id, type }: Props) {
   const loaded = useRef(false);
 
   const list = type === 'proposal' ? proposals : estimates;
-  const isListReady = list.length > 0 || loaded.current;
+  const docFound = list.some((d) => d.id === String(id));
 
   useEffect(() => {
     if (!id || loaded.current) return;
-    if (list.length === 0) return;
+    if (!docFound) return;
 
     loadDocument(id, type);
     loaded.current = true;
-  }, [id, type, list]);
+  }, [id, type, docFound, list]);
 
-  if (!isListReady) {
+  if (!loaded.current && !docFound) {
     return (
       <div className="flex items-center justify-center h-full">
         <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
