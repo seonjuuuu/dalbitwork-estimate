@@ -1,8 +1,13 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Switch } from '@/components/ui/switch';
+import { ChevronLeft, ChevronRight, CalendarDays, Pencil } from 'lucide-react';
 import { trpc } from '@/lib/trpc';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { ko } from 'date-fns/locale';
 
 function fmt(n: number) {
   return n.toLocaleString('ko-KR') + '원';
@@ -12,9 +17,167 @@ function typeLabel(type: string) {
   return type === 'translation' ? '번역' : '관리';
 }
 
+function todayStr() {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+function parseDateStr(str: string): Date | undefined {
+  if (!str) return undefined;
+  const parts = str.split(/[-.]/).map(Number);
+  if (parts.length < 3) return undefined;
+  const d = new Date(parts[0], parts[1] - 1, parts[2]);
+  return isNaN(d.getTime()) ? undefined : d;
+}
+
+function formatDateForDisplay(str: string): string {
+  if (!str) return '';
+  const parts = str.split('-');
+  if (parts.length === 3) return `${parts[0]}.${parts[1]}.${parts[2]}`;
+  return str;
+}
+
+/** 현금영수증 슬라이드 토글 + 날짜 컴포넌트 */
+function CashReceiptToggle({
+  issued,
+  date,
+  onToggle,
+  onDateChange,
+}: {
+  issued: boolean;
+  date: string | null;
+  onToggle: (issued: boolean, date: string | null) => void;
+  onDateChange: (date: string) => void;
+}) {
+  const [calendarOpen, setCalendarOpen] = useState(false);
+  const [inputVal, setInputVal] = useState(date ?? todayStr());
+  // 날짜가 이미 저장된 경우 뷰 모드, 아니면 편집 모드
+  const [isEditing, setIsEditing] = useState(!issued || !date);
+
+  // 서버에서 date가 바뀌면 동기화
+  useEffect(() => {
+    if (date) {
+      setInputVal(date);
+      setIsEditing(false);
+    }
+  }, [date]);
+
+  const handleToggle = (checked: boolean) => {
+    if (checked) {
+      const d = inputVal || todayStr();
+      onToggle(true, d);
+      setIsEditing(true);
+    } else {
+      onToggle(false, null);
+      setIsEditing(false);
+    }
+  };
+
+  const saveDate = (val: string) => {
+    if (/^\d{4}-\d{2}-\d{2}$/.test(val)) {
+      onDateChange(val);
+      setIsEditing(false);
+    }
+  };
+
+  const handleDateInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value.replace(/[^0-9]/g, '');
+    // 숫자만 입력 시 자동으로 대시 삽입
+    let formatted = raw;
+    if (raw.length >= 5) formatted = `${raw.slice(0, 4)}-${raw.slice(4)}`;
+    if (raw.length >= 7) formatted = `${raw.slice(0, 4)}-${raw.slice(4, 6)}-${raw.slice(6, 8)}`;
+    setInputVal(formatted);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(formatted)) {
+      // 완성된 날짜면 바로 저장
+      onDateChange(formatted);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') saveDate(inputVal);
+  };
+
+  const handleBlur = () => {
+    saveDate(inputVal);
+  };
+
+  const handleCalendarSelect = (d: Date | undefined) => {
+    if (!d) return;
+    const str = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    setInputVal(str);
+    onDateChange(str);
+    setIsEditing(false);
+    setCalendarOpen(false);
+  };
+
+  return (
+    <div className="flex items-center justify-end gap-2">
+      <Switch
+        checked={issued}
+        onCheckedChange={handleToggle}
+        className="data-[state=checked]:bg-emerald-500"
+      />
+      {/* 고정 너비 + 우측 정렬: th와 날짜 끝 위치 일치 */}
+      <div className="w-28 flex items-center justify-end">
+        {issued ? (
+          isEditing ? (
+            /* 편집 모드: 입력 + 달력 */
+            <div className="flex items-center gap-1">
+              <Input
+                type="text"
+                value={inputVal}
+                onChange={handleDateInput}
+                onBlur={handleBlur}
+                onKeyDown={handleKeyDown}
+                placeholder="YYYY-MM-DD"
+                className="h-6 text-xs w-24 py-0 px-1.5"
+                autoFocus
+              />
+              <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
+                <PopoverTrigger asChild>
+                  <button type="button" className="text-muted-foreground hover:text-foreground p-0.5">
+                    <CalendarDays className="w-3.5 h-3.5" />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="end">
+                  <Calendar
+                    mode="single"
+                    selected={parseDateStr(inputVal)}
+                    onSelect={handleCalendarSelect}
+                    locale={ko}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+          ) : (
+            /* 뷰 모드: 연필 + 날짜 텍스트 (날짜가 우측 끝에 오도록) */
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => setIsEditing(true)}
+                className="text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <Pencil className="w-3 h-3" />
+              </button>
+              <span className="text-xs text-foreground font-medium tabular-nums">{formatDateForDisplay(inputVal)}</span>
+            </div>
+          )
+        ) : (
+          <span className="text-xs text-muted-foreground">-</span>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function MonthlySales() {
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
+  const utils = trpc.useUtils();
 
   const handlePrevMonth = () => {
     if (selectedMonth === 1) { setSelectedMonth(12); setSelectedYear(selectedYear - 1); }
@@ -38,6 +201,16 @@ export default function MonthlySales() {
   const grandTotal = paymentTotal + hktbTotal + finalPaymentTotal;
 
   const monthString = `${selectedYear}년 ${selectedMonth}월`;
+
+  const updatePaymentCashReceipt = trpc.sales.updatePaymentCashReceipt.useMutation({
+    onSuccess: () => utils.sales.getMonthly.invalidate(),
+  });
+  const updateHktbCashReceipt = trpc.sales.updateHktbCashReceipt.useMutation({
+    onSuccess: () => utils.sales.getMonthly.invalidate(),
+  });
+  const updateFinalCashReceipt = trpc.sales.updateFinalCashReceipt.useMutation({
+    onSuccess: () => utils.sales.getMonthly.invalidate(),
+  });
 
   return (
     <div className="max-w-5xl mx-auto p-6">
@@ -96,6 +269,7 @@ export default function MonthlySales() {
                 <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground">Invoice No.</th>
                 <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground">인보이스 날짜</th>
                 <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground">금액 (VAT 포함)</th>
+                <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground">현금영수증 / 날짜</th>
               </tr>
             </thead>
             <tbody>
@@ -109,6 +283,16 @@ export default function MonthlySales() {
                   <td className="py-2.5 px-3 font-mono text-xs">{inv.invoiceNo}</td>
                   <td className="py-2.5 px-3 text-xs text-muted-foreground">{inv.invoiceDate}</td>
                   <td className="py-2.5 px-3 text-right font-semibold">{fmt(inv.totalAmount)}</td>
+                  <td className="py-2.5 px-3">
+                    <div className="flex justify-end">
+                      <CashReceiptToggle
+                        issued={inv.cashReceiptIssued}
+                        date={inv.cashReceiptDate ?? null}
+                        onToggle={(issued, date) => updateHktbCashReceipt.mutate({ id: inv.id, issued, date })}
+                        onDateChange={(date) => updateHktbCashReceipt.mutate({ id: inv.id, issued: true, date })}
+                      />
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -127,6 +311,7 @@ export default function MonthlySales() {
                 <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground">고객사</th>
                 <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground">담당자</th>
                 <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground">잔금</th>
+                <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground">현금영수증 / 날짜</th>
               </tr>
             </thead>
             <tbody>
@@ -137,6 +322,16 @@ export default function MonthlySales() {
                   <td className="py-2.5 px-3 text-xs text-muted-foreground">{f.contactName || '-'}</td>
                   <td className="py-2.5 px-3 text-right font-semibold">
                     {fmt(f.finalPaymentAmount ?? f.contractAmount ?? 0)}
+                  </td>
+                  <td className="py-2.5 px-3">
+                    <div className="flex justify-end">
+                      <CashReceiptToggle
+                        issued={f.cashReceiptIssued}
+                        date={f.cashReceiptDate ?? null}
+                        onToggle={(issued, date) => updateFinalCashReceipt.mutate({ id: f.id, issued, date })}
+                        onDateChange={(date) => updateFinalCashReceipt.mutate({ id: f.id, issued: true, date })}
+                      />
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -156,6 +351,7 @@ export default function MonthlySales() {
               <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground">프로젝트</th>
               <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground">구분</th>
               <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground">금액</th>
+              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground">현금영수증</th>
             </tr>
           </thead>
           <tbody>
@@ -170,10 +366,20 @@ export default function MonthlySales() {
                   </span>
                 </td>
                 <td className="py-2.5 px-3 text-right font-semibold">{fmt(p.amount)}</td>
+                <td className="py-2.5 px-3">
+                  <div className="flex justify-end">
+                    <CashReceiptToggle
+                      issued={p.cashReceiptIssued}
+                      date={p.cashReceiptDate ?? null}
+                      onToggle={(issued, date) => updatePaymentCashReceipt.mutate({ id: p.id, issued, date })}
+                      onDateChange={(date) => updatePaymentCashReceipt.mutate({ id: p.id, issued: true, date })}
+                    />
+                  </div>
+                </td>
               </tr>
             )) : (
               <tr>
-                <td colSpan={5} className="py-8 px-3 text-center text-xs text-muted-foreground">
+                <td colSpan={6} className="py-8 px-3 text-center text-xs text-muted-foreground">
                   {monthString}의 일반 매출 내역이 없습니다.
                 </td>
               </tr>
