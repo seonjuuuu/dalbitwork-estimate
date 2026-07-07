@@ -57,6 +57,7 @@ export const documents = pgTable("documents", {
   useRange: boolean("useRange").default(true).notNull(),
   extraDiscountType: varchar("extraDiscountType", { length: 20 }),
   extraDiscountValue: integer("extraDiscountValue").default(0).notNull(),
+  depositRatio: integer("depositRatio").default(50).notNull(),
   contactPhone: varchar("contactPhone", { length: 50 }).default("").notNull(),
   businessType: varchar("businessType", { length: 100 }).default("").notNull(),
   optionalItems: json("optionalItems")

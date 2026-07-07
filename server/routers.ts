@@ -35,6 +35,7 @@ const documentInputSchema = z.object({
   useRange: z.boolean().default(true),
   extraDiscountType: z.enum(['percent', 'amount', 'direct']).nullable().optional(),
   extraDiscountValue: z.number().default(0),
+  depositRatio: z.number().default(50),
   contactPhone: z.string().default(""),
   businessType: z.string().default(""),
 });
@@ -188,6 +189,7 @@ export const appRouter = router({
           useRange: input.useRange,
           extraDiscountType: input.extraDiscountType ?? null,
           extraDiscountValue: input.extraDiscountValue ?? 0,
+          depositRatio: input.depositRatio ?? 50,
           contactPhone: input.contactPhone,
           businessType: input.businessType,
         });
@@ -221,6 +223,7 @@ export const appRouter = router({
         if (input.data.useRange !== undefined) updateData.useRange = input.data.useRange;
         if (input.data.extraDiscountType !== undefined) updateData.extraDiscountType = input.data.extraDiscountType ?? null;
         if (input.data.extraDiscountValue !== undefined) updateData.extraDiscountValue = input.data.extraDiscountValue;
+        if (input.data.depositRatio !== undefined) updateData.depositRatio = input.data.depositRatio;
         if (input.data.contactPhone !== undefined) updateData.contactPhone = input.data.contactPhone;
         if (input.data.businessType !== undefined) updateData.businessType = input.data.businessType;
         if (input.data.contactName !== undefined) updateData.contactName = input.data.contactName;

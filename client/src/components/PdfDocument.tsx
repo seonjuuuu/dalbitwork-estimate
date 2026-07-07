@@ -815,10 +815,10 @@ export default function PdfDocument({ doc }: PdfDocumentProps) {
         <View style={s.notesSection}>
           <Text style={s.notesTitle}>참고 사항</Text>
           {(!doc.notesMode || doc.notesMode === 'list') ? (
-            // List mode - numbered items
+            // List mode - numbered items (변수 치환은 자유형식과 동일하게 적용)
             doc.notes.map((note: string, idx: number) => (
               <Text key={idx} style={s.noteText}>
-                {note.trim() ? `${idx + 1}. ${note}` : ' '}
+                {note.trim() ? `${idx + 1}. ${substituteVariables(note, doc.templateVariables)}` : ' '}
               </Text>
             ))
           ) : (

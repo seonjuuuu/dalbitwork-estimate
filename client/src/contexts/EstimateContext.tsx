@@ -79,6 +79,7 @@ function dbDocToLocal(doc: {
     useRange: doc.useRange !== false,
     extraDiscountType: ((doc as any).extraDiscountType as 'percent' | 'amount' | 'direct') || null,
     extraDiscountValue: (doc as any).extraDiscountValue || 0,
+    depositRatio: (doc as any).depositRatio || 50,
     contactPhone: doc.contactPhone || '',
     businessType: doc.businessType || '',
     optionalItems: (doc.optionalItems || []).map((item) => ({
@@ -183,6 +184,7 @@ export function EstimateProvider({ children }: { children: ReactNode }) {
         useRange: currentDoc.useRange !== false,
         extraDiscountType: currentDoc.extraDiscountType || null,
         extraDiscountValue: currentDoc.extraDiscountValue || 0,
+        depositRatio: currentDoc.depositRatio || 50,
         contactPhone: currentDoc.contactPhone || '',
         businessType: currentDoc.businessType || '',
       };

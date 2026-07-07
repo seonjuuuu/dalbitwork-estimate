@@ -15,6 +15,7 @@ interface DepositConfirmDialogProps {
   onClose: () => void;
   documentId: number;
   totalAmount: number;
+  depositRatio?: number;
   clientName: string;
   onSuccess?: () => void;
 }
@@ -47,11 +48,12 @@ export default function DepositConfirmDialog({
   onClose,
   documentId,
   totalAmount,
+  depositRatio = 50,
   clientName,
   onSuccess,
 }: DepositConfirmDialogProps) {
   const [depositAmount, setDepositAmount] = useState<string>(
-    Math.round(totalAmount * 0.5).toString()
+    Math.round(totalAmount * (depositRatio / 100)).toString()
   );
   const [paymentDate, setPaymentDate] = useState(todayDotStr());
   const [isLoading, setIsLoading] = useState(false);
@@ -112,7 +114,7 @@ export default function DepositConfirmDialog({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="deposit-amount">계약금 (기본값: 50%)</Label>
+            <Label htmlFor="deposit-amount">계약금 (기본값: {depositRatio}%)</Label>
             <Input
               id="deposit-amount"
               type="text"
@@ -162,7 +164,7 @@ export default function DepositConfirmDialog({
         </div>
 
         <DialogFooter className="gap-2">
-          <Button variant="outline" onClick={() => { setDepositAmount(Math.round(totalAmount * 0.5).toString()); setPaymentDate(todayDotStr()); }} disabled={isLoading}>
+          <Button variant="outline" onClick={() => { setDepositAmount(Math.round(totalAmount * (depositRatio / 100)).toString()); setPaymentDate(todayDotStr()); }} disabled={isLoading}>
             초기화
           </Button>
           <Button variant="outline" onClick={onClose} disabled={isLoading}>취소</Button>

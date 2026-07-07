@@ -32,6 +32,7 @@ export interface DocumentData {
   useRange: boolean;
   extraDiscountType?: 'percent' | 'amount' | 'direct' | null;
   extraDiscountValue?: number;
+  depositRatio?: number; // 계약금 비율(%), 참고사항 {{계약금}}/{{잔금}} 자동계산에 사용
   contactPhone: string; // 담당자 번호
   businessType: string; // 업종
   optionalItems: OptionalItem[]; // 선택사항
@@ -157,6 +158,7 @@ export const defaultProposal: DocumentData = {
   useRange: true,
   extraDiscountType: null,
   extraDiscountValue: 0,
+  depositRatio: 50,
   contactPhone: '',
   businessType: '',
   optionalItems: [],
@@ -184,6 +186,7 @@ export const defaultEstimate: DocumentData = {
   useRange: true,
   extraDiscountType: null,
   extraDiscountValue: 0,
+  depositRatio: 50,
   contactPhone: '',
   businessType: '',
   optionalItems: [],

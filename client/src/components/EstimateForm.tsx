@@ -121,10 +121,14 @@ function VariableInputGrid({
   detectedVariables,
   templateVariables,
   onVariableChange,
+  depositRatio,
+  onRatioChange,
 }: {
   detectedVariables: string[];
   templateVariables: Record<string, string>;
   onVariableChange: (varName: string, value: string) => void;
+  depositRatio: number;
+  onRatioChange: (newRatio: number) => void;
 }) {
   // 총금액 변수가 있는지 확인
   const hasTotalAmount = detectedVariables.includes('총금액');
@@ -132,14 +136,11 @@ function VariableInputGrid({
   const hasBalance = detectedVariables.includes('잔금');
   const hasAmountCalc = hasTotalAmount && hasDeposit && hasBalance;
 
-  // 계약금 비율 상태 (50% 기본)
-  const [depositRatio, setDepositRatio] = useState(50);
-
   // 총금액 변경 시 계약금/잔금 자동 계산
   const handleTotalAmountChange = (value: string) => {
     const formatted = formatAmountWithComma(value);
     onVariableChange('총금액', formatted ? `${formatted}원` : '');
-    
+
     if (formatted) {
       const total = parseAmountString(formatted);
       const { deposit, balance } = calculateAmounts(total, depositRatio);
@@ -153,7 +154,7 @@ function VariableInputGrid({
 
   // 비율 변경 시 재계산
   const handleRatioChange = (newRatio: number) => {
-    setDepositRatio(newRatio);
+    onRatioChange(newRatio);
     const totalStr = templateVariables['총금액'] || '';
     const total = parseAmountString(totalStr);
     if (total > 0) {
@@ -230,11 +231,14 @@ function VariableInputGrid({
               <div className="flex items-center gap-1 flex-1">
                 <span className="text-[10px] text-amber-700 dark:text-amber-300">계약금</span>
                 <Input
-                  type="number"
-                  min={0}
-                  max={100}
+                  type="text"
+                  inputMode="numeric"
                   value={depositRatio}
-                  onChange={(e) => handleRatioChange(Number(e.target.value))}
+                  onChange={(e) => {
+                    const digits = e.target.value.replace(/[^0-9]/g, '');
+                    const num = digits === '' ? 0 : Math.min(100, Number(digits));
+                    handleRatioChange(num);
+                  }}
                   className="bg-background text-sm h-8 w-16 text-center"
                 />
                 <span className="text-[10px] text-amber-700 dark:text-amber-300">%</span>
@@ -243,7 +247,7 @@ function VariableInputGrid({
               <div className="flex items-center gap-1 flex-1">
                 <span className="text-[10px] text-amber-700 dark:text-amber-300">잔금</span>
                 <Input
-                  type="number"
+                  type="text"
                   value={100 - depositRatio}
                   readOnly
                   className="bg-muted text-sm h-8 w-16 text-center cursor-not-allowed"
@@ -711,18 +715,44 @@ export default function EstimateForm() {
     setCurrentDoc((prev) => ({ ...prev, totalMin: totalAfterExtraDiscount, totalMax: totalAfterExtraDiscount }));
   }, [totalAfterExtraDiscount, extraDiscountValue, extraDiscountType, isProposal, setCurrentDoc, showDiscount, totalFinal, totalOriginal]);
 
-  // 계약서이고 자유형식 참고사항에 {{총금액}} 변수가 있으면 항목 합계로 자동 채우기
+  // 참고사항 원문 텍스트 (자유형식은 텍스트 그대로, 항목별 리스트는 각 항목을 합쳐서 변수 스캔)
+  const currentNotesText = currentDoc.notesMode === 'freeform'
+    ? (currentDoc.freeformNotes || '')
+    : currentDoc.notes.join('\n');
+
+  // 참고사항(리스트/자유형식 공통)에서 감지된 변수를 templateVariables 맵에 자동 반영
+  // (신규 변수는 프리셋 적용, 더 이상 쓰이지 않는 변수는 정리)
+  useEffect(() => {
+    const vars = extractVariables(currentNotesText);
+    setCurrentDoc((prev) => {
+      if (vars.length === 0) {
+        return prev.templateVariables === null ? prev : { ...prev, templateVariables: null };
+      }
+      const newMap = buildVariablesMap(vars, prev.templateVariables);
+      const prevMap = prev.templateVariables || {};
+      const prevKeys = Object.keys(prevMap);
+      const newKeys = Object.keys(newMap);
+      const unchanged = prevKeys.length === newKeys.length && newKeys.every((k) => newMap[k] === prevMap[k]);
+      return unchanged ? prev : { ...prev, templateVariables: newMap };
+    });
+  }, [currentNotesText, setCurrentDoc]);
+
+  // 참고사항(리스트/자유형식 공통)에 {{총금액}} 변수가 있으면 확정총액/계약금비율로 자동 채우기
+  // (품목 합계가 아니라 currentDoc.totalMax·depositRatio를 기준으로 삼아야 추가 할인/직접입력/비율 조정 후에도 어긋나지 않음)
   useEffect(() => {
     if (isProposal) return;
-    if (currentDoc.notesMode !== 'freeform') return;
-    const vars = extractVariables(currentDoc.freeformNotes || '');
+    const vars = extractVariables(currentNotesText);
     if (!vars.includes('총금액')) return;
-    const baseAmount = showDiscount ? totalFinal : totalOriginal;
-    if (baseAmount <= 0) return;
+    const baseAmount = currentDoc.totalMax;
+    if (!baseAmount || baseAmount <= 0) return;
+    const ratio = currentDoc.depositRatio ?? 50;
     const formatted = `${baseAmount.toLocaleString('ko-KR')}원`;
     setCurrentDoc((prev) => {
-      if ((prev.templateVariables?.['총금액'] ?? '') === formatted) return prev;
-      const { deposit, balance } = calculateAmounts(baseAmount, 50);
+      const { deposit, balance } = calculateAmounts(baseAmount, ratio);
+      const totalUnchanged = (prev.templateVariables?.['총금액'] ?? '') === formatted;
+      const depositUnchanged = !vars.includes('계약금') || prev.templateVariables?.['계약금'] === deposit;
+      const balanceUnchanged = !vars.includes('잔금') || prev.templateVariables?.['잔금'] === balance;
+      if (totalUnchanged && depositUnchanged && balanceUnchanged) return prev;
       return {
         ...prev,
         templateVariables: {
@@ -733,7 +763,7 @@ export default function EstimateForm() {
         },
       };
     });
-  }, [totalOriginal, totalFinal, showDiscount, isProposal, currentDoc.notesMode, currentDoc.freeformNotes, setCurrentDoc]);
+  }, [currentNotesText, currentDoc.totalMax, currentDoc.depositRatio, isProposal, setCurrentDoc]);
 
   // 참고사항 ID 생성 (인덱스 기반)
   const noteIds = currentDoc.notes.map((_: string, i: number) => `note-${i}`);
@@ -752,16 +782,9 @@ export default function EstimateForm() {
     setCurrentDoc((prev) => ({ ...prev, notesMode: mode }));
   };
 
-  // 자유형식 텍스트 업데이트
+  // 자유형식 텍스트 업데이트 (변수 감지는 위 useEffect에서 공통 처리)
   const handleFreeformNotesChange = (value: string) => {
-    setCurrentDoc((prev) => {
-      // Auto-detect variables and update templateVariables map
-      const vars = extractVariables(value);
-      const newVarsMap = vars.length > 0
-        ? buildVariablesMap(vars, prev.templateVariables)
-        : null;
-      return { ...prev, freeformNotes: value, templateVariables: newVarsMap };
-    });
+    setCurrentDoc((prev) => ({ ...prev, freeformNotes: value }));
   };
 
   // 변수 값 업데이트
@@ -775,10 +798,8 @@ export default function EstimateForm() {
     }));
   };
 
-  // 현재 감지된 변수 목록
-  const detectedVariables = currentDoc.notesMode === 'freeform'
-    ? extractVariables(currentDoc.freeformNotes || '')
-    : [];
+  // 현재 감지된 변수 목록 (리스트/자유형식 공통)
+  const detectedVariables = extractVariables(currentNotesText);
 
   // 템플릿 적용 핸들러 (모드 포함)
   const handleApplyTemplate = (
@@ -1442,7 +1463,7 @@ export default function EstimateForm() {
                           updateField('totalMax', base);
                           if (detectedVariables.includes('총금액')) {
                             handleVariableChange('총금액', base ? `${base.toLocaleString('ko-KR')}원` : '');
-                            const { deposit, balance } = calculateAmounts(base, 50);
+                            const { deposit, balance } = calculateAmounts(base, currentDoc.depositRatio ?? 50);
                             if (detectedVariables.includes('계약금')) handleVariableChange('계약금', deposit);
                             if (detectedVariables.includes('잔금')) handleVariableChange('잔금', balance);
                           }
@@ -1452,7 +1473,7 @@ export default function EstimateForm() {
                           updateField('totalMax', val);
                           if (detectedVariables.includes('총금액')) {
                             handleVariableChange('총금액', `${val.toLocaleString('ko-KR')}원`);
-                            const { deposit, balance } = calculateAmounts(val, 50);
+                            const { deposit, balance } = calculateAmounts(val, currentDoc.depositRatio ?? 50);
                             if (detectedVariables.includes('계약금')) handleVariableChange('계약금', deposit);
                             if (detectedVariables.includes('잔금')) handleVariableChange('잔금', balance);
                           }
@@ -1541,6 +1562,7 @@ export default function EstimateForm() {
           <>
             <p className="text-[11px] text-muted-foreground mb-3">
               드래그하여 순서를 변경할 수 있습니다. 계약 조항, 작업 범위, 결제 조건 등을 자유롭게 입력하세요.
+              {' '}<code className="bg-muted px-1 rounded">{`{{변수명}}`}</code>을 사용하면 문서마다 다른 값으로 치환할 수 있습니다.
             </p>
             <DndContext
               sensors={sensors}
@@ -1582,28 +1604,30 @@ export default function EstimateForm() {
               팁: 조항 제목(예: 제1조, 제2조)은 자동으로 굵게 표시됩니다. 추가로 <code className="bg-muted px-1 rounded">**텍스트**</code>로 감싸면 해당 부분도 굵게 표시됩니다.
               {' '}<code className="bg-muted px-1 rounded">{`{{변수명}}`}</code>을 사용하면 문서마다 다른 값으로 치환할 수 있습니다.
             </p>
-
-            {/* 변수 입력 UI */}
-            {detectedVariables.length > 0 && (
-              <div className="mt-4 p-4 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg">
-                <div className="flex items-center gap-2 mb-3">
-                  <Variable className="w-4 h-4 text-amber-600" />
-                  <h4 className="text-xs font-semibold text-amber-800 dark:text-amber-200">변수 입력</h4>
-                  <span className="text-[10px] text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/40 px-1.5 py-0.5 rounded-full">
-                    {detectedVariables.length}개 감지됨
-                  </span>
-                </div>
-                <p className="text-[10px] text-amber-700 dark:text-amber-300 mb-3">
-                  아래 변수에 값을 입력하면 미리보기와 PDF에서 자동으로 치환됩니다.
-                </p>
-                <VariableInputGrid
-                  detectedVariables={detectedVariables}
-                  templateVariables={currentDoc.templateVariables || {}}
-                  onVariableChange={handleVariableChange}
-                />
-              </div>
-            )}
           </>
+        )}
+
+        {/* 변수 입력 UI (리스트/자유형식 공통) */}
+        {detectedVariables.length > 0 && (
+          <div className="mt-4 p-4 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+            <div className="flex items-center gap-2 mb-3">
+              <Variable className="w-4 h-4 text-amber-600" />
+              <h4 className="text-xs font-semibold text-amber-800 dark:text-amber-200">변수 입력</h4>
+              <span className="text-[10px] text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/40 px-1.5 py-0.5 rounded-full">
+                {detectedVariables.length}개 감지됨
+              </span>
+            </div>
+            <p className="text-[10px] text-amber-700 dark:text-amber-300 mb-3">
+              아래 변수에 값을 입력하면 미리보기와 PDF에서 자동으로 치환됩니다.
+            </p>
+            <VariableInputGrid
+              detectedVariables={detectedVariables}
+              templateVariables={currentDoc.templateVariables || {}}
+              onVariableChange={handleVariableChange}
+              depositRatio={currentDoc.depositRatio ?? 50}
+              onRatioChange={(newRatio) => setCurrentDoc((prev) => ({ ...prev, depositRatio: newRatio }))}
+            />
+          </div>
         )}
       </div>
 

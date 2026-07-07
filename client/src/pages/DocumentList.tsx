@@ -26,14 +26,17 @@ export default function DocumentList({ type }: DocumentListProps) {
   const [depositDialogOpen, setDepositDialogOpen] = useState(false);
   const [finalDialogOpen, setFinalDialogOpen] = useState(false);
   const [selectedDocId, setSelectedDocId] = useState<number | null>(null);
-  const [selectedDocData, setSelectedDocData] = useState<{ totalMax: number; clientName: string } | null>(null);
+  const [selectedDocData, setSelectedDocData] = useState<{ totalMax: number; clientName: string; depositRatio: number } | null>(null);
+  const [finalDepositAmount, setFinalDepositAmount] = useState(0);
+  const [openingFinalId, setOpeningFinalId] = useState<number | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
 
   const duplicateMutation = trpc.documents.duplicateAsEstimate.useMutation();
   const copyMutation = trpc.documents.copyDocument.useMutation();
   const [copyingId, setCopyingId] = useState<string | null>(null);
-  const { data: depositedIds = [] } = trpc.documents.getDepositedDocumentIds.useQuery(undefined, { enabled: type === 'estimate' });
-  const { data: finalPaidIds = [] } = trpc.documents.getFinalPaidDocumentIds.useQuery(undefined, { enabled: type === 'estimate' });
+  const { data: depositedIds = [], isLoading: isLoadingDepositedIds } = trpc.documents.getDepositedDocumentIds.useQuery(undefined, { enabled: type === 'estimate' });
+  const { data: finalPaidIds = [], isLoading: isLoadingFinalPaidIds } = trpc.documents.getFinalPaidDocumentIds.useQuery(undefined, { enabled: type === 'estimate' });
+  const isLoadingPaymentStatus = isLoadingDepositedIds || isLoadingFinalPaidIds;
   const depositedSet = new Set(depositedIds);
   const finalPaidSet = new Set(finalPaidIds);
   const utils = trpc.useUtils();
@@ -95,9 +98,9 @@ export default function DocumentList({ type }: DocumentListProps) {
     }
   };
 
-  const handleOpenDepositDialog = (docId: number, totalMax: number, clientName: string) => {
+  const handleOpenDepositDialog = (docId: number, totalMax: number, clientName: string, depositRatio: number) => {
     setSelectedDocId(docId);
-    setSelectedDocData({ totalMax, clientName });
+    setSelectedDocData({ totalMax, clientName, depositRatio });
     setDepositDialogOpen(true);
   };
 
@@ -111,10 +114,23 @@ export default function DocumentList({ type }: DocumentListProps) {
     utils.documents.getFinalPaidDocumentIds.invalidate();
   };
 
-  const handleOpenFinalDialog = (docId: number, totalMax: number, clientName: string) => {
-    setSelectedDocId(docId);
-    setSelectedDocData({ totalMax, clientName });
-    setFinalDialogOpen(true);
+  const handleOpenFinalDialog = async (docId: number, totalMax: number, clientName: string, depositRatio: number) => {
+    setOpeningFinalId(docId);
+    try {
+      // 계약 비율 추정치가 아니라 실제로 입금 확정된 계약금 금액을 사용
+      const payments = await utils.documents.getPayments.fetch({ documentId: docId });
+      const actualDeposit = payments
+        .filter((p) => p.type === 'deposit')
+        .reduce((sum, p) => sum + p.amount, 0);
+      setSelectedDocId(docId);
+      setSelectedDocData({ totalMax, clientName, depositRatio });
+      setFinalDepositAmount(actualDeposit);
+      setFinalDialogOpen(true);
+    } catch {
+      toast.error('결제 내역을 불러오지 못했습니다.');
+    } finally {
+      setOpeningFinalId(null);
+    }
   };
 
   return (
@@ -267,7 +283,11 @@ export default function DocumentList({ type }: DocumentListProps) {
 
                           {type === 'estimate' && (
                             <>
-                              {isDeposited ? (
+                              {isLoadingPaymentStatus ? (
+                                <span className="flex items-center justify-center h-7 w-7 text-muted-foreground">
+                                  <Loader2 className="w-3 h-3 animate-spin" />
+                                </span>
+                              ) : isDeposited ? (
                                 <span className="flex items-center gap-1 text-[10px] font-medium text-emerald-600 px-1.5 py-1 rounded bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 whitespace-nowrap">
                                   <CheckCircle2 className="w-3 h-3" />
                                   계약금
@@ -276,7 +296,7 @@ export default function DocumentList({ type }: DocumentListProps) {
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  onClick={() => handleOpenDepositDialog(docIdNum, doc.totalMax, doc.clientName)}
+                                  onClick={() => handleOpenDepositDialog(docIdNum, doc.totalMax, doc.clientName, doc.depositRatio ?? 50)}
                                   className="h-7 px-2 text-xs gap-1 text-amber-600 hover:text-amber-700"
                                 >
                                   <CreditCard className="w-3 h-3" />
@@ -293,10 +313,15 @@ export default function DocumentList({ type }: DocumentListProps) {
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  onClick={() => handleOpenFinalDialog(docIdNum, doc.totalMax, doc.clientName)}
+                                  onClick={() => handleOpenFinalDialog(docIdNum, doc.totalMax, doc.clientName, doc.depositRatio ?? 50)}
+                                  disabled={openingFinalId === docIdNum}
                                   className="h-7 px-2 text-xs gap-1 text-blue-600 hover:text-blue-700"
                                 >
-                                  <CreditCard className="w-3 h-3" />
+                                  {openingFinalId === docIdNum ? (
+                                    <Loader2 className="w-3 h-3 animate-spin" />
+                                  ) : (
+                                    <CreditCard className="w-3 h-3" />
+                                  )}
                                   잔금
                                 </Button>
                               )}
@@ -369,21 +394,24 @@ export default function DocumentList({ type }: DocumentListProps) {
 
       {selectedDocId && selectedDocData && (
         <DepositConfirmDialog
+          key={`deposit-${selectedDocId}`}
           isOpen={depositDialogOpen}
           onClose={() => setDepositDialogOpen(false)}
           documentId={selectedDocId}
           totalAmount={selectedDocData.totalMax}
+          depositRatio={selectedDocData.depositRatio}
           clientName={selectedDocData.clientName}
           onSuccess={handleDepositSuccess}
         />
       )}
       {selectedDocId && selectedDocData && (
         <FinalPaymentConfirmDialog
+          key={`final-${selectedDocId}`}
           isOpen={finalDialogOpen}
           onClose={() => setFinalDialogOpen(false)}
           documentId={selectedDocId}
           totalAmount={selectedDocData.totalMax}
-          depositAmount={Math.round(selectedDocData.totalMax * 0.5)}
+          depositAmount={finalDepositAmount}
           clientName={selectedDocData.clientName}
           onSuccess={handleFinalSuccess}
         />
