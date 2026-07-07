@@ -119,6 +119,7 @@ export const payments = pgTable("payments", {
   amount: integer("amount").notNull(),
   paymentDate: varchar("paymentDate", { length: 20 }).notNull(),
   notes: text("notes"),
+  memo: text("memo"),
   cashReceiptIssued: boolean("cashReceiptIssued").default(false).notNull(),
   cashReceiptDate: varchar("cashReceiptDate", { length: 20 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -176,6 +177,7 @@ export const clients = pgTable("clients", {
   workflowCompletedAt: timestamp("workflowCompletedAt"),
   finalPaymentDate: varchar("finalPaymentDate", { length: 20 }),
   finalPaymentAmount: integer("finalPaymentAmount"),
+  finalPaymentMemo: text("finalPaymentMemo"),
   cashReceiptIssued: boolean("cashReceiptIssued").default(false).notNull(),
   cashReceiptDate: varchar("cashReceiptDate", { length: 20 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -239,6 +241,7 @@ export const hktbInvoices = pgTable("hktb_invoices", {
   revenueMonth: varchar("revenueMonth", { length: 7 }),
   cashReceiptIssued: boolean("cashReceiptIssued").default(false).notNull(),
   cashReceiptDate: varchar("cashReceiptDate", { length: 20 }),
+  memo: text("memo"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt")
     .defaultNow()

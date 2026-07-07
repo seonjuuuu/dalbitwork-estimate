@@ -182,7 +182,7 @@ export async function getMonthlySalesData(userId: number, year: number, month: n
   const revenueMonth = `${year}-${String(month).padStart(2, "0")}`;
 
   const paymentRows = await db
-    .select({ id: payments.id, documentId: payments.documentId, documentTitle: documents.title, clientName: documents.clientName, type: payments.type, amount: payments.amount, paymentDate: payments.paymentDate, totalAmount: documents.totalMax, cashReceiptIssued: payments.cashReceiptIssued, cashReceiptDate: payments.cashReceiptDate })
+    .select({ id: payments.id, documentId: payments.documentId, documentTitle: documents.title, clientName: documents.clientName, type: payments.type, amount: payments.amount, paymentDate: payments.paymentDate, totalAmount: documents.totalMax, cashReceiptIssued: payments.cashReceiptIssued, cashReceiptDate: payments.cashReceiptDate, memo: payments.memo })
     .from(payments)
     .innerJoin(documents, eq(payments.documentId, documents.id))
     .where(and(eq(payments.userId, userId), gte(payments.paymentDate, startDate), lte(payments.paymentDate, endDate)))
@@ -208,6 +208,7 @@ export async function getMonthlySalesData(userId: number, year: number, month: n
       finalPaymentAmount: clients.finalPaymentAmount,
       cashReceiptIssued: clients.cashReceiptIssued,
       cashReceiptDate: clients.cashReceiptDate,
+      memo: clients.finalPaymentMemo,
     })
     .from(clients)
     .where(
@@ -238,6 +239,24 @@ export async function updateClientCashReceipt(id: number, userId: number, issued
   const db = await getDb();
   if (!db) return;
   await db.update(clients).set({ cashReceiptIssued: issued, cashReceiptDate: date }).where(and(eq(clients.id, id), eq(clients.userId, userId)));
+}
+
+export async function updatePaymentMemo(id: number, userId: number, memo: string) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(payments).set({ memo }).where(and(eq(payments.id, id), eq(payments.userId, userId)));
+}
+
+export async function updateHktbMemo(id: number, userId: number, memo: string) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(hktbInvoices).set({ memo }).where(and(eq(hktbInvoices.id, id), eq(hktbInvoices.userId, userId)));
+}
+
+export async function updateFinalPaymentMemo(id: number, userId: number, memo: string) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(clients).set({ finalPaymentMemo: memo }).where(and(eq(clients.id, id), eq(clients.userId, userId)));
 }
 
 // ─── Dashboard ───────────────────────────────────────────────────

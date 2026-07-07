@@ -3,7 +3,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
-import { ChevronLeft, ChevronRight, CalendarDays, Pencil } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CalendarDays, Pencil, Loader2, Save } from 'lucide-react';
 import { trpc } from '@/lib/trpc';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
@@ -138,7 +138,11 @@ function CashReceiptToggle({
               />
               <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
                 <PopoverTrigger asChild>
-                  <button type="button" className="text-muted-foreground hover:text-foreground p-0.5">
+                  <button
+                    type="button"
+                    onMouseDown={(e) => e.preventDefault()}
+                    className="text-muted-foreground hover:text-foreground p-0.5"
+                  >
                     <CalendarDays className="w-3.5 h-3.5" />
                   </button>
                 </PopoverTrigger>
@@ -174,6 +178,60 @@ function CashReceiptToggle({
   );
 }
 
+/** 업체별 메모 인라인 편집 셀 */
+function MemoCell({
+  memo,
+  isEditing,
+  draft,
+  isSaving,
+  onStartEdit,
+  onDraftChange,
+  onSave,
+  onCancel,
+}: {
+  memo: string | null;
+  isEditing: boolean;
+  draft: string;
+  isSaving: boolean;
+  onStartEdit: () => void;
+  onDraftChange: (value: string) => void;
+  onSave: () => void;
+  onCancel: () => void;
+}) {
+  if (isEditing) {
+    return (
+      <div className="space-y-1.5 w-[200px]">
+        <textarea
+          value={draft}
+          onChange={(e) => onDraftChange(e.target.value)}
+          rows={2}
+          autoFocus
+          className="w-full text-xs bg-background border border-input rounded-md px-2 py-1 resize-none break-words focus:outline-none focus:ring-2 focus:ring-ring"
+          placeholder="메모를 입력하세요"
+        />
+        <div className="flex justify-end gap-1">
+          <Button variant="ghost" size="sm" className="h-6 text-xs px-2" onClick={onCancel} disabled={isSaving}>
+            취소
+          </Button>
+          <Button size="sm" className="h-6 text-xs px-2 gap-1" disabled={isSaving} onClick={onSave}>
+            {isSaving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
+            저장
+          </Button>
+        </div>
+      </div>
+    );
+  }
+  return (
+    <button type="button" className="w-[200px] text-left group/memo" onClick={onStartEdit}>
+      {memo ? (
+        <p className="text-xs text-muted-foreground whitespace-pre-wrap break-words group-hover/memo:text-foreground transition-colors">{memo}</p>
+      ) : (
+        <p className="text-xs text-muted-foreground/40 italic group-hover/memo:text-muted-foreground transition-colors">메모 추가...</p>
+      )}
+    </button>
+  );
+}
+
 export default function MonthlySales() {
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
@@ -189,7 +247,7 @@ export default function MonthlySales() {
     else setSelectedMonth(selectedMonth + 1);
   };
 
-  const { data } = trpc.sales.getMonthly.useQuery({ year: selectedYear, month: selectedMonth });
+  const { data, isLoading } = trpc.sales.getMonthly.useQuery({ year: selectedYear, month: selectedMonth });
 
   const payments = data?.payments ?? [];
   const hktbInvoices = data?.hktbInvoices ?? [];
@@ -211,6 +269,34 @@ export default function MonthlySales() {
   const updateFinalCashReceipt = trpc.sales.updateFinalCashReceipt.useMutation({
     onSuccess: () => utils.sales.getMonthly.invalidate(),
   });
+
+  // 업체별 메모 인라인 편집
+  const [editingMemo, setEditingMemo] = useState<{ kind: 'payment' | 'hktb' | 'final'; id: number } | null>(null);
+  const [memoDraft, setMemoDraft] = useState('');
+  const updatePaymentMemo = trpc.sales.updatePaymentMemo.useMutation({
+    onSuccess: () => utils.sales.getMonthly.invalidate(),
+  });
+  const updateHktbMemo = trpc.sales.updateHktbMemo.useMutation({
+    onSuccess: () => utils.sales.getMonthly.invalidate(),
+  });
+  const updateFinalMemo = trpc.sales.updateFinalMemo.useMutation({
+    onSuccess: () => utils.sales.getMonthly.invalidate(),
+  });
+  const isSavingMemo = updatePaymentMemo.isPending || updateHktbMemo.isPending || updateFinalMemo.isPending;
+
+  const openMemoEditor = (kind: 'payment' | 'hktb' | 'final', id: number, currentMemo: string | null) => {
+    setEditingMemo({ kind, id });
+    setMemoDraft(currentMemo ?? '');
+  };
+
+  const handleSaveMemo = async () => {
+    if (!editingMemo) return;
+    const { kind, id } = editingMemo;
+    if (kind === 'payment') await updatePaymentMemo.mutateAsync({ id, memo: memoDraft });
+    else if (kind === 'hktb') await updateHktbMemo.mutateAsync({ id, memo: memoDraft });
+    else await updateFinalMemo.mutateAsync({ id, memo: memoDraft });
+    setEditingMemo(null);
+  };
 
   return (
     <div className="max-w-5xl mx-auto p-6">
@@ -234,6 +320,12 @@ export default function MonthlySales() {
         </div>
       </Card>
 
+      {isLoading ? (
+        <div className="flex items-center justify-center py-24">
+          <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+        </div>
+      ) : (
+        <>
       {/* Summary Cards */}
       <div className="grid grid-cols-4 gap-4 mb-6">
         <Card className="p-5">
@@ -270,6 +362,7 @@ export default function MonthlySales() {
                 <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground">인보이스 날짜</th>
                 <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground">금액 (VAT 포함)</th>
                 <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground">현금영수증 / 날짜</th>
+                <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground">메모</th>
               </tr>
             </thead>
             <tbody>
@@ -293,6 +386,18 @@ export default function MonthlySales() {
                       />
                     </div>
                   </td>
+                  <td className="py-2.5 px-3">
+                    <MemoCell
+                      memo={inv.memo ?? null}
+                      isEditing={editingMemo?.kind === 'hktb' && editingMemo.id === inv.id}
+                      draft={memoDraft}
+                      isSaving={isSavingMemo}
+                      onStartEdit={() => openMemoEditor('hktb', inv.id, inv.memo ?? null)}
+                      onDraftChange={setMemoDraft}
+                      onSave={handleSaveMemo}
+                      onCancel={() => setEditingMemo(null)}
+                    />
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -312,6 +417,7 @@ export default function MonthlySales() {
                 <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground">담당자</th>
                 <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground">잔금</th>
                 <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground">현금영수증 / 날짜</th>
+                <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground">메모</th>
               </tr>
             </thead>
             <tbody>
@@ -333,6 +439,18 @@ export default function MonthlySales() {
                       />
                     </div>
                   </td>
+                  <td className="py-2.5 px-3">
+                    <MemoCell
+                      memo={f.memo ?? null}
+                      isEditing={editingMemo?.kind === 'final' && editingMemo.id === f.id}
+                      draft={memoDraft}
+                      isSaving={isSavingMemo}
+                      onStartEdit={() => openMemoEditor('final', f.id, f.memo ?? null)}
+                      onDraftChange={setMemoDraft}
+                      onSave={handleSaveMemo}
+                      onCancel={() => setEditingMemo(null)}
+                    />
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -352,11 +470,12 @@ export default function MonthlySales() {
               <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground">구분</th>
               <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground">금액</th>
               <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground">현금영수증</th>
+              <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground">메모</th>
             </tr>
           </thead>
           <tbody>
-            {payments.length > 0 ? payments.map((p, i) => (
-              <tr key={i} className="border-b border-border/50 hover:bg-muted/30 transition-colors">
+            {payments.length > 0 ? payments.map((p) => (
+              <tr key={p.id} className="border-b border-border/50 hover:bg-muted/30 transition-colors">
                 <td className="py-2.5 px-3 text-xs text-muted-foreground">{p.paymentDate}</td>
                 <td className="py-2.5 px-3 text-xs">{p.clientName}</td>
                 <td className="py-2.5 px-3 text-xs text-muted-foreground">{p.documentTitle}</td>
@@ -376,10 +495,22 @@ export default function MonthlySales() {
                     />
                   </div>
                 </td>
+                <td className="py-2.5 px-3">
+                  <MemoCell
+                    memo={p.memo ?? null}
+                    isEditing={editingMemo?.kind === 'payment' && editingMemo.id === p.id}
+                    draft={memoDraft}
+                    isSaving={isSavingMemo}
+                    onStartEdit={() => openMemoEditor('payment', p.id, p.memo ?? null)}
+                    onDraftChange={setMemoDraft}
+                    onSave={handleSaveMemo}
+                    onCancel={() => setEditingMemo(null)}
+                  />
+                </td>
               </tr>
             )) : (
               <tr>
-                <td colSpan={6} className="py-8 px-3 text-center text-xs text-muted-foreground">
+                <td colSpan={7} className="py-8 px-3 text-center text-xs text-muted-foreground">
                   {monthString}의 일반 매출 내역이 없습니다.
                 </td>
               </tr>
@@ -387,6 +518,8 @@ export default function MonthlySales() {
           </tbody>
         </table>
       </Card>
+        </>
+      )}
     </div>
   );
 }

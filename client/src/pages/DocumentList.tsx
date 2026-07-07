@@ -1,6 +1,7 @@
 import { useEstimate } from '@/contexts/EstimateContext';
 import { Button } from '@/components/ui/button';
-import { FileText, Trash2, Edit, FileCheck, Loader2, Copy, CreditCard, CheckCircle2, FileDown, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { FileText, Trash2, Edit, FileCheck, Loader2, Copy, CreditCard, CheckCircle2, FileDown, ChevronLeft, ChevronRight, Search } from 'lucide-react';
 import { useLocation } from 'wouter';
 import { type DocumentType, getDocTypeLabel, calcTotalFinal } from '@/lib/types';
 import { toast } from 'sonner';
@@ -30,6 +31,8 @@ export default function DocumentList({ type }: DocumentListProps) {
   const [finalDepositAmount, setFinalDepositAmount] = useState(0);
   const [openingFinalId, setOpeningFinalId] = useState<number | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [statusFilter, setStatusFilter] = useState<'all' | 'completed' | 'in_progress' | 'not_started'>('all');
+  const [searchQuery, setSearchQuery] = useState('');
 
   const duplicateMutation = trpc.documents.duplicateAsEstimate.useMutation();
   const copyMutation = trpc.documents.copyDocument.useMutation();
@@ -45,9 +48,35 @@ export default function DocumentList({ type }: DocumentListProps) {
   const docLabel = getDocTypeLabel(type);
   const IconComponent = type === 'proposal' ? FileText : FileCheck;
 
-  const totalPages = Math.max(1, Math.ceil(documents.length / PAGE_SIZE));
+  // 계약금/잔금 완납 여부에 따른 진행 상태 (견적 및 계약서 목록에서만 의미 있음)
+  const filteredDocuments = documents.filter((doc) => {
+    if (type === 'estimate' && statusFilter !== 'all') {
+      const docIdNum = parseInt(doc.id!);
+      const isDeposited = depositedSet.has(docIdNum);
+      const isFinalPaid = finalPaidSet.has(docIdNum);
+      const status: 'completed' | 'in_progress' | 'not_started' = isFinalPaid ? 'completed' : isDeposited ? 'in_progress' : 'not_started';
+      if (status !== statusFilter) return false;
+    }
+    if (type === 'estimate' && searchQuery.trim()) {
+      const q = searchQuery.trim().toLowerCase();
+      if (!(doc.clientName || '').toLowerCase().includes(q)) return false;
+    }
+    return true;
+  });
+
+  const totalPages = Math.max(1, Math.ceil(filteredDocuments.length / PAGE_SIZE));
   const safePage = Math.min(currentPage, totalPages);
-  const pagedDocs = documents.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+  const pagedDocs = filteredDocuments.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+
+  const handleStatusFilterChange = (status: 'all' | 'completed' | 'in_progress' | 'not_started') => {
+    setStatusFilter(status);
+    setCurrentPage(1);
+  };
+
+  const handleSearchChange = (value: string) => {
+    setSearchQuery(value);
+    setCurrentPage(1);
+  };
 
   const handleEdit = (id: string) => {
     navigate(type === 'proposal' ? `/proposals/${id}` : `/estimates/${id}`);
@@ -140,10 +169,48 @@ export default function DocumentList({ type }: DocumentListProps) {
         <div>
           <h1 className="text-2xl font-bold text-foreground">{docLabel} 목록</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            {isLoadingDocuments ? '불러오는 중...' : `총 ${documents.length}개`}
+            {isLoadingDocuments
+              ? '불러오는 중...'
+              : type === 'estimate' && (statusFilter !== 'all' || searchQuery.trim())
+                ? `총 ${documents.length}개 중 ${filteredDocuments.length}개`
+                : `총 ${documents.length}개`}
           </p>
         </div>
       </div>
+
+      {type === 'estimate' && !isLoadingDocuments && documents.length > 0 && (
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4">
+          <div className="flex items-center gap-1 p-1 bg-muted rounded-lg">
+            {([
+              { key: 'all', label: '전체' },
+              { key: 'completed', label: '완료' },
+              { key: 'in_progress', label: '진행중' },
+              { key: 'not_started', label: '미진행' },
+            ] as const).map((opt) => (
+              <button
+                key={opt.key}
+                onClick={() => handleStatusFilterChange(opt.key)}
+                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                  statusFilter === opt.key
+                    ? 'bg-background text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+          <div className="relative sm:w-64">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+            <Input
+              value={searchQuery}
+              onChange={(e) => handleSearchChange(e.target.value)}
+              placeholder="회사이름 검색"
+              className="pl-8 h-8 text-sm"
+            />
+          </div>
+        </div>
+      )}
 
       {isLoadingDocuments ? (
         <div className="border border-border rounded-lg overflow-hidden">
@@ -160,6 +227,11 @@ export default function DocumentList({ type }: DocumentListProps) {
         <div className="text-left py-16 border border-border rounded-lg">
           <IconComponent className="w-12 h-12 text-muted-foreground mx-auto mb-4 opacity-40" />
           <p className="text-muted-foreground">아직 {docLabel}가 없습니다.</p>
+        </div>
+      ) : filteredDocuments.length === 0 ? (
+        <div className="text-left py-16 border border-border rounded-lg">
+          <IconComponent className="w-12 h-12 text-muted-foreground mx-auto mb-4 opacity-40" />
+          <p className="text-muted-foreground">검색 조건에 맞는 {docLabel}가 없습니다.</p>
         </div>
       ) : (
         <>
@@ -354,7 +426,7 @@ export default function DocumentList({ type }: DocumentListProps) {
           {totalPages > 1 && (
             <div className="flex items-center justify-between mt-4">
               <span className="text-sm text-muted-foreground">
-                {(safePage - 1) * PAGE_SIZE + 1}–{Math.min(safePage * PAGE_SIZE, documents.length)} / {documents.length}개
+                {(safePage - 1) * PAGE_SIZE + 1}–{Math.min(safePage * PAGE_SIZE, filteredDocuments.length)} / {filteredDocuments.length}개
               </span>
               <div className="flex items-center gap-1">
                 <Button

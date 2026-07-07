@@ -614,6 +614,27 @@ export const appRouter = router({
       .mutation(async ({ ctx, input }) => {
         await db.updateClientCashReceipt(input.id, ctx.user.id, input.issued, input.date);
       }),
+
+    /** 일반 결제 메모 */
+    updatePaymentMemo: protectedProcedure
+      .input(z.object({ id: z.number(), memo: z.string() }))
+      .mutation(async ({ ctx, input }) => {
+        await db.updatePaymentMemo(input.id, ctx.user.id, input.memo);
+      }),
+
+    /** HKTB 인보이스 메모 */
+    updateHktbMemo: protectedProcedure
+      .input(z.object({ id: z.number(), memo: z.string() }))
+      .mutation(async ({ ctx, input }) => {
+        await db.updateHktbMemo(input.id, ctx.user.id, input.memo);
+      }),
+
+    /** 잔금 수령 메모 (clients.finalPaymentMemo) */
+    updateFinalMemo: protectedProcedure
+      .input(z.object({ id: z.number(), memo: z.string() }))
+      .mutation(async ({ ctx, input }) => {
+        await db.updateFinalPaymentMemo(input.id, ctx.user.id, input.memo);
+      }),
   }),
 
   calendar: router({

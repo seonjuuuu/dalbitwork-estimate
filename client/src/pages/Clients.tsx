@@ -498,7 +498,7 @@ export default function Clients() {
                         className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 transition-colors dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800"
                       >
                         <FileText className="w-2.5 h-2.5" />
-                        {doc.title || doc.projectName || '제안서'}
+                        제안서
                       </button>
                     ))}
                     {estimatesByClient[client.name]?.map((doc) => (
@@ -508,7 +508,7 @@ export default function Clients() {
                         className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 transition-colors dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800"
                       >
                         <FileText className="w-2.5 h-2.5" />
-                        {doc.title || doc.projectName || '계약서'}
+                        견적서
                       </button>
                     ))}
                   </div>
