@@ -88,6 +88,8 @@ export default function FinalPaymentConfirmDialog({
       });
       await utils.documents.list.invalidate();
       await utils.documents.getPayments.invalidate({ documentId });
+      await utils.sales.getMonthly.invalidate();
+      await utils.clients.list.invalidate();
       toast.success('잔금이 확정되었습니다.');
       onClose();
       onSuccess?.();

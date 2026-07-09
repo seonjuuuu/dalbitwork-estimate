@@ -255,6 +255,7 @@ export type InsertHktbInvoice = typeof hktbInvoices.$inferInsert;
 export const pdfFiles = pgTable("pdf_files", {
   id: serial("id").primaryKey(),
   userId: integer("userId").notNull(),
+  clientId: integer("clientId"),
   name: varchar("name", { length: 500 }).notNull(),
   fileSize: integer("fileSize").notNull(),
   data: text("data").notNull(),

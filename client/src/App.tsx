@@ -7,7 +7,7 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import { EstimateProvider } from "./contexts/EstimateContext";
 import Home from "./pages/Home";
 import Dashboard from "./pages/Dashboard";
-import DocumentList from "./pages/DocumentList";
+import DocumentClientList from "./pages/DocumentClientList";
 import DocumentEdit from "./pages/DocumentEdit";
 import NoteTemplates from "./pages/NoteTemplates";
 import MonthlySales from "./pages/MonthlySales";
@@ -50,14 +50,9 @@ function Router() {
     <Switch>
       <Route path="/" component={Dashboard} />
       <Route path="/editor" component={Home} />
-      <Route path="/proposals">
-        <DocumentList type="proposal" />
-      </Route>
+      <Route path="/documents" component={DocumentClientList} />
       <Route path="/proposals/:id">
         {(params) => <DocumentEdit id={params.id} type="proposal" />}
-      </Route>
-      <Route path="/estimates">
-        <DocumentList type="estimate" />
       </Route>
       <Route path="/estimates/:id">
         {(params) => <DocumentEdit id={params.id} type="estimate" />}

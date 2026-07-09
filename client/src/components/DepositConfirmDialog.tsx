@@ -89,6 +89,8 @@ export default function DepositConfirmDialog({
       });
       await utils.documents.list.invalidate();
       await utils.documents.getPayments.invalidate({ documentId });
+      await utils.sales.getMonthly.invalidate();
+      await utils.clients.list.invalidate();
       toast.success('계약금이 확정되었습니다.');
       onClose();
       onSuccess?.();

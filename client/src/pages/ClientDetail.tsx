@@ -1,17 +1,24 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'wouter';
 import { trpc } from '@/lib/trpc';
+import { useEstimate } from '@/contexts/EstimateContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { ko } from 'date-fns/locale';
 import {
   ArrowLeft, Plus, Trash2, Save, X, Loader2,
   Phone, User, CalendarDays, CircleDollarSign,
   MessageSquare, ChevronDown, ChevronUp, Edit, LinkIcon, FileText, ExternalLink, Hash,
+  Upload, Download, Eye, Copy, FileDown, CreditCard, CheckCircle2,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import DepositConfirmDialog from '@/components/DepositConfirmDialog';
+import FinalPaymentConfirmDialog from '@/components/FinalPaymentConfirmDialog';
+import NotesEditPdfDialog from '@/components/NotesEditPdfDialog';
+import type { DocumentData } from '@/lib/types';
 
 interface ConsultationForm {
   date: string;
@@ -32,11 +39,202 @@ const STATUS_STYLE: Record<Status, string> = {
   '완료': 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-900/40 dark:text-emerald-400',
 };
 
+const MAX_ATTACHMENT_SIZE = 10 * 1024 * 1024; // 10MB
+
+function formatBytes(bytes: number) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function ClientAttachments({ clientId }: { clientId: number }) {
+  const { data: files = [], refetch } = trpc.pdfFiles.listByClient.useQuery({ clientId });
+  const uploadMutation = trpc.pdfFiles.upload.useMutation();
+  const deleteMutation = trpc.pdfFiles.delete.useMutation();
+  const getPdfMutation = trpc.pdfFiles.get.useMutation();
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const [busyId, setBusyId] = useState<number | null>(null);
+  const [previewBlobUrl, setPreviewBlobUrl] = useState<string | null>(null);
+  const [previewName, setPreviewName] = useState('');
+
+  useEffect(() => {
+    return () => { if (previewBlobUrl) URL.revokeObjectURL(previewBlobUrl); };
+  }, [previewBlobUrl]);
+
+  const closePreview = () => {
+    if (previewBlobUrl) URL.revokeObjectURL(previewBlobUrl);
+    setPreviewBlobUrl(null);
+    setPreviewName('');
+  };
+
+  const handleFiles = async (selected: FileList | null) => {
+    if (!selected || selected.length === 0) return;
+    const file = selected[0];
+    if (file.type !== 'application/pdf') {
+      toast.error('PDF 파일만 업로드 가능합니다.');
+      return;
+    }
+    if (file.size > MAX_ATTACHMENT_SIZE) {
+      toast.error('파일 크기는 10MB 이하만 가능합니다.');
+      return;
+    }
+    setUploading(true);
+    try {
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve((reader.result as string).split(',')[1]);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      await uploadMutation.mutateAsync({ name: file.name, fileSize: file.size, data: base64, clientId });
+      await refetch();
+      toast.success('첨부파일이 업로드되었습니다.');
+    } catch {
+      toast.error('업로드에 실패했습니다.');
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const handlePreview = async (id: number, name: string) => {
+    setBusyId(id);
+    try {
+      const row = await getPdfMutation.mutateAsync({ id });
+      if (!row) { toast.error('파일을 찾을 수 없습니다.'); return; }
+      if (previewBlobUrl) URL.revokeObjectURL(previewBlobUrl);
+      const blob = new Blob([Uint8Array.from(atob(row.data), (c) => c.charCodeAt(0))], { type: 'application/pdf' });
+      setPreviewBlobUrl(URL.createObjectURL(blob));
+      setPreviewName(name);
+    } catch {
+      toast.error('미리보기에 실패했습니다.');
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const handleDownload = async (id: number, name: string) => {
+    setBusyId(id);
+    try {
+      const row = await getPdfMutation.mutateAsync({ id });
+      if (!row) { toast.error('파일을 찾을 수 없습니다.'); return; }
+      const blob = new Blob([Uint8Array.from(atob(row.data), (c) => c.charCodeAt(0))], { type: 'application/pdf' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = name;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      toast.error('다운로드에 실패했습니다.');
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const handleDelete = async (id: number, name: string) => {
+    if (!confirm(`"${name}"을 삭제하시겠습니까?`)) return;
+    setBusyId(id);
+    try {
+      await deleteMutation.mutateAsync({ id });
+      await refetch();
+      toast.success('삭제됐습니다.');
+    } catch {
+      toast.error('삭제에 실패했습니다.');
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  return (
+    <div className="bg-card border border-border rounded-xl p-5">
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
+          <FileText className="w-4 h-4 text-muted-foreground" />
+          첨부파일
+          {files.length > 0 && <span className="text-xs text-muted-foreground font-normal">({files.length}건)</span>}
+        </h2>
+        <Button
+          size="sm"
+          variant="outline"
+          className="h-7 text-xs gap-1"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={uploading}
+        >
+          {uploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+          제안서 업로드
+        </Button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="application/pdf"
+          className="hidden"
+          onChange={(e) => handleFiles(e.target.files)}
+        />
+      </div>
+
+      {files.length === 0 ? (
+        <p className="text-xs text-muted-foreground/50 italic">첨부된 파일이 없습니다.</p>
+      ) : (
+        <div className="space-y-1.5">
+          {files.map((file) => (
+            <div key={file.id} className="flex items-center gap-2 px-3 py-2 bg-muted/20 border border-border rounded-lg">
+              <FileText className="w-3.5 h-3.5 text-red-500 flex-shrink-0" />
+              <span className="text-sm text-foreground truncate flex-1">{file.name}</span>
+              <span className="text-[10px] text-muted-foreground flex-shrink-0">{formatBytes(file.fileSize)}</span>
+              <button
+                onClick={() => handlePreview(file.id, file.name)}
+                disabled={busyId === file.id}
+                className="text-muted-foreground hover:text-foreground flex-shrink-0"
+              >
+                {busyId === file.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Eye className="w-3.5 h-3.5" />}
+              </button>
+              <button
+                onClick={() => handleDownload(file.id, file.name)}
+                disabled={busyId === file.id}
+                className="text-muted-foreground hover:text-foreground flex-shrink-0"
+              >
+                <Download className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={() => handleDelete(file.id, file.name)}
+                disabled={busyId === file.id}
+                className="text-muted-foreground hover:text-destructive flex-shrink-0"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <Dialog open={!!previewBlobUrl} onOpenChange={(open) => { if (!open) closePreview(); }}>
+        <DialogContent className="max-w-4xl w-[90vw] h-[90vh] flex flex-col p-0 gap-0">
+          <div className="flex items-center gap-3 px-4 py-3 border-b border-border flex-shrink-0 pr-12">
+            <p className="text-sm font-medium text-foreground truncate flex-1">{previewName}</p>
+          </div>
+          {previewBlobUrl && (
+            <iframe src={previewBlobUrl} className="flex-1 w-full border-0" title={previewName} />
+          )}
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
 export default function ClientDetail({ id }: { id: string }) {
   const [, navigate] = useLocation();
   const clientId = parseInt(id);
 
   const { data: client, refetch: refetchClient } = trpc.clients.get.useQuery({ id: clientId });
+  const linkedEstimateId = (client as any)?.linkedEstimateId as number | undefined;
+  const { data: linkedPayments = [] } = trpc.documents.getPayments.useQuery(
+    { documentId: linkedEstimateId ?? 0 },
+    { enabled: !!linkedEstimateId }
+  );
+  const depositPayment = linkedPayments.find((p) => p.type === 'deposit');
   const { data: consultations = [], refetch } = trpc.consultations.list.useQuery({ clientId });
   const { data: matchedEstimates = [] } = trpc.clients.getMatchedEstimates.useQuery(
     { clientName: client?.name ?? '' },
@@ -51,6 +249,26 @@ export default function ClientDetail({ id }: { id: string }) {
   const createMutation = trpc.consultations.create.useMutation();
   const updateMutation = trpc.consultations.update.useMutation();
   const deleteMutation = trpc.consultations.delete.useMutation();
+
+  // 문서 관리(복사/PDF/계약금·잔금 확정/삭제)
+  const { proposals, estimates, deleteDocument } = useEstimate();
+  const utils = trpc.useUtils();
+  const copyDocMutation = trpc.documents.copyDocument.useMutation();
+  const duplicateAsEstimateMutation = trpc.documents.duplicateAsEstimate.useMutation();
+  const { data: depositedIds = [] } = trpc.documents.getDepositedDocumentIds.useQuery();
+  const { data: finalPaidIds = [] } = trpc.documents.getFinalPaidDocumentIds.useQuery();
+  const depositedSet = new Set(depositedIds);
+  const finalPaidSet = new Set(finalPaidIds);
+  const [notesDialogDoc, setNotesDialogDoc] = useState<DocumentData | null>(null);
+  const [copyingDocId, setCopyingDocId] = useState<string | null>(null);
+  const [duplicatingDocId, setDuplicatingDocId] = useState<string | null>(null);
+  const [deletingDocId, setDeletingDocId] = useState<string | null>(null);
+  const [depositDialogOpen, setDepositDialogOpen] = useState(false);
+  const [finalDialogOpen, setFinalDialogOpen] = useState(false);
+  const [selectedDocId, setSelectedDocId] = useState<number | null>(null);
+  const [selectedDocData, setSelectedDocData] = useState<{ totalMax: number; clientName: string; depositRatio: number } | null>(null);
+  const [finalDepositAmount, setFinalDepositAmount] = useState(0);
+  const [openingFinalId, setOpeningFinalId] = useState<number | null>(null);
 
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState<ConsultationForm>(emptyForm);
@@ -190,6 +408,86 @@ export default function ClientDetail({ id }: { id: string }) {
       toast.error('메모 저장에 실패했습니다.');
     } finally {
       setSavingMemoId(null);
+    }
+  };
+
+  const handleCopyDoc = async (docId: number, type: 'proposal' | 'estimate') => {
+    setCopyingDocId(String(docId));
+    try {
+      const copied = await copyDocMutation.mutateAsync({ id: docId });
+      await utils.documents.list.invalidate();
+      if (copied?.id) {
+        navigate(type === 'proposal' ? `/proposals/${copied.id}` : `/estimates/${copied.id}`);
+        toast.success('복사되었습니다. 제목과 고객 정보를 입력해 주세요.');
+      }
+    } catch {
+      toast.error('복사에 실패했습니다.');
+    } finally {
+      setCopyingDocId(null);
+    }
+  };
+
+  const handleDuplicateAsEstimate = async (docId: number) => {
+    setDuplicatingDocId(String(docId));
+    try {
+      const estimate = await duplicateAsEstimateMutation.mutateAsync({ id: docId });
+      await utils.documents.list.invalidate();
+      if (estimate?.id) {
+        navigate(`/estimates/${estimate.id}`);
+        toast.success('견적서로 변환되었습니다.');
+      }
+    } catch {
+      toast.error('변환에 실패했습니다.');
+    } finally {
+      setDuplicatingDocId(null);
+    }
+  };
+
+  const handleDeleteDoc = async (docId: number, type: 'proposal' | 'estimate') => {
+    const label = type === 'proposal' ? '제안서' : '견적서';
+    if (!window.confirm(`이 ${label}를 삭제하시겠습니까?`)) return;
+    setDeletingDocId(String(docId));
+    try {
+      await deleteDocument(String(docId), type);
+      toast.success(`${label}가 삭제되었습니다.`);
+    } catch {
+      toast.error('삭제에 실패했습니다.');
+    } finally {
+      setDeletingDocId(null);
+    }
+  };
+
+  const handleOpenDepositDialog = (docId: number, totalMax: number, clientName: string, depositRatio: number) => {
+    setSelectedDocId(docId);
+    setSelectedDocData({ totalMax, clientName, depositRatio });
+    setDepositDialogOpen(true);
+  };
+
+  const handleDepositSuccess = () => {
+    utils.documents.list.invalidate();
+    utils.documents.getDepositedDocumentIds.invalidate();
+  };
+
+  const handleFinalSuccess = () => {
+    utils.documents.list.invalidate();
+    utils.documents.getFinalPaidDocumentIds.invalidate();
+  };
+
+  const handleOpenFinalDialog = async (docId: number, totalMax: number, clientName: string, depositRatio: number) => {
+    setOpeningFinalId(docId);
+    try {
+      const payments = await utils.documents.getPayments.fetch({ documentId: docId });
+      const actualDeposit = payments
+        .filter((p) => p.type === 'deposit')
+        .reduce((sum, p) => sum + p.amount, 0);
+      setSelectedDocId(docId);
+      setSelectedDocData({ totalMax, clientName, depositRatio });
+      setFinalDepositAmount(actualDeposit);
+      setFinalDialogOpen(true);
+    } catch {
+      toast.error('결제 내역을 불러오지 못했습니다.');
+    } finally {
+      setOpeningFinalId(null);
     }
   };
 
@@ -503,11 +801,58 @@ export default function ClientDetail({ id }: { id: string }) {
                     </button>
                   )}
                 </div>
+
+                {/* 문서 관리 */}
+                <div className="border-t border-border/60 px-3 py-1.5 flex items-center justify-end gap-0.5 flex-wrap">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      const fullDoc = proposals.find((p) => p.id === String(doc.id));
+                      if (fullDoc) setNotesDialogDoc(fullDoc);
+                    }}
+                    className="h-6 px-2 text-[11px] gap-1 text-violet-600 hover:text-violet-700"
+                  >
+                    <FileDown className="w-3 h-3" /> PDF
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleCopyDoc(doc.id, 'proposal')}
+                    disabled={copyingDocId === String(doc.id)}
+                    className="h-6 px-2 text-[11px] gap-1 text-sky-600 hover:text-sky-700"
+                  >
+                    {copyingDocId === String(doc.id) ? <Loader2 className="w-3 h-3 animate-spin" /> : <Copy className="w-3 h-3" />}
+                    복사
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleDuplicateAsEstimate(doc.id)}
+                    disabled={duplicatingDocId === String(doc.id)}
+                    className="h-6 px-2 text-[11px] gap-1"
+                  >
+                    {duplicatingDocId === String(doc.id) ? <Loader2 className="w-3 h-3 animate-spin" /> : <Copy className="w-3 h-3" />}
+                    견적서 변환
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleDeleteDoc(doc.id, 'proposal')}
+                    disabled={deletingDocId === String(doc.id)}
+                    className="h-6 px-2 text-[11px] gap-1 text-destructive hover:text-destructive"
+                  >
+                    {deletingDocId === String(doc.id) ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
+                    삭제
+                  </Button>
+                </div>
               </div>
             ))}
           </div>
         </div>
       )}
+
+      <ClientAttachments clientId={clientId} />
 
       {/* 계약서 연동 */}
       {matchedEstimates.length > 0 && (
@@ -627,11 +972,99 @@ export default function ClientDetail({ id }: { id: string }) {
                     </button>
                   )}
                 </div>
+
+                {/* 문서 관리 */}
+                <div className="border-t border-border/60 px-3 py-1.5 flex items-center justify-end gap-0.5 flex-wrap">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      const fullDoc = estimates.find((e) => e.id === String(est.id));
+                      if (fullDoc) setNotesDialogDoc(fullDoc);
+                    }}
+                    className="h-6 px-2 text-[11px] gap-1 text-violet-600 hover:text-violet-700"
+                  >
+                    <FileDown className="w-3 h-3" /> PDF
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleCopyDoc(est.id, 'estimate')}
+                    disabled={copyingDocId === String(est.id)}
+                    className="h-6 px-2 text-[11px] gap-1 text-sky-600 hover:text-sky-700"
+                  >
+                    {copyingDocId === String(est.id) ? <Loader2 className="w-3 h-3 animate-spin" /> : <Copy className="w-3 h-3" />}
+                    복사
+                  </Button>
+
+                  {depositedSet.has(est.id) ? (
+                    <span className="flex items-center gap-1 text-[10px] font-medium text-emerald-600 px-1.5 py-1 rounded bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 whitespace-nowrap">
+                      <CheckCircle2 className="w-3 h-3" /> 계약금
+                    </span>
+                  ) : (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleOpenDepositDialog(est.id, est.totalMax, client.name, 50)}
+                      className="h-6 px-2 text-[11px] gap-1 text-amber-600 hover:text-amber-700"
+                    >
+                      <CreditCard className="w-3 h-3" /> 계약금
+                    </Button>
+                  )}
+
+                  {finalPaidSet.has(est.id) ? (
+                    <span className="flex items-center gap-1 text-[10px] font-medium text-blue-600 px-1.5 py-1 rounded bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 whitespace-nowrap">
+                      <CheckCircle2 className="w-3 h-3" /> 잔금
+                    </span>
+                  ) : depositedSet.has(est.id) && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleOpenFinalDialog(est.id, est.totalMax, client.name, 50)}
+                      disabled={openingFinalId === est.id}
+                      className="h-6 px-2 text-[11px] gap-1 text-blue-600 hover:text-blue-700"
+                    >
+                      {openingFinalId === est.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <CreditCard className="w-3 h-3" />}
+                      잔금
+                    </Button>
+                  )}
+
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleDeleteDoc(est.id, 'estimate')}
+                    disabled={deletingDocId === String(est.id)}
+                    className="h-6 px-2 text-[11px] gap-1 text-destructive hover:text-destructive"
+                  >
+                    {deletingDocId === String(est.id) ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
+                    삭제
+                  </Button>
+                </div>
               </div>
             );
             })}
           </div>
           <p className="text-[11px] text-muted-foreground/60 mt-2">연동하면 계약일자와 계약금액이 계약서 정보로 업데이트됩니다.</p>
+        </div>
+      )}
+
+      {/* 계약금 수령 — 연동된 계약서에 계약금 기록이 있을 때만 표시 */}
+      {depositPayment && (
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-5 dark:bg-blue-900/10 dark:border-blue-800">
+          <h2 className="text-sm font-semibold text-blue-800 dark:text-blue-400 flex items-center gap-2 mb-4">
+            <CircleDollarSign className="w-4 h-4" />
+            계약금 수령
+          </h2>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="bg-white dark:bg-blue-900/20 rounded-lg px-4 py-3 border border-blue-200 dark:border-blue-800">
+              <p className="text-[10px] text-muted-foreground mb-0.5">수령일</p>
+              <p className="text-sm font-semibold text-foreground">{depositPayment.paymentDate}</p>
+            </div>
+            <div className="bg-white dark:bg-blue-900/20 rounded-lg px-4 py-3 border border-blue-200 dark:border-blue-800">
+              <p className="text-[10px] text-muted-foreground mb-0.5">금액</p>
+              <p className="text-sm font-semibold text-foreground">{depositPayment.amount.toLocaleString('ko-KR')}원</p>
+            </div>
+          </div>
         </div>
       )}
 
@@ -893,6 +1326,38 @@ export default function ClientDetail({ id }: { id: string }) {
           </div>
         )}
       </div>
+
+      {selectedDocId && selectedDocData && (
+        <DepositConfirmDialog
+          key={`deposit-${selectedDocId}`}
+          isOpen={depositDialogOpen}
+          onClose={() => setDepositDialogOpen(false)}
+          documentId={selectedDocId}
+          totalAmount={selectedDocData.totalMax}
+          depositRatio={selectedDocData.depositRatio}
+          clientName={selectedDocData.clientName}
+          onSuccess={handleDepositSuccess}
+        />
+      )}
+      {selectedDocId && selectedDocData && (
+        <FinalPaymentConfirmDialog
+          key={`final-${selectedDocId}`}
+          isOpen={finalDialogOpen}
+          onClose={() => setFinalDialogOpen(false)}
+          documentId={selectedDocId}
+          totalAmount={selectedDocData.totalMax}
+          depositAmount={finalDepositAmount}
+          clientName={selectedDocData.clientName}
+          onSuccess={handleFinalSuccess}
+        />
+      )}
+      {notesDialogDoc && (
+        <NotesEditPdfDialog
+          doc={notesDialogDoc}
+          isOpen={!!notesDialogDoc}
+          onClose={() => setNotesDialogDoc(null)}
+        />
+      )}
     </div>
   );
 }

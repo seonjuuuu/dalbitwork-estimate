@@ -1,5 +1,5 @@
 import { useEstimate } from '@/contexts/EstimateContext';
-import { FilePlus, FileText, List, ChevronLeft, ChevronRight, FileCheck, LogOut, User, BookOpen, BarChart3, Boxes, Building2, LayoutDashboard, Globe, CalendarDays, KanbanSquare, FolderOpen } from 'lucide-react';
+import { FilePlus, List, ChevronLeft, ChevronRight, FileCheck, LogOut, User, BookOpen, BarChart3, Boxes, Building2, LayoutDashboard, Globe, CalendarDays, KanbanSquare, FolderOpen } from 'lucide-react';
 import { useState } from 'react';
 import { useLocation } from 'wouter';
 import { useAuth } from '@/_core/hooks/useAuth';
@@ -46,18 +46,11 @@ export default function Sidebar() {
       },
     },
     {
-      icon: FileText,
-      label: '제안서 목록',
-      id: 'proposal-list',
-      active: location === '/proposals',
-      onClick: () => navigate('/proposals'),
-    },
-    {
       icon: List,
-      label: '견적 및 계약서 목록',
-      id: 'estimate-list',
-      active: location === '/estimates',
-      onClick: () => navigate('/estimates'),
+      label: '제안서 · 계약서 목록',
+      id: 'document-list',
+      active: location === '/documents',
+      onClick: () => navigate('/documents'),
     },
     {
       icon: BookOpen,

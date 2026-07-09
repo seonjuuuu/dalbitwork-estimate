@@ -1,4 +1,4 @@
-import { eq, and, or, ne, desc, asc, gte, lte } from "drizzle-orm";
+import { eq, and, or, ne, desc, asc, gte, lte, isNull, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import { InsertUser, users, documents, InsertDocument, noteTemplates, InsertNoteTemplate, payments, serviceItems, clients, consultations, hktbInvoices, pdfFiles } from "../drizzle/schema";
@@ -177,9 +177,11 @@ export async function getFinalPaidDocumentIds(userId: number): Promise<number[]>
 export async function getMonthlySalesData(userId: number, year: number, month: number) {
   const db = await getDb();
   if (!db) return { payments: [], hktbInvoices: [], finalPayments: [] };
-  const startDate = `${year}-${String(month).padStart(2, "0")}-01`;
-  const endDate = new Date(year, month, 0).toISOString().split("T")[0];
-  const revenueMonth = `${year}-${String(month).padStart(2, "0")}`;
+  const mm = String(month).padStart(2, "0");
+  const lastDay = new Date(year, month, 0).getDate();
+  const startDate = `${year}-${mm}-01`;
+  const endDate = `${year}-${mm}-${String(lastDay).padStart(2, "0")}`;
+  const revenueMonth = `${year}-${mm}`;
 
   const paymentRows = await db
     .select({ id: payments.id, documentId: payments.documentId, documentTitle: documents.title, clientName: documents.clientName, type: payments.type, amount: payments.amount, paymentDate: payments.paymentDate, totalAmount: documents.totalMax, cashReceiptIssued: payments.cashReceiptIssued, cashReceiptDate: payments.cashReceiptDate, memo: payments.memo })
@@ -193,12 +195,10 @@ export async function getMonthlySalesData(userId: number, year: number, month: n
     .from(hktbInvoices)
     .where(and(eq(hktbInvoices.userId, userId), eq(hktbInvoices.revenueMonth, revenueMonth)));
 
-  const mm = String(month).padStart(2, "0");
-  const lastDay = new Date(year, month, 0).getDate();
   const startDateDot = `${year}.${mm}.01`;
   const endDateDot = `${year}.${mm}.${String(lastDay).padStart(2, "0")}`;
 
-  const finalPaymentRows = await db
+  const finalPaymentRowsRaw = await db
     .select({
       id: clients.id,
       name: clients.name,
@@ -209,6 +209,7 @@ export async function getMonthlySalesData(userId: number, year: number, month: n
       cashReceiptIssued: clients.cashReceiptIssued,
       cashReceiptDate: clients.cashReceiptDate,
       memo: clients.finalPaymentMemo,
+      linkedEstimateId: clients.linkedEstimateId,
     })
     .from(clients)
     .where(
@@ -219,6 +220,14 @@ export async function getMonthlySalesData(userId: number, year: number, month: n
         lte(clients.finalPaymentDate, endDateDot)
       )
     );
+
+  // 연동된 계약서에 이미 payments 테이블상 잔금 기록이 있으면 일반 매출 내역에서 이미 집계되므로 중복 제외
+  const finalPaidDocIds = new Set(
+    paymentRows.filter((p) => p.type === 'final').map((p) => p.documentId)
+  );
+  const finalPaymentRows = finalPaymentRowsRaw.filter(
+    (c) => !(c.linkedEstimateId && finalPaidDocIds.has(c.linkedEstimateId))
+  );
 
   return { payments: paymentRows, hktbInvoices: hktbRows, finalPayments: finalPaymentRows };
 }
@@ -300,8 +309,8 @@ export async function getDashboardData(userId: number) {
   const totalPaid = allPayments.reduce((s, p) => s + p.amount, 0);
   const unpaidAmount = Math.max(0, totalContractAmount - totalPaid);
 
-  // 최근 문서 10개
-  const recentDocs = await db.select({
+  // 최근 문서 10개 (같은 고객사는 가장 최근 것만)
+  const recentDocsRaw = await db.select({
     id: documents.id, type: documents.type, title: documents.title,
     clientName: documents.clientName, date: documents.date,
     totalMin: documents.totalMin, totalMax: documents.totalMax,
@@ -309,7 +318,18 @@ export async function getDashboardData(userId: number) {
   }).from(documents)
     .where(eq(documents.userId, userId))
     .orderBy(desc(documents.updatedAt))
-    .limit(10);
+    .limit(50);
+
+  const seenClientNames = new Set<string>();
+  const recentDocs = [];
+  for (const doc of recentDocsRaw) {
+    if (doc.clientName) {
+      if (seenClientNames.has(doc.clientName)) continue;
+      seenClientNames.add(doc.clientName);
+    }
+    recentDocs.push(doc);
+    if (recentDocs.length >= 10) break;
+  }
 
   // 최근 6개월 월별 계약 금액: clients.contractDate + contractAmount 기준
   const months: { year: number; month: number }[] = [];
@@ -526,6 +546,24 @@ export async function confirmDepositForClient(documentId: number, userId: number
     ));
 }
 
+// 잔금 확정 시: 연결된 고객 status → '완료', workflowStatus → '완료', 잔금 수령일/금액 기록
+export async function confirmFinalPaymentForClient(documentId: number, userId: number, paymentDate: string, amount: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(clients)
+    .set({
+      status: '완료',
+      workflowStatus: '완료',
+      workflowCompletedAt: new Date(),
+      finalPaymentDate: paymentDate.replace(/-/g, '.'),
+      finalPaymentAmount: amount,
+    })
+    .where(and(
+      eq(clients.userId, userId),
+      eq(clients.linkedEstimateId, documentId),
+    ));
+}
+
 export async function updateClientWorkflowStatus(id: number, userId: number, workflowStatus: string) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
@@ -544,8 +582,17 @@ export async function listClients(userId: number, search?: string) {
   if (search) {
     const { ilike } = await import("drizzle-orm");
     const pattern = `%${search}%`;
+    const phonePattern = `%${search.replace(/-/g, "")}%`;
     return db.select().from(clients)
-      .where(and(eq(clients.userId, userId), or(ilike(clients.name, pattern), ilike(clients.contactPhone, pattern), ilike(clients.contactName, pattern), ilike(clients.businessNumber, pattern))))
+      .where(and(
+        eq(clients.userId, userId),
+        or(
+          ilike(clients.name, pattern),
+          sql`replace(${clients.contactPhone}, '-', '') ILIKE ${phonePattern}`,
+          ilike(clients.contactName, pattern),
+          ilike(clients.businessNumber, pattern),
+        ),
+      ))
       .orderBy(asc(clients.name));
   }
   return db.select().from(clients).where(eq(clients.userId, userId)).orderBy(asc(clients.name));
@@ -570,6 +617,12 @@ export async function updateClient(id: number, userId: number, data: Partial<Omi
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   await db.update(clients).set(data).where(and(eq(clients.id, id), eq(clients.userId, userId)));
+  // 상태가 '계약'으로 처음 바뀌면 진행현황도 '진행대기'로 함께 시작
+  if (data.status === '계약' && data.workflowStatus === undefined) {
+    await db.update(clients)
+      .set({ workflowStatus: '진행대기' })
+      .where(and(eq(clients.id, id), eq(clients.userId, userId), eq(clients.workflowStatus, '상담')));
+  }
   const result = await db.select().from(clients).where(eq(clients.id, id)).limit(1);
   return result[0];
 }
@@ -706,13 +759,20 @@ export async function listPdfFiles(userId: number) {
   const db = await getDb();
   if (!db) return [];
   return db.select({ id: pdfFiles.id, name: pdfFiles.name, fileSize: pdfFiles.fileSize, createdAt: pdfFiles.createdAt })
-    .from(pdfFiles).where(eq(pdfFiles.userId, userId)).orderBy(desc(pdfFiles.createdAt));
+    .from(pdfFiles).where(and(eq(pdfFiles.userId, userId), isNull(pdfFiles.clientId))).orderBy(desc(pdfFiles.createdAt));
 }
 
-export async function uploadPdfFile(userId: number, name: string, fileSize: number, data: string) {
+export async function listPdfFilesByClient(clientId: number, userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select({ id: pdfFiles.id, name: pdfFiles.name, fileSize: pdfFiles.fileSize, createdAt: pdfFiles.createdAt })
+    .from(pdfFiles).where(and(eq(pdfFiles.userId, userId), eq(pdfFiles.clientId, clientId))).orderBy(desc(pdfFiles.createdAt));
+}
+
+export async function uploadPdfFile(userId: number, name: string, fileSize: number, data: string, clientId?: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  const result = await db.insert(pdfFiles).values({ userId, name, fileSize, data }).returning({ id: pdfFiles.id });
+  const result = await db.insert(pdfFiles).values({ userId, name, fileSize, data, clientId: clientId ?? null }).returning({ id: pdfFiles.id });
   return result[0];
 }
 

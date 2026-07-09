@@ -336,6 +336,8 @@ export const appRouter = router({
         });
         if (input.type === 'deposit') {
           await db.confirmDepositForClient(input.documentId, ctx.user.id);
+        } else if (input.type === 'final') {
+          await db.confirmFinalPaymentForClient(input.documentId, ctx.user.id, input.paymentDate, input.amount);
         }
         return payment;
       }),
@@ -650,14 +652,20 @@ export const appRouter = router({
     list: protectedProcedure.query(async ({ ctx }) => {
       return db.listPdfFiles(ctx.user.id);
     }),
+    listByClient: protectedProcedure
+      .input(z.object({ clientId: z.number() }))
+      .query(async ({ ctx, input }) => {
+        return db.listPdfFilesByClient(input.clientId, ctx.user.id);
+      }),
     upload: protectedProcedure
       .input(z.object({
         name: z.string().min(1),
         fileSize: z.number(),
         data: z.string(), // base64
+        clientId: z.number().optional(),
       }))
       .mutation(async ({ ctx, input }) => {
-        return db.uploadPdfFile(ctx.user.id, input.name, input.fileSize, input.data);
+        return db.uploadPdfFile(ctx.user.id, input.name, input.fileSize, input.data, input.clientId);
       }),
     get: protectedProcedure
       .input(z.object({ id: z.number() }))
