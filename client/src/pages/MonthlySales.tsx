@@ -258,6 +258,10 @@ export default function MonthlySales() {
   const finalPaymentTotal = finalPayments.reduce((s, f) => s + (f.finalPaymentAmount ?? f.contractAmount ?? 0), 0);
   const grandTotal = paymentTotal + hktbTotal + finalPaymentTotal;
 
+  // 현금영수증 발급일이 결제일과 다른 달일 수 있어서, 결제 목록이 아니라 서버에서 발급일 기준으로 따로 집계한 값을 사용
+  const cashReceiptTotal = data?.cashReceiptTotal ?? 0;
+  const cashReceiptCount = data?.cashReceiptCount ?? 0;
+
   const monthString = `${selectedYear}년 ${selectedMonth}월`;
 
   const updatePaymentCashReceipt = trpc.sales.updatePaymentCashReceipt.useMutation({
@@ -327,7 +331,7 @@ export default function MonthlySales() {
       ) : (
         <>
       {/* Summary Cards */}
-      <div className="grid grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
         <Card className="p-5">
           <div className="text-xs font-medium text-muted-foreground mb-1">총 매출</div>
           <div className="text-2xl font-bold text-foreground">{fmt(grandTotal)}</div>
@@ -347,6 +351,11 @@ export default function MonthlySales() {
           <div className="text-xs font-medium text-muted-foreground mb-1">잔금 수령</div>
           <div className="text-2xl font-bold text-foreground">{fmt(finalPaymentTotal)}</div>
           <p className="text-xs text-muted-foreground mt-1">{finalPayments.length}건</p>
+        </Card>
+        <Card className="p-5 border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-900/10">
+          <div className="text-xs font-medium text-emerald-700 dark:text-emerald-400 mb-1">현금영수증 발급분</div>
+          <div className="text-2xl font-bold text-emerald-700 dark:text-emerald-400">{fmt(cashReceiptTotal)}</div>
+          <p className="text-xs text-muted-foreground mt-1">{cashReceiptCount}건</p>
         </Card>
       </div>
 

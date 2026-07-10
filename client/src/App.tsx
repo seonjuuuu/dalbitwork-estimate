@@ -7,7 +7,7 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import { EstimateProvider } from "./contexts/EstimateContext";
 import Home from "./pages/Home";
 import Dashboard from "./pages/Dashboard";
-import DocumentClientList from "./pages/DocumentClientList";
+import DocumentList from "./pages/DocumentList";
 import DocumentEdit from "./pages/DocumentEdit";
 import NoteTemplates from "./pages/NoteTemplates";
 import MonthlySales from "./pages/MonthlySales";
@@ -20,6 +20,7 @@ import CalendarPage from "./pages/CalendarPage";
 import KanbanPage from "./pages/KanbanPage";
 import MyPdfFiles from "./pages/MyPdfFiles";
 import Sidebar from "./components/Sidebar";
+import GlobalSearch from "./components/GlobalSearch";
 import { useAuth } from "@/_core/hooks/useAuth";
 import LoginPage from "./pages/LoginPage";
 import { Loader2 } from "lucide-react";
@@ -50,12 +51,17 @@ function Router() {
     <Switch>
       <Route path="/" component={Dashboard} />
       <Route path="/editor" component={Home} />
-      <Route path="/documents" component={DocumentClientList} />
+      <Route path="/proposals">
+        <DocumentList key="proposal" type="proposal" />
+      </Route>
       <Route path="/proposals/:id">
-        {(params) => <DocumentEdit id={params.id} type="proposal" />}
+        {(params) => <DocumentEdit key={params.id} id={params.id} type="proposal" />}
+      </Route>
+      <Route path="/estimates">
+        <DocumentList key="estimate" type="estimate" />
       </Route>
       <Route path="/estimates/:id">
-        {(params) => <DocumentEdit id={params.id} type="estimate" />}
+        {(params) => <DocumentEdit key={params.id} id={params.id} type="estimate" />}
       </Route>
       <Route path="/templates" component={NoteTemplates} />
       <Route path="/services" component={ServiceItems} />
@@ -88,6 +94,7 @@ function App() {
                 <main className="flex-1 overflow-y-auto h-full">
                   <Router />
                 </main>
+                <GlobalSearch />
               </div>
             </EstimateProvider>
           </AuthGate>

@@ -1,5 +1,5 @@
 import { useEstimate } from '@/contexts/EstimateContext';
-import { FilePlus, List, ChevronLeft, ChevronRight, FileCheck, LogOut, User, BookOpen, BarChart3, Boxes, Building2, LayoutDashboard, Globe, CalendarDays, KanbanSquare, FolderOpen } from 'lucide-react';
+import { FilePlus, FileText, List, ChevronLeft, ChevronRight, FileCheck, LogOut, User, BookOpen, BarChart3, Boxes, Building2, LayoutDashboard, Globe, CalendarDays, KanbanSquare, FolderOpen, Search } from 'lucide-react';
 import { useState } from 'react';
 import { useLocation } from 'wouter';
 import { useAuth } from '@/_core/hooks/useAuth';
@@ -46,11 +46,18 @@ export default function Sidebar() {
       },
     },
     {
+      icon: FileText,
+      label: '제안서 목록',
+      id: 'proposal-list',
+      active: location === '/proposals',
+      onClick: () => navigate('/proposals'),
+    },
+    {
       icon: List,
-      label: '제안서 · 계약서 목록',
-      id: 'document-list',
-      active: location === '/documents',
-      onClick: () => navigate('/documents'),
+      label: '견적 및 계약서 목록',
+      id: 'estimate-list',
+      active: location === '/estimates',
+      onClick: () => navigate('/estimates'),
     },
     {
       icon: BookOpen,
@@ -136,6 +143,22 @@ export default function Sidebar() {
             달빛워크
           </span>
         )}
+      </div>
+
+      {/* 통합 검색 */}
+      <div className="px-2 pt-3">
+        <button
+          onClick={() => window.dispatchEvent(new CustomEvent('open-global-search'))}
+          className={`w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm text-muted-foreground border border-border hover:bg-accent hover:text-foreground transition-colors ${
+            collapsed ? 'justify-center' : 'justify-between'
+          }`}
+        >
+          <span className="flex items-center gap-2">
+            <Search className="w-4 h-4 flex-shrink-0" />
+            {!collapsed && <span>검색</span>}
+          </span>
+          {!collapsed && <span className="text-[10px] text-muted-foreground/60 border border-border rounded px-1 py-0.5">⌘K</span>}
+        </button>
       </div>
 
       {/* Navigation */}

@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useLocation } from 'wouter';
 import { trpc } from '@/lib/trpc';
 import { FileText, FileCheck, Building2, TrendingUp, AlertCircle, Loader2, Edit } from 'lucide-react';
@@ -21,15 +22,25 @@ function SummaryCard({
   value,
   sub,
   color,
+  onClick,
+  active,
 }: {
   icon: React.ElementType;
   label: string;
   value: string;
   sub?: string;
   color: string;
+  onClick?: () => void;
+  active?: boolean;
 }) {
+  const Tag = onClick ? 'button' : 'div';
   return (
-    <div className="bg-card border border-border rounded-xl p-5 flex items-start gap-4">
+    <Tag
+      onClick={onClick}
+      className={`w-full text-left bg-card border rounded-xl p-5 flex items-start gap-4 transition-colors ${
+        active ? 'border-primary' : 'border-border'
+      } ${onClick ? 'hover:bg-accent/40 cursor-pointer' : ''}`}
+    >
       <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${color}`}>
         <Icon className="w-5 h-5" />
       </div>
@@ -38,13 +49,16 @@ function SummaryCard({
         <p className="text-xl font-bold text-foreground">{value}</p>
         {sub && <p className="text-xs text-muted-foreground mt-0.5">{sub}</p>}
       </div>
-    </div>
+    </Tag>
   );
 }
 
 export default function Dashboard() {
   const [, navigate] = useLocation();
   const { data, isLoading } = trpc.dashboard.getData.useQuery();
+  const [expandedStatus, setExpandedStatus] = useState<string | null>('계약');
+  const { data: allClients = [] } = trpc.clients.list.useQuery(undefined, { enabled: !!expandedStatus });
+  const [expandedCard, setExpandedCard] = useState<'contract' | 'consulting' | 'unpaid' | null>(null);
 
   if (isLoading) {
     return (
@@ -64,7 +78,14 @@ export default function Dashboard() {
     recentDocs,
     monthlySummary,
     clientStatus,
+    contractClientsList,
+    consultingClientsList,
+    unpaidBreakdown,
   } = data;
+
+  const toggleCard = (card: 'contract' | 'consulting' | 'unpaid') => {
+    setExpandedCard((prev) => (prev === card ? null : card));
+  };
 
   const now = new Date();
   const monthLabel = `${now.getMonth() + 1}월`;
@@ -84,6 +105,8 @@ export default function Dashboard() {
           label="진행중 계약 건수"
           value={`${thisMonthContractCount}건`}
           color="bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400"
+          onClick={thisMonthContractCount > 0 ? () => toggleCard('contract') : undefined}
+          active={expandedCard === 'contract'}
         />
         <SummaryCard
           icon={TrendingUp}
@@ -91,6 +114,8 @@ export default function Dashboard() {
           value={`${formatAmount(thisMonthContractAmount)}원`}
           sub={thisMonthContractAmount > 0 ? `${thisMonthContractAmount.toLocaleString('ko-KR')}원` : undefined}
           color="bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400"
+          onClick={thisMonthContractCount > 0 ? () => toggleCard('contract') : undefined}
+          active={expandedCard === 'contract'}
         />
         <SummaryCard
           icon={Building2}
@@ -98,6 +123,8 @@ export default function Dashboard() {
           value={`${consultingCount}명`}
           sub="계약 전 고객"
           color="bg-violet-100 text-violet-600 dark:bg-violet-900/30 dark:text-violet-400"
+          onClick={consultingCount > 0 ? () => toggleCard('consulting') : undefined}
+          active={expandedCard === 'consulting'}
         />
         <SummaryCard
           icon={AlertCircle}
@@ -107,8 +134,70 @@ export default function Dashboard() {
           color={unpaidAmount > 0
             ? 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400'
             : 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400'}
+          onClick={unpaidAmount > 0 ? () => toggleCard('unpaid') : undefined}
+          active={expandedCard === 'unpaid'}
         />
       </div>
+
+      {/* 요약 카드 상세 내역 */}
+      {expandedCard && (
+        <div className="bg-card border border-border rounded-xl p-5 -mt-4">
+          {expandedCard === 'contract' && (
+            <>
+              <h3 className="text-sm font-semibold text-foreground mb-3">진행중 계약 고객사 ({contractClientsList.length}곳)</h3>
+              <div className="space-y-1">
+                {contractClientsList.map((c) => (
+                  <button
+                    key={c.id}
+                    onClick={() => navigate(`/clients/${c.id}`)}
+                    className="w-full flex items-center justify-between text-sm text-foreground hover:text-primary hover:bg-accent rounded px-2 py-1.5 transition-colors"
+                  >
+                    <span className="truncate">{c.name}</span>
+                    <span className="text-muted-foreground flex-shrink-0 ml-3">{c.contractAmount.toLocaleString('ko-KR')}원</span>
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+          {expandedCard === 'consulting' && (
+            <>
+              <h3 className="text-sm font-semibold text-foreground mb-3">상담 중 고객사 ({consultingClientsList.length}곳)</h3>
+              <div className="space-y-1">
+                {consultingClientsList.map((c) => (
+                  <button
+                    key={c.id}
+                    onClick={() => navigate(`/clients/${c.id}`)}
+                    className="w-full flex items-center justify-between text-sm text-foreground hover:text-primary hover:bg-accent rounded px-2 py-1.5 transition-colors"
+                  >
+                    <span className="truncate">{c.name}</span>
+                    <span className="text-muted-foreground flex-shrink-0 ml-3">{c.status}</span>
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+          {expandedCard === 'unpaid' && (
+            <>
+              <h3 className="text-sm font-semibold text-foreground mb-3">미수금 내역 ({unpaidBreakdown.length}건)</h3>
+              <div className="space-y-1">
+                {unpaidBreakdown.map((c) => (
+                  <button
+                    key={c.id}
+                    onClick={() => navigate(`/clients/${c.id}`)}
+                    className="w-full flex items-center justify-between text-sm text-foreground hover:text-primary hover:bg-accent rounded px-2 py-1.5 transition-colors"
+                  >
+                    <span className="truncate">{c.name}</span>
+                    <span className="flex items-center gap-2 flex-shrink-0 ml-3 text-xs">
+                      <span className="text-muted-foreground">{c.paidAmount.toLocaleString('ko-KR')} / {c.contractAmount.toLocaleString('ko-KR')}원</span>
+                      <span className="font-semibold text-red-600">−{c.unpaidAmount.toLocaleString('ko-KR')}원</span>
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      )}
 
       {/* 중간: 최근 활동 + 도넛 차트 */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -184,12 +273,40 @@ export default function Dashboard() {
               </ResponsiveContainer>
               <div className="flex justify-center gap-6 mt-2">
                 {clientStatus.map((s, i) => (
-                  <div key={s.name} className="text-center">
+                  <button
+                    key={s.name}
+                    onClick={() => setExpandedStatus((prev) => (prev === s.name ? null : s.name))}
+                    disabled={s.value === 0}
+                    className={`text-center rounded-md px-2 py-1 transition-colors ${
+                      s.value === 0 ? 'cursor-default' : 'hover:bg-accent cursor-pointer'
+                    } ${expandedStatus === s.name ? 'bg-accent' : ''}`}
+                  >
                     <p className="text-lg font-bold" style={{ color: COLORS[i] }}>{s.value}</p>
                     <p className="text-xs text-muted-foreground">{s.name}</p>
-                  </div>
+                  </button>
                 ))}
               </div>
+
+              {expandedStatus && (
+                <div className="mt-3 pt-3 border-t border-border">
+                  <p className="text-[11px] font-semibold text-muted-foreground mb-1.5">
+                    {expandedStatus} 고객사 ({allClients.filter((c) => (c.status ?? '상담') === expandedStatus).length}곳)
+                  </p>
+                  <div className="max-h-40 overflow-y-auto space-y-0.5">
+                    {allClients
+                      .filter((c) => (c.status ?? '상담') === expandedStatus)
+                      .map((c) => (
+                        <button
+                          key={c.id}
+                          onClick={() => navigate(`/clients/${c.id}`)}
+                          className="w-full text-left text-sm text-foreground hover:text-primary hover:bg-accent rounded px-2 py-1 transition-colors truncate"
+                        >
+                          {c.name}
+                        </button>
+                      ))}
+                  </div>
+                </div>
+              )}
             </>
           )}
         </div>

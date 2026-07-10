@@ -176,7 +176,7 @@ export async function getFinalPaidDocumentIds(userId: number): Promise<number[]>
 
 export async function getMonthlySalesData(userId: number, year: number, month: number) {
   const db = await getDb();
-  if (!db) return { payments: [], hktbInvoices: [], finalPayments: [] };
+  if (!db) return { payments: [], hktbInvoices: [], finalPayments: [], cashReceiptTotal: 0, cashReceiptCount: 0 };
   const mm = String(month).padStart(2, "0");
   const lastDay = new Date(year, month, 0).getDate();
   const startDate = `${year}-${mm}-01`;
@@ -209,7 +209,6 @@ export async function getMonthlySalesData(userId: number, year: number, month: n
       cashReceiptIssued: clients.cashReceiptIssued,
       cashReceiptDate: clients.cashReceiptDate,
       memo: clients.finalPaymentMemo,
-      linkedEstimateId: clients.linkedEstimateId,
     })
     .from(clients)
     .where(
@@ -221,15 +220,62 @@ export async function getMonthlySalesData(userId: number, year: number, month: n
       )
     );
 
-  // 연동된 계약서에 이미 payments 테이블상 잔금 기록이 있으면 일반 매출 내역에서 이미 집계되므로 중복 제외
-  const finalPaidDocIds = new Set(
-    paymentRows.filter((p) => p.type === 'final').map((p) => p.documentId)
-  );
-  const finalPaymentRows = finalPaymentRowsRaw.filter(
-    (c) => !(c.linkedEstimateId && finalPaidDocIds.has(c.linkedEstimateId))
-  );
+  // 같은 고객사의 견적서에 payments 테이블상 잔금 기록이 (시기 무관하게) 이미 있으면, clients.finalPaymentDate/Amount는
+  // 그 기록을 그대로 미러링한 값이므로 일반 매출 내역·현금영수증 집계와 중복되지 않도록 항상 제외
+  const allFinalPaymentClientNames = await db
+    .select({ clientName: documents.clientName })
+    .from(payments)
+    .innerJoin(documents, eq(payments.documentId, documents.id))
+    .where(and(eq(payments.userId, userId), eq(payments.type, 'final')));
+  const finalPaidClientNames = new Set(allFinalPaymentClientNames.map((r) => r.clientName));
+  const finalPaymentRows = finalPaymentRowsRaw.filter((c) => !finalPaidClientNames.has(c.name));
 
-  return { payments: paymentRows, hktbInvoices: hktbRows, finalPayments: finalPaymentRows };
+  // 현금영수증 발급분은 결제일이 아니라 "현금영수증 발급일" 기준으로 집계 (실제 발급일이 결제월과 다를 수 있음)
+  const cashReceiptPaymentRows = await db
+    .select({ amount: payments.amount })
+    .from(payments)
+    .where(and(
+      eq(payments.userId, userId),
+      eq(payments.cashReceiptIssued, true),
+      gte(payments.cashReceiptDate, startDate),
+      lte(payments.cashReceiptDate, endDate),
+    ));
+
+  const cashReceiptHktbRows = await db
+    .select({ totalAmount: hktbInvoices.totalAmount })
+    .from(hktbInvoices)
+    .where(and(
+      eq(hktbInvoices.userId, userId),
+      eq(hktbInvoices.cashReceiptIssued, true),
+      gte(hktbInvoices.cashReceiptDate, startDate),
+      lte(hktbInvoices.cashReceiptDate, endDate),
+    ));
+
+  const cashReceiptFinalRowsRaw = await db
+    .select({ name: clients.name, finalPaymentAmount: clients.finalPaymentAmount, contractAmount: clients.contractAmount })
+    .from(clients)
+    .where(and(
+      eq(clients.userId, userId),
+      eq(clients.cashReceiptIssued, true),
+      gte(clients.cashReceiptDate, startDate),
+      lte(clients.cashReceiptDate, endDate),
+    ));
+  // 잔금 수령 목록과 동일하게, payments 테이블에 이미 잡힌 고객사는 현금영수증 합계에서도 중복 제외
+  const cashReceiptFinalRows = cashReceiptFinalRowsRaw.filter((c) => !finalPaidClientNames.has(c.name));
+
+  const cashReceiptTotal =
+    cashReceiptPaymentRows.reduce((s, p) => s + p.amount, 0) +
+    cashReceiptHktbRows.reduce((s, h) => s + h.totalAmount, 0) +
+    cashReceiptFinalRows.reduce((s, f) => s + (f.finalPaymentAmount ?? f.contractAmount ?? 0), 0);
+  const cashReceiptCount = cashReceiptPaymentRows.length + cashReceiptHktbRows.length + cashReceiptFinalRows.length;
+
+  return {
+    payments: paymentRows,
+    hktbInvoices: hktbRows,
+    finalPayments: finalPaymentRows,
+    cashReceiptTotal,
+    cashReceiptCount,
+  };
 }
 
 export async function updatePaymentCashReceipt(id: number, userId: number, issued: boolean, date: string | null) {
@@ -283,6 +329,7 @@ export async function getDashboardData(userId: number) {
   // 이번 달 계약 건수/금액: clients.contractDate 기준, status가 계약 또는 완료인 고객
   const allClients = await db.select({
     id: clients.id,
+    name: clients.name,
     status: clients.status,
     contractDate: clients.contractDate,
     contractAmount: clients.contractAmount,
@@ -296,18 +343,43 @@ export async function getDashboardData(userId: number) {
   const activeContractClients = allClients.filter(c => c.status === '계약');
   const thisMonthContractCount = activeContractClients.length;
   const thisMonthContractAmount = activeContractClients.reduce((s, c) => s + (c.contractAmount || 0), 0);
+  const contractClientsList = activeContractClients.map(c => ({ id: c.id, name: c.name, contractAmount: c.contractAmount || 0 }));
 
   // 상담 중 고객: 계약·완료 제외
-  const consultingCount = allClients.filter(c => c.status === '상담' || c.status === '제안서').length;
+  const consultingClientsList = allClients
+    .filter(c => c.status === '상담' || c.status === '제안서')
+    .map(c => ({ id: c.id, name: c.name, status: c.status }));
+  const consultingCount = consultingClientsList.length;
 
-  // 미수금: 계약 상태 고객들의 계약금 합산 - 실제 입금 합산
+  // 미수금: 계약 상태 고객들의 계약금 합산 - 그 고객들이 실제로 입금한 금액만 합산 (다른 완료 건 입금액이 섞이면 안 됨)
   const contractClients = allClients.filter(c => c.status === '계약');
   const totalContractAmount = contractClients.reduce((s, c) => s + (c.contractAmount || 0), 0);
+  const contractClientNames = new Set(contractClients.map(c => c.name));
 
-  const allPayments = await db.select({ amount: payments.amount })
-    .from(payments).where(eq(payments.userId, userId));
-  const totalPaid = allPayments.reduce((s, p) => s + p.amount, 0);
+  const allPaymentsWithClient = await db
+    .select({ amount: payments.amount, clientName: documents.clientName })
+    .from(payments)
+    .innerJoin(documents, eq(payments.documentId, documents.id))
+    .where(eq(payments.userId, userId));
+
+  const paidByClientName = new Map<string, number>();
+  for (const p of allPaymentsWithClient) {
+    if (!p.clientName) continue;
+    paidByClientName.set(p.clientName, (paidByClientName.get(p.clientName) ?? 0) + p.amount);
+  }
+
+  const totalPaid = allPaymentsWithClient
+    .filter(p => contractClientNames.has(p.clientName))
+    .reduce((s, p) => s + p.amount, 0);
   const unpaidAmount = Math.max(0, totalContractAmount - totalPaid);
+
+  const unpaidBreakdown = contractClients
+    .map(c => {
+      const paidAmount = paidByClientName.get(c.name) ?? 0;
+      const clientUnpaid = Math.max(0, (c.contractAmount || 0) - paidAmount);
+      return { id: c.id, name: c.name, contractAmount: c.contractAmount || 0, paidAmount, unpaidAmount: clientUnpaid };
+    })
+    .filter(c => c.unpaidAmount > 0);
 
   // 최근 문서 10개 (같은 고객사는 가장 최근 것만)
   const recentDocsRaw = await db.select({
@@ -364,6 +436,9 @@ export async function getDashboardData(userId: number) {
       { name: '제안서', value: statusCounts['제안서'] },
       { name: '계약', value: statusCounts['계약'] },
     ],
+    contractClientsList,
+    consultingClientsList,
+    unpaidBreakdown,
   };
 }
 
@@ -432,32 +507,35 @@ export async function getCalendarEvents(userId: number) {
 
   const clientMap = new Map(allClients.map((c) => [c.id, c.name]));
 
+  // 날짜가 "2026.01.15"(점) / "2026-01-15"(대시) 형식이 혼용되어 저장되므로 대시 형식으로 통일
+  const normDate = (d: string) => d.replace(/\./g, "-");
+
   const events: { date: string; type: string; label: string; id: string; clientId?: number }[] = [];
 
   for (const c of allConsultations) {
     if (c.date) {
-      events.push({ date: c.date, type: 'consultation', label: clientMap.get(c.clientId) || '고객사', id: `consultation-${c.id}`, clientId: c.clientId });
+      events.push({ date: normDate(c.date), type: 'consultation', label: clientMap.get(c.clientId) || '고객사', id: `consultation-${c.id}`, clientId: c.clientId });
     }
   }
 
   for (const cl of allClients) {
     if (cl.contractDate) {
-      events.push({ date: cl.contractDate, type: 'contract', label: cl.name, id: `contract-${cl.id}`, clientId: cl.id });
+      events.push({ date: normDate(cl.contractDate), type: 'contract', label: cl.name, id: `contract-${cl.id}`, clientId: cl.id });
     }
     if (cl.pcDraftDate) {
-      events.push({ date: cl.pcDraftDate, type: 'pcDraft', label: cl.name, id: `pcDraft-${cl.id}`, clientId: cl.id });
+      events.push({ date: normDate(cl.pcDraftDate), type: 'pcDraft', label: cl.name, id: `pcDraft-${cl.id}`, clientId: cl.id });
     }
     if (cl.mobileDraftDate) {
-      events.push({ date: cl.mobileDraftDate, type: 'mobileDraft', label: cl.name, id: `mobileDraft-${cl.id}`, clientId: cl.id });
+      events.push({ date: normDate(cl.mobileDraftDate), type: 'mobileDraft', label: cl.name, id: `mobileDraft-${cl.id}`, clientId: cl.id });
     }
     if (cl.finalDeliveryDate) {
-      events.push({ date: cl.finalDeliveryDate, type: 'finalDelivery', label: cl.name, id: `finalDelivery-${cl.id}`, clientId: cl.id });
+      events.push({ date: normDate(cl.finalDeliveryDate), type: 'finalDelivery', label: cl.name, id: `finalDelivery-${cl.id}`, clientId: cl.id });
     }
   }
 
   for (const doc of allDocuments) {
     if (doc.date) {
-      events.push({ date: doc.date, type: doc.type, label: doc.clientName || doc.projectName || '문서', id: `doc-${doc.id}` });
+      events.push({ date: normDate(doc.date), type: doc.type, label: doc.clientName || doc.projectName || '문서', id: `doc-${doc.id}` });
     }
   }
 
@@ -537,19 +615,28 @@ export async function getKanbanClients(userId: number) {
 export async function confirmDepositForClient(documentId: number, userId: number) {
   const db = await getDb();
   if (!db) return;
+  const doc = await db.select({ clientName: documents.clientName }).from(documents)
+    .where(and(eq(documents.id, documentId), eq(documents.userId, userId))).limit(1);
+  const clientName = doc[0]?.clientName;
+  if (!clientName) return;
   await db.update(clients)
     .set({ status: '계약', workflowStatus: '진행대기' })
     .where(and(
       eq(clients.userId, userId),
-      eq(clients.linkedEstimateId, documentId),
+      eq(clients.name, clientName),
       eq(clients.workflowStatus, '상담'),
     ));
 }
 
 // 잔금 확정 시: 연결된 고객 status → '완료', workflowStatus → '완료', 잔금 수령일/금액 기록
+// 고객사명으로 매칭하므로 한 고객사에 견적서가 여러 건 있어도 어느 것을 확정하든 정상 반영됨
 export async function confirmFinalPaymentForClient(documentId: number, userId: number, paymentDate: string, amount: number) {
   const db = await getDb();
   if (!db) return;
+  const doc = await db.select({ clientName: documents.clientName }).from(documents)
+    .where(and(eq(documents.id, documentId), eq(documents.userId, userId))).limit(1);
+  const clientName = doc[0]?.clientName;
+  if (!clientName) return;
   await db.update(clients)
     .set({
       status: '완료',
@@ -560,7 +647,7 @@ export async function confirmFinalPaymentForClient(documentId: number, userId: n
     })
     .where(and(
       eq(clients.userId, userId),
-      eq(clients.linkedEstimateId, documentId),
+      eq(clients.name, clientName),
     ));
 }
 
@@ -582,15 +669,15 @@ export async function listClients(userId: number, search?: string) {
   if (search) {
     const { ilike } = await import("drizzle-orm");
     const pattern = `%${search}%`;
-    const phonePattern = `%${search.replace(/-/g, "")}%`;
+    const digitsPattern = `%${search.replace(/-/g, "")}%`;
     return db.select().from(clients)
       .where(and(
         eq(clients.userId, userId),
         or(
           ilike(clients.name, pattern),
-          sql`replace(${clients.contactPhone}, '-', '') ILIKE ${phonePattern}`,
+          sql`replace(${clients.contactPhone}, '-', '') ILIKE ${digitsPattern}`,
           ilike(clients.contactName, pattern),
-          ilike(clients.businessNumber, pattern),
+          sql`replace(${clients.businessNumber}, '-', '') ILIKE ${digitsPattern}`,
         ),
       ))
       .orderBy(asc(clients.name));

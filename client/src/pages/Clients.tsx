@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useLocation } from 'wouter';
 import { trpc } from '@/lib/trpc';
 import { Button } from '@/components/ui/button';
@@ -76,8 +76,13 @@ function Highlight({ text, query }: { text: string; query: string }) {
 export default function Clients() {
   const [, navigate] = useLocation();
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search), 300);
+    return () => clearTimeout(timer);
+  }, [search]);
   const { data: clients = [], isLoading, refetch } = trpc.clients.list.useQuery(
-    search ? { search } : undefined
+    debouncedSearch ? { search: debouncedSearch } : undefined
   );
   const createMutation = trpc.clients.create.useMutation();
   const updateMutation = trpc.clients.update.useMutation();

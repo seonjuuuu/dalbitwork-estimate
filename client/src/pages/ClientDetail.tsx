@@ -229,12 +229,6 @@ export default function ClientDetail({ id }: { id: string }) {
   const clientId = parseInt(id);
 
   const { data: client, refetch: refetchClient } = trpc.clients.get.useQuery({ id: clientId });
-  const linkedEstimateId = (client as any)?.linkedEstimateId as number | undefined;
-  const { data: linkedPayments = [] } = trpc.documents.getPayments.useQuery(
-    { documentId: linkedEstimateId ?? 0 },
-    { enabled: !!linkedEstimateId }
-  );
-  const depositPayment = linkedPayments.find((p) => p.type === 'deposit');
   const { data: consultations = [], refetch } = trpc.consultations.list.useQuery({ clientId });
   const { data: matchedEstimates = [] } = trpc.clients.getMatchedEstimates.useQuery(
     { clientName: client?.name ?? '' },
@@ -310,6 +304,44 @@ export default function ClientDetail({ id }: { id: string }) {
   });
   const [isSavingInfo, setIsSavingInfo] = useState(false);
 
+  const [editingWorkSchedule, setEditingWorkSchedule] = useState(false);
+  const [isSavingWorkSchedule, setIsSavingWorkSchedule] = useState(false);
+  const [workScheduleForm, setWorkScheduleForm] = useState({
+    workStartDate: '', pcDraftDate: '', mobileDraftDate: '', finalDeliveryDate: '',
+  });
+
+  useEffect(() => {
+    if (client) {
+      setWorkScheduleForm({
+        workStartDate: client.workStartDate ?? '',
+        pcDraftDate: client.pcDraftDate ?? '',
+        mobileDraftDate: client.mobileDraftDate ?? '',
+        finalDeliveryDate: client.finalDeliveryDate ?? '',
+      });
+    }
+  }, [client?.id]);
+
+  const handleWorkScheduleDateInput = (field: keyof typeof workScheduleForm) => (e: React.ChangeEvent<HTMLInputElement>) => {
+    const digits = e.target.value.replace(/[^0-9]/g, '').slice(0, 8);
+    let formatted = digits;
+    if (digits.length > 4) formatted = digits.slice(0, 4) + '.' + digits.slice(4);
+    if (digits.length > 6) formatted = digits.slice(0, 4) + '.' + digits.slice(4, 6) + '.' + digits.slice(6);
+    setWorkScheduleForm((f) => ({ ...f, [field]: formatted }));
+  };
+
+  const handleSaveWorkSchedule = async () => {
+    setIsSavingWorkSchedule(true);
+    try {
+      await updateClientMutation.mutateAsync({ id: clientId, ...workScheduleForm });
+      await refetchClient();
+      setEditingWorkSchedule(false);
+      toast.success('작업 일정이 저장되었습니다.');
+    } catch {
+      toast.error('저장에 실패했습니다.');
+    } finally {
+      setIsSavingWorkSchedule(false);
+    }
+  };
 
   useEffect(() => {
     if (client && (client as any).linkedEstimateId) {
@@ -719,6 +751,67 @@ export default function ClientDetail({ id }: { id: string }) {
         )}
       </div>
 
+      {/* 작업 일정 */}
+      <div className="bg-card border border-border rounded-xl p-5">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-sm font-semibold text-foreground">작업 일정</h2>
+          {!editingWorkSchedule ? (
+            <Button size="sm" variant="outline" onClick={() => setEditingWorkSchedule(true)} className="h-7 text-xs gap-1">
+              <Edit className="w-3 h-3" />수정
+            </Button>
+          ) : (
+            <div className="flex gap-1.5">
+              <Button size="sm" variant="ghost" onClick={() => setEditingWorkSchedule(false)} className="h-7 text-xs gap-1">
+                <X className="w-3 h-3" />취소
+              </Button>
+              <Button size="sm" onClick={handleSaveWorkSchedule} disabled={isSavingWorkSchedule} className="h-7 text-xs gap-1">
+                {isSavingWorkSchedule ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}저장
+              </Button>
+            </div>
+          )}
+        </div>
+
+        {editingWorkSchedule ? (
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">작업 시작일</label>
+              <Input value={workScheduleForm.workStartDate} onChange={handleWorkScheduleDateInput('workStartDate')} placeholder="2026.01.01" maxLength={10} className="text-sm" />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">PC 시안일</label>
+              <Input value={workScheduleForm.pcDraftDate} onChange={handleWorkScheduleDateInput('pcDraftDate')} placeholder="2026.01.01" maxLength={10} className="text-sm" />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">모바일 작업일</label>
+              <Input value={workScheduleForm.mobileDraftDate} onChange={handleWorkScheduleDateInput('mobileDraftDate')} placeholder="2026.01.01" maxLength={10} className="text-sm" />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">완성 전달일</label>
+              <Input value={workScheduleForm.finalDeliveryDate} onChange={handleWorkScheduleDateInput('finalDeliveryDate')} placeholder="2026.01.01" maxLength={10} className="text-sm" />
+            </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-3 text-sm">
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <CalendarDays className="w-3.5 h-3.5 flex-shrink-0" />
+              <span>작업 시작일: {client.workStartDate || '—'}</span>
+            </div>
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <CalendarDays className="w-3.5 h-3.5 flex-shrink-0" />
+              <span>PC 시안일: {client.pcDraftDate || '—'}</span>
+            </div>
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <CalendarDays className="w-3.5 h-3.5 flex-shrink-0" />
+              <span>모바일 작업일: {client.mobileDraftDate || '—'}</span>
+            </div>
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <CalendarDays className="w-3.5 h-3.5 flex-shrink-0" />
+              <span>완성 전달일: {client.finalDeliveryDate || '—'}</span>
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* 제안서 연결 */}
       {matchedProposals.length > 0 && (
         <div className="bg-card border border-border rounded-xl p-5">
@@ -1045,26 +1138,6 @@ export default function ClientDetail({ id }: { id: string }) {
             })}
           </div>
           <p className="text-[11px] text-muted-foreground/60 mt-2">연동하면 계약일자와 계약금액이 계약서 정보로 업데이트됩니다.</p>
-        </div>
-      )}
-
-      {/* 계약금 수령 — 연동된 계약서에 계약금 기록이 있을 때만 표시 */}
-      {depositPayment && (
-        <div className="bg-blue-50 border border-blue-200 rounded-xl p-5 dark:bg-blue-900/10 dark:border-blue-800">
-          <h2 className="text-sm font-semibold text-blue-800 dark:text-blue-400 flex items-center gap-2 mb-4">
-            <CircleDollarSign className="w-4 h-4" />
-            계약금 수령
-          </h2>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="bg-white dark:bg-blue-900/20 rounded-lg px-4 py-3 border border-blue-200 dark:border-blue-800">
-              <p className="text-[10px] text-muted-foreground mb-0.5">수령일</p>
-              <p className="text-sm font-semibold text-foreground">{depositPayment.paymentDate}</p>
-            </div>
-            <div className="bg-white dark:bg-blue-900/20 rounded-lg px-4 py-3 border border-blue-200 dark:border-blue-800">
-              <p className="text-[10px] text-muted-foreground mb-0.5">금액</p>
-              <p className="text-sm font-semibold text-foreground">{depositPayment.amount.toLocaleString('ko-KR')}원</p>
-            </div>
-          </div>
         </div>
       )}
 
