@@ -17,6 +17,7 @@ import {
   FileText,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import Linkify from '@/components/Linkify';
 
 type NotesMode = 'list' | 'freeform';
 
@@ -439,7 +440,7 @@ export default function NoteTemplates() {
                               <span className="text-xs text-muted-foreground w-5 flex-shrink-0 pt-0.5">
                                 {idx + 1}.
                               </span>
-                              <p className="text-foreground/80 whitespace-pre-wrap">{note}</p>
+                              <p className="text-foreground/80 whitespace-pre-wrap"><Linkify text={note} /></p>
                             </div>
                           ))}
                         </div>

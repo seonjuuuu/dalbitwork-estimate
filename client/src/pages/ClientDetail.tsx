@@ -18,6 +18,7 @@ import { toast } from 'sonner';
 import DepositConfirmDialog from '@/components/DepositConfirmDialog';
 import FinalPaymentConfirmDialog from '@/components/FinalPaymentConfirmDialog';
 import NotesEditPdfDialog from '@/components/NotesEditPdfDialog';
+import Linkify from '@/components/Linkify';
 import type { DocumentData } from '@/lib/types';
 
 interface ConsultationForm {
@@ -745,7 +746,7 @@ export default function ClientDetail({ id }: { id: string }) {
               )}
             </div>
             {client.memo && (
-              <p className="mt-3 text-xs text-muted-foreground/80 border-t border-border pt-3 whitespace-pre-wrap">{client.memo}</p>
+              <p className="mt-3 text-xs text-muted-foreground/80 border-t border-border pt-3 whitespace-pre-wrap"><Linkify text={client.memo} /></p>
             )}
           </>
         )}
@@ -887,7 +888,7 @@ export default function ClientDetail({ id }: { id: string }) {
                       onClick={() => { setEditingMemoId(doc.id); setMemoDraft(doc.memo ?? ''); }}
                     >
                       {doc.memo ? (
-                        <p className="text-xs text-muted-foreground whitespace-pre-wrap group-hover/memo:text-foreground transition-colors">{doc.memo}</p>
+                        <p className="text-xs text-muted-foreground whitespace-pre-wrap group-hover/memo:text-foreground transition-colors"><Linkify text={doc.memo ?? ''} /></p>
                       ) : (
                         <p className="text-xs text-muted-foreground/40 italic group-hover/memo:text-muted-foreground transition-colors">메모 추가...</p>
                       )}
@@ -1058,7 +1059,7 @@ export default function ClientDetail({ id }: { id: string }) {
                       onClick={() => { setEditingMemoId(est.id); setMemoDraft(est.memo ?? ''); }}
                     >
                       {est.memo ? (
-                        <p className="text-xs text-muted-foreground whitespace-pre-wrap group-hover/memo:text-foreground transition-colors">{est.memo}</p>
+                        <p className="text-xs text-muted-foreground whitespace-pre-wrap group-hover/memo:text-foreground transition-colors"><Linkify text={est.memo ?? ''} /></p>
                       ) : (
                         <p className="text-xs text-muted-foreground/40 italic group-hover/memo:text-muted-foreground transition-colors">메모 추가...</p>
                       )}
@@ -1379,7 +1380,7 @@ export default function ClientDetail({ id }: { id: string }) {
 
                   {isExpanded && (
                     <div className="px-4 pb-4 pt-1 border-t border-border bg-muted/20">
-                      <p className="text-sm text-foreground whitespace-pre-wrap">{c.content}</p>
+                      <p className="text-sm text-foreground whitespace-pre-wrap"><Linkify text={c.content} /></p>
                       {c.nextAction && (
                         <p className="text-xs text-primary mt-2 font-medium">→ 다음 액션: {c.nextAction}</p>
                       )}

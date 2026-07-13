@@ -8,6 +8,7 @@ import { trpc } from '@/lib/trpc';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { ko } from 'date-fns/locale';
+import Linkify from '@/components/Linkify';
 
 function fmt(n: number) {
   return n.toLocaleString('ko-KR') + '원';
@@ -224,7 +225,7 @@ function MemoCell({
   return (
     <button type="button" className="w-[200px] text-left group/memo" onClick={onStartEdit}>
       {memo ? (
-        <p className="text-xs text-muted-foreground whitespace-pre-wrap break-words group-hover/memo:text-foreground transition-colors">{memo}</p>
+        <p className="text-xs text-muted-foreground whitespace-pre-wrap break-words group-hover/memo:text-foreground transition-colors"><Linkify text={memo} /></p>
       ) : (
         <p className="text-xs text-muted-foreground/40 italic group-hover/memo:text-muted-foreground transition-colors">메모 추가...</p>
       )}
