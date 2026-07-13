@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useLocation } from 'wouter';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -234,9 +235,12 @@ function MemoCell({
 }
 
 export default function MonthlySales() {
+  const [, navigate] = useLocation();
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const utils = trpc.useUtils();
+  const { data: clients = [] } = trpc.clients.list.useQuery(undefined);
+  const clientIdByName = new Map(clients.map((c) => [c.name, c.id]));
 
   const handlePrevMonth = () => {
     if (selectedMonth === 1) { setSelectedMonth(12); setSelectedYear(selectedYear - 1); }
@@ -434,7 +438,11 @@ export default function MonthlySales() {
               {finalPayments.map(f => (
                 <tr key={f.id} className="border-b border-border/50 hover:bg-muted/30 transition-colors">
                   <td className="py-2.5 px-3 text-xs text-muted-foreground">{f.finalPaymentDate}</td>
-                  <td className="py-2.5 px-3 text-xs font-medium">{f.name}</td>
+                  <td className="py-2.5 px-3 text-xs font-medium">
+                    <button onClick={() => navigate(`/clients/${f.id}`)} className="hover:text-primary hover:underline transition-colors">
+                      {f.name}
+                    </button>
+                  </td>
                   <td className="py-2.5 px-3 text-xs text-muted-foreground">{f.contactName || '-'}</td>
                   <td className="py-2.5 px-3 text-right font-semibold">
                     {fmt(f.finalPaymentAmount ?? f.contractAmount ?? 0)}
@@ -487,7 +495,15 @@ export default function MonthlySales() {
             {payments.length > 0 ? payments.map((p) => (
               <tr key={p.id} className="border-b border-border/50 hover:bg-muted/30 transition-colors">
                 <td className="py-2.5 px-3 text-xs text-muted-foreground">{p.paymentDate}</td>
-                <td className="py-2.5 px-3 text-xs">{p.clientName}</td>
+                <td className="py-2.5 px-3 text-xs">
+                  {p.clientName && clientIdByName.has(p.clientName) ? (
+                    <button onClick={() => navigate(`/clients/${clientIdByName.get(p.clientName)}`)} className="hover:text-primary hover:underline transition-colors">
+                      {p.clientName}
+                    </button>
+                  ) : (
+                    p.clientName
+                  )}
+                </td>
                 <td className="py-2.5 px-3 text-xs text-muted-foreground">{p.documentTitle}</td>
                 <td className="py-2.5 px-3">
                   <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold ${p.type === 'deposit' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'}`}>

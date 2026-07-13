@@ -615,12 +615,17 @@ export async function getKanbanClients(userId: number) {
 export async function confirmDepositForClient(documentId: number, userId: number) {
   const db = await getDb();
   if (!db) return;
-  const doc = await db.select({ clientName: documents.clientName }).from(documents)
+  const doc = await db.select({ clientName: documents.clientName, date: documents.date, totalMax: documents.totalMax }).from(documents)
     .where(and(eq(documents.id, documentId), eq(documents.userId, userId))).limit(1);
   const clientName = doc[0]?.clientName;
   if (!clientName) return;
   await db.update(clients)
-    .set({ status: '계약', workflowStatus: '진행대기' })
+    .set({
+      status: '계약',
+      workflowStatus: '진행대기',
+      contractDate: doc[0].date.replace(/\./g, '-'),
+      contractAmount: doc[0].totalMax,
+    })
     .where(and(
       eq(clients.userId, userId),
       eq(clients.name, clientName),
@@ -680,9 +685,9 @@ export async function listClients(userId: number, search?: string) {
           sql`replace(${clients.businessNumber}, '-', '') ILIKE ${digitsPattern}`,
         ),
       ))
-      .orderBy(asc(clients.name));
+      .orderBy(desc(clients.createdAt));
   }
-  return db.select().from(clients).where(eq(clients.userId, userId)).orderBy(asc(clients.name));
+  return db.select().from(clients).where(eq(clients.userId, userId)).orderBy(desc(clients.createdAt));
 }
 
 export async function getClient(id: number, userId: number) {
@@ -692,9 +697,26 @@ export async function getClient(id: number, userId: number) {
   return result[0];
 }
 
+// 어디서 들어오든(자동 생성, 수동 입력, 문서 동기화) 연락처는 항상 하이픈 포맷으로 저장되도록 통일
+function normalizePhone(value: string): string {
+  const digits = value.replace(/\D/g, '');
+  if (!digits) return '';
+  if (digits.startsWith('02')) {
+    if (digits.length <= 2) return digits;
+    if (digits.length <= 5) return `${digits.slice(0, 2)}-${digits.slice(2)}`;
+    if (digits.length <= 9) return `${digits.slice(0, 2)}-${digits.slice(2, 5)}-${digits.slice(5)}`;
+    return `${digits.slice(0, 2)}-${digits.slice(2, 6)}-${digits.slice(6, 10)}`;
+  }
+  if (digits.length <= 3) return digits;
+  if (digits.length <= 6) return `${digits.slice(0, 3)}-${digits.slice(3)}`;
+  if (digits.length <= 10) return `${digits.slice(0, 3)}-${digits.slice(3, 6)}-${digits.slice(6)}`;
+  return `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7, 11)}`;
+}
+
 export async function createClient(data: InsertClient) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
+  if (data.contactPhone) data.contactPhone = normalizePhone(data.contactPhone);
   const [inserted] = await db.insert(clients).values(data).returning({ id: clients.id });
   const result = await db.select().from(clients).where(eq(clients.id, inserted.id)).limit(1);
   return result[0];
@@ -703,6 +725,7 @@ export async function createClient(data: InsertClient) {
 export async function updateClient(id: number, userId: number, data: Partial<Omit<InsertClient, "id" | "userId" | "createdAt">>) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
+  if (data.contactPhone) data.contactPhone = normalizePhone(data.contactPhone);
   await db.update(clients).set(data).where(and(eq(clients.id, id), eq(clients.userId, userId)));
   // 상태가 '계약'으로 처음 바뀌면 진행현황도 '진행대기'로 함께 시작
   if (data.status === '계약' && data.workflowStatus === undefined) {
@@ -742,7 +765,7 @@ export async function upsertClientFromDocument(
       userId,
       name: data.name,
       contactName: data.contactName || '',
-      contactPhone: data.contactPhone || '',
+      contactPhone: data.contactPhone ? normalizePhone(data.contactPhone) : '',
       businessNumber: '',
       contractDate: data.contractDate || '',
       contractAmount: data.contractAmount || 0,
@@ -753,7 +776,7 @@ export async function upsertClientFromDocument(
     const client = existing[0];
     const updates: Partial<typeof clients.$inferInsert> = {};
     if (!client.contactName && data.contactName) updates.contactName = data.contactName;
-    if (!client.contactPhone && data.contactPhone) updates.contactPhone = data.contactPhone;
+    if (!client.contactPhone && data.contactPhone) updates.contactPhone = normalizePhone(data.contactPhone);
     if (data.contractDate && !client.contractDate) updates.contractDate = data.contractDate;
     if (data.contractAmount && !client.contractAmount) updates.contractAmount = data.contractAmount;
     // 상태는 앞으로만 진행 (상담→제안서→계약, 역방향 불가)
@@ -845,21 +868,21 @@ export async function deleteHktbInvoice(id: number, userId: number) {
 export async function listPdfFiles(userId: number) {
   const db = await getDb();
   if (!db) return [];
-  return db.select({ id: pdfFiles.id, name: pdfFiles.name, fileSize: pdfFiles.fileSize, createdAt: pdfFiles.createdAt })
+  return db.select({ id: pdfFiles.id, name: pdfFiles.name, fileSize: pdfFiles.fileSize, mimeType: pdfFiles.mimeType, createdAt: pdfFiles.createdAt })
     .from(pdfFiles).where(and(eq(pdfFiles.userId, userId), isNull(pdfFiles.clientId))).orderBy(desc(pdfFiles.createdAt));
 }
 
 export async function listPdfFilesByClient(clientId: number, userId: number) {
   const db = await getDb();
   if (!db) return [];
-  return db.select({ id: pdfFiles.id, name: pdfFiles.name, fileSize: pdfFiles.fileSize, createdAt: pdfFiles.createdAt })
+  return db.select({ id: pdfFiles.id, name: pdfFiles.name, fileSize: pdfFiles.fileSize, mimeType: pdfFiles.mimeType, createdAt: pdfFiles.createdAt })
     .from(pdfFiles).where(and(eq(pdfFiles.userId, userId), eq(pdfFiles.clientId, clientId))).orderBy(desc(pdfFiles.createdAt));
 }
 
-export async function uploadPdfFile(userId: number, name: string, fileSize: number, data: string, clientId?: number) {
+export async function uploadPdfFile(userId: number, name: string, fileSize: number, data: string, clientId?: number, mimeType?: string) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  const result = await db.insert(pdfFiles).values({ userId, name, fileSize, data, clientId: clientId ?? null }).returning({ id: pdfFiles.id });
+  const result = await db.insert(pdfFiles).values({ userId, name, fileSize, data, clientId: clientId ?? null, mimeType: mimeType || 'application/pdf' }).returning({ id: pdfFiles.id });
   return result[0];
 }
 

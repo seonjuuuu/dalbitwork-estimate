@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
+import { Switch } from '@/components/ui/switch';
 import { ko } from 'date-fns/locale';
 import { CalendarDays, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -55,6 +56,8 @@ export default function FinalPaymentConfirmDialog({
   const remaining = Math.max(0, totalAmount - depositAmount);
   const [finalAmount, setFinalAmount] = useState<string>(remaining.toString());
   const [paymentDate, setPaymentDate] = useState(todayDotStr());
+  const [cashReceiptIssued, setCashReceiptIssued] = useState(false);
+  const [cashReceiptDate, setCashReceiptDate] = useState(todayDotStr());
   const [isLoading, setIsLoading] = useState(false);
   const recordPaymentMutation = trpc.documents.recordPayment.useMutation();
   const utils = trpc.useUtils();
@@ -67,6 +70,14 @@ export default function FinalPaymentConfirmDialog({
     setPaymentDate(formatted);
   };
 
+  const handleCashReceiptDateInput = (value: string) => {
+    const digits = value.replace(/[^0-9]/g, '').slice(0, 8);
+    let formatted = digits;
+    if (digits.length > 4) formatted = digits.slice(0, 4) + '.' + digits.slice(4);
+    if (digits.length > 6) formatted = digits.slice(0, 4) + '.' + digits.slice(4, 6) + '.' + digits.slice(6);
+    setCashReceiptDate(formatted);
+  };
+
   const handleConfirm = async () => {
     const amount = Number(finalAmount.replace(/,/g, ''));
     if (!amount || amount <= 0) {
@@ -77,6 +88,10 @@ export default function FinalPaymentConfirmDialog({
       toast.error('유효한 날짜를 입력해주세요.');
       return;
     }
+    if (cashReceiptIssued && !dotStrToDate(cashReceiptDate)) {
+      toast.error('유효한 현금영수증 발급일을 입력해주세요.');
+      return;
+    }
     setIsLoading(true);
     try {
       await recordPaymentMutation.mutateAsync({
@@ -85,6 +100,8 @@ export default function FinalPaymentConfirmDialog({
         amount,
         paymentDate: dotStrToIso(paymentDate),
         notes: `${clientName} 잔금 입금`,
+        cashReceiptIssued,
+        cashReceiptDate: cashReceiptIssued ? dotStrToIso(cashReceiptDate) : null,
       });
       await utils.documents.list.invalidate();
       await utils.documents.getPayments.invalidate({ documentId });
@@ -168,10 +185,51 @@ export default function FinalPaymentConfirmDialog({
               </Popover>
             </div>
           </div>
+
+          <div className="flex items-center justify-between rounded-md border border-input px-3 py-2">
+            <Label htmlFor="final-cash-receipt" className="cursor-pointer">현금영수증 발급</Label>
+            <Switch id="final-cash-receipt" checked={cashReceiptIssued} onCheckedChange={setCashReceiptIssued} />
+          </div>
+
+          {cashReceiptIssued && (
+            <div className="space-y-2">
+              <Label>현금영수증 발급일</Label>
+              <div className="flex gap-2">
+                <Input
+                  value={cashReceiptDate}
+                  onChange={e => handleCashReceiptDateInput(e.target.value)}
+                  placeholder="20260608"
+                  maxLength={10}
+                  className="text-sm"
+                />
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <button className="h-9 w-9 flex items-center justify-center rounded-md border border-input text-muted-foreground hover:text-foreground hover:bg-accent transition-colors flex-shrink-0">
+                      <CalendarDays className="w-4 h-4" />
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="end">
+                    <Calendar
+                      mode="single"
+                      locale={ko}
+                      selected={dotStrToDate(cashReceiptDate)}
+                      onSelect={date => {
+                        if (!date) return;
+                        const y = date.getFullYear();
+                        const m = String(date.getMonth() + 1).padStart(2, '0');
+                        const d = String(date.getDate()).padStart(2, '0');
+                        setCashReceiptDate(`${y}.${m}.${d}`);
+                      }}
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+            </div>
+          )}
         </div>
 
         <DialogFooter className="gap-2">
-          <Button variant="outline" onClick={() => { setFinalAmount(remaining.toString()); setPaymentDate(todayDotStr()); }} disabled={isLoading}>
+          <Button variant="outline" onClick={() => { setFinalAmount(remaining.toString()); setPaymentDate(todayDotStr()); setCashReceiptIssued(false); setCashReceiptDate(todayDotStr()); }} disabled={isLoading}>
             초기화
           </Button>
           <Button variant="outline" onClick={onClose} disabled={isLoading}>취소</Button>

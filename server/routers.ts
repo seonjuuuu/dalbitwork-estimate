@@ -318,6 +318,8 @@ export const appRouter = router({
           amount: z.number(),
           paymentDate: z.string(),
           notes: z.string().optional(),
+          cashReceiptIssued: z.boolean().optional(),
+          cashReceiptDate: z.string().nullable().optional(),
         })
       )
       .mutation(async ({ ctx, input }) => {
@@ -333,6 +335,8 @@ export const appRouter = router({
           amount: input.amount,
           paymentDate: input.paymentDate,
           notes: input.notes || null,
+          cashReceiptIssued: input.cashReceiptIssued ?? false,
+          cashReceiptDate: input.cashReceiptIssued ? (input.cashReceiptDate ?? input.paymentDate) : null,
         });
         if (input.type === 'deposit') {
           await db.confirmDepositForClient(input.documentId, ctx.user.id);
@@ -663,9 +667,10 @@ export const appRouter = router({
         fileSize: z.number(),
         data: z.string(), // base64
         clientId: z.number().optional(),
+        mimeType: z.string().optional(),
       }))
       .mutation(async ({ ctx, input }) => {
-        return db.uploadPdfFile(ctx.user.id, input.name, input.fileSize, input.data, input.clientId);
+        return db.uploadPdfFile(ctx.user.id, input.name, input.fileSize, input.data, input.clientId, input.mimeType);
       }),
     get: protectedProcedure
       .input(z.object({ id: z.number() }))

@@ -259,6 +259,7 @@ export const pdfFiles = pgTable("pdf_files", {
   name: varchar("name", { length: 500 }).notNull(),
   fileSize: integer("fileSize").notNull(),
   data: text("data").notNull(),
+  mimeType: varchar("mimeType", { length: 100 }).default("application/pdf").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 

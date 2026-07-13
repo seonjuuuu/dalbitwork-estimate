@@ -12,13 +12,14 @@ import {
   ArrowLeft, Plus, Trash2, Save, X, Loader2,
   Phone, User, CalendarDays, CircleDollarSign,
   MessageSquare, ChevronDown, ChevronUp, Edit, LinkIcon, FileText, ExternalLink, Hash,
-  Upload, Download, Eye, Copy, FileDown, CreditCard, CheckCircle2,
+  Upload, Download, Eye, Copy, FileDown, CreditCard, CheckCircle2, Image as ImageIcon,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import DepositConfirmDialog from '@/components/DepositConfirmDialog';
 import FinalPaymentConfirmDialog from '@/components/FinalPaymentConfirmDialog';
 import NotesEditPdfDialog from '@/components/NotesEditPdfDialog';
 import Linkify from '@/components/Linkify';
+import { formatPhone } from '@/lib/utils';
 import type { DocumentData } from '@/lib/types';
 
 interface ConsultationForm {
@@ -49,7 +50,7 @@ function formatBytes(bytes: number) {
 }
 
 function ClientAttachments({ clientId }: { clientId: number }) {
-  const { data: files = [], refetch } = trpc.pdfFiles.listByClient.useQuery({ clientId });
+  const { data: files = [], refetch, isLoading: isLoadingFiles } = trpc.pdfFiles.listByClient.useQuery({ clientId });
   const uploadMutation = trpc.pdfFiles.upload.useMutation();
   const deleteMutation = trpc.pdfFiles.delete.useMutation();
   const getPdfMutation = trpc.pdfFiles.get.useMutation();
@@ -59,6 +60,7 @@ function ClientAttachments({ clientId }: { clientId: number }) {
   const [busyId, setBusyId] = useState<number | null>(null);
   const [previewBlobUrl, setPreviewBlobUrl] = useState<string | null>(null);
   const [previewName, setPreviewName] = useState('');
+  const [previewMimeType, setPreviewMimeType] = useState('');
 
   useEffect(() => {
     return () => { if (previewBlobUrl) URL.revokeObjectURL(previewBlobUrl); };
@@ -68,13 +70,14 @@ function ClientAttachments({ clientId }: { clientId: number }) {
     if (previewBlobUrl) URL.revokeObjectURL(previewBlobUrl);
     setPreviewBlobUrl(null);
     setPreviewName('');
+    setPreviewMimeType('');
   };
 
   const handleFiles = async (selected: FileList | null) => {
     if (!selected || selected.length === 0) return;
     const file = selected[0];
-    if (file.type !== 'application/pdf') {
-      toast.error('PDF 파일만 업로드 가능합니다.');
+    if (file.type !== 'application/pdf' && !file.type.startsWith('image/')) {
+      toast.error('PDF 또는 이미지 파일만 업로드 가능합니다.');
       return;
     }
     if (file.size > MAX_ATTACHMENT_SIZE) {
@@ -89,7 +92,7 @@ function ClientAttachments({ clientId }: { clientId: number }) {
         reader.onerror = reject;
         reader.readAsDataURL(file);
       });
-      await uploadMutation.mutateAsync({ name: file.name, fileSize: file.size, data: base64, clientId });
+      await uploadMutation.mutateAsync({ name: file.name, fileSize: file.size, data: base64, clientId, mimeType: file.type });
       await refetch();
       toast.success('첨부파일이 업로드되었습니다.');
     } catch {
@@ -100,15 +103,16 @@ function ClientAttachments({ clientId }: { clientId: number }) {
     }
   };
 
-  const handlePreview = async (id: number, name: string) => {
+  const handlePreview = async (id: number, name: string, mimeType: string) => {
     setBusyId(id);
     try {
       const row = await getPdfMutation.mutateAsync({ id });
       if (!row) { toast.error('파일을 찾을 수 없습니다.'); return; }
       if (previewBlobUrl) URL.revokeObjectURL(previewBlobUrl);
-      const blob = new Blob([Uint8Array.from(atob(row.data), (c) => c.charCodeAt(0))], { type: 'application/pdf' });
+      const blob = new Blob([Uint8Array.from(atob(row.data), (c) => c.charCodeAt(0))], { type: mimeType });
       setPreviewBlobUrl(URL.createObjectURL(blob));
       setPreviewName(name);
+      setPreviewMimeType(mimeType);
     } catch {
       toast.error('미리보기에 실패했습니다.');
     } finally {
@@ -116,12 +120,12 @@ function ClientAttachments({ clientId }: { clientId: number }) {
     }
   };
 
-  const handleDownload = async (id: number, name: string) => {
+  const handleDownload = async (id: number, name: string, mimeType: string) => {
     setBusyId(id);
     try {
       const row = await getPdfMutation.mutateAsync({ id });
       if (!row) { toast.error('파일을 찾을 수 없습니다.'); return; }
-      const blob = new Blob([Uint8Array.from(atob(row.data), (c) => c.charCodeAt(0))], { type: 'application/pdf' });
+      const blob = new Blob([Uint8Array.from(atob(row.data), (c) => c.charCodeAt(0))], { type: mimeType });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -165,49 +169,61 @@ function ClientAttachments({ clientId }: { clientId: number }) {
           disabled={uploading}
         >
           {uploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
-          제안서 업로드
+          파일 업로드
         </Button>
         <input
           ref={fileInputRef}
           type="file"
-          accept="application/pdf"
+          accept="application/pdf,image/*"
           className="hidden"
           onChange={(e) => handleFiles(e.target.files)}
         />
       </div>
+      <p className="text-[11px] text-muted-foreground/60 -mt-1.5 mb-3">PDF 또는 이미지(현금영수증 캡처 등) · 최대 10MB</p>
 
-      {files.length === 0 ? (
+      {isLoadingFiles ? (
+        <div className="flex items-center justify-center py-6">
+          <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+        </div>
+      ) : files.length === 0 ? (
         <p className="text-xs text-muted-foreground/50 italic">첨부된 파일이 없습니다.</p>
       ) : (
         <div className="space-y-1.5">
-          {files.map((file) => (
-            <div key={file.id} className="flex items-center gap-2 px-3 py-2 bg-muted/20 border border-border rounded-lg">
-              <FileText className="w-3.5 h-3.5 text-red-500 flex-shrink-0" />
-              <span className="text-sm text-foreground truncate flex-1">{file.name}</span>
-              <span className="text-[10px] text-muted-foreground flex-shrink-0">{formatBytes(file.fileSize)}</span>
-              <button
-                onClick={() => handlePreview(file.id, file.name)}
-                disabled={busyId === file.id}
-                className="text-muted-foreground hover:text-foreground flex-shrink-0"
-              >
-                {busyId === file.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Eye className="w-3.5 h-3.5" />}
-              </button>
-              <button
-                onClick={() => handleDownload(file.id, file.name)}
-                disabled={busyId === file.id}
-                className="text-muted-foreground hover:text-foreground flex-shrink-0"
-              >
-                <Download className="w-3.5 h-3.5" />
-              </button>
-              <button
-                onClick={() => handleDelete(file.id, file.name)}
-                disabled={busyId === file.id}
-                className="text-muted-foreground hover:text-destructive flex-shrink-0"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          ))}
+          {files.map((file) => {
+            const isImage = file.mimeType?.startsWith('image/');
+            return (
+              <div key={file.id} className="flex items-center gap-2 px-3 py-2 bg-muted/20 border border-border rounded-lg">
+                {isImage ? (
+                  <ImageIcon className="w-3.5 h-3.5 text-sky-500 flex-shrink-0" />
+                ) : (
+                  <FileText className="w-3.5 h-3.5 text-red-500 flex-shrink-0" />
+                )}
+                <span className="text-sm text-foreground truncate flex-1">{file.name}</span>
+                <span className="text-[10px] text-muted-foreground flex-shrink-0">{formatBytes(file.fileSize)}</span>
+                <button
+                  onClick={() => handlePreview(file.id, file.name, file.mimeType || 'application/pdf')}
+                  disabled={busyId === file.id}
+                  className="text-muted-foreground hover:text-foreground flex-shrink-0"
+                >
+                  {busyId === file.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Eye className="w-3.5 h-3.5" />}
+                </button>
+                <button
+                  onClick={() => handleDownload(file.id, file.name, file.mimeType || 'application/pdf')}
+                  disabled={busyId === file.id}
+                  className="text-muted-foreground hover:text-foreground flex-shrink-0"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  onClick={() => handleDelete(file.id, file.name)}
+                  disabled={busyId === file.id}
+                  className="text-muted-foreground hover:text-destructive flex-shrink-0"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            );
+          })}
         </div>
       )}
 
@@ -217,7 +233,13 @@ function ClientAttachments({ clientId }: { clientId: number }) {
             <p className="text-sm font-medium text-foreground truncate flex-1">{previewName}</p>
           </div>
           {previewBlobUrl && (
-            <iframe src={previewBlobUrl} className="flex-1 w-full border-0" title={previewName} />
+            previewMimeType.startsWith('image/') ? (
+              <div className="flex-1 w-full overflow-auto flex items-center justify-center bg-muted/20">
+                <img src={previewBlobUrl} alt={previewName} className="max-w-full max-h-full object-contain" />
+              </div>
+            ) : (
+              <iframe src={previewBlobUrl} className="flex-1 w-full border-0" title={previewName} />
+            )
           )}
         </DialogContent>
       </Dialog>
@@ -230,12 +252,12 @@ export default function ClientDetail({ id }: { id: string }) {
   const clientId = parseInt(id);
 
   const { data: client, refetch: refetchClient } = trpc.clients.get.useQuery({ id: clientId });
-  const { data: consultations = [], refetch } = trpc.consultations.list.useQuery({ clientId });
-  const { data: matchedEstimates = [] } = trpc.clients.getMatchedEstimates.useQuery(
+  const { data: consultations = [], refetch, isLoading: isLoadingConsultations } = trpc.consultations.list.useQuery({ clientId });
+  const { data: matchedEstimates = [], isLoading: isLoadingMatchedEstimates } = trpc.clients.getMatchedEstimates.useQuery(
     { clientName: client?.name ?? '' },
     { enabled: !!client?.name }
   );
-  const { data: matchedProposals = [] } = trpc.clients.getMatchedProposals.useQuery(
+  const { data: matchedProposals = [], isLoading: isLoadingMatchedProposals } = trpc.clients.getMatchedProposals.useQuery(
     { clientName: client?.name ?? '' },
     { enabled: !!client?.name }
   );
@@ -681,7 +703,7 @@ export default function ClientDetail({ id }: { id: string }) {
               </div>
               <div>
                 <label className="text-xs text-muted-foreground mb-1 block">연락처</label>
-                <Input value={infoForm.contactPhone} onChange={e => setInfoForm(f => ({ ...f, contactPhone: e.target.value }))} className="text-sm" placeholder="010-0000-0000" />
+                <Input value={infoForm.contactPhone} onChange={e => setInfoForm(f => ({ ...f, contactPhone: formatPhone(e.target.value) }))} className="text-sm" placeholder="010-0000-0000" />
               </div>
               <div>
                 <label className="text-xs text-muted-foreground mb-1 block">계약일</label>
@@ -814,7 +836,11 @@ export default function ClientDetail({ id }: { id: string }) {
       </div>
 
       {/* 제안서 연결 */}
-      {matchedProposals.length > 0 && (
+      {isLoadingMatchedProposals ? (
+        <div className="bg-card border border-border rounded-xl p-5 flex items-center justify-center py-8">
+          <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+        </div>
+      ) : matchedProposals.length > 0 && (
         <div className="bg-card border border-border rounded-xl p-5">
           <h2 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
             <FileText className="w-4 h-4 text-muted-foreground" />
@@ -949,7 +975,11 @@ export default function ClientDetail({ id }: { id: string }) {
       <ClientAttachments clientId={clientId} />
 
       {/* 계약서 연동 */}
-      {matchedEstimates.length > 0 && (
+      {isLoadingMatchedEstimates ? (
+        <div className="bg-card border border-border rounded-xl p-5 flex items-center justify-center py-8">
+          <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+        </div>
+      ) : matchedEstimates.length > 0 && (
         <div className="bg-card border border-border rounded-xl p-5">
           <h2 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
             <LinkIcon className="w-4 h-4 text-muted-foreground" />
@@ -1350,7 +1380,11 @@ export default function ClientDetail({ id }: { id: string }) {
         )}
 
         {/* 이력 목록 */}
-        {consultations.length === 0 ? (
+        {isLoadingConsultations ? (
+          <div className="flex items-center justify-center py-10">
+            <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+          </div>
+        ) : consultations.length === 0 ? (
           <div className="text-center py-10">
             <MessageSquare className="w-8 h-8 text-muted-foreground mx-auto mb-2 opacity-40" />
             <p className="text-sm text-muted-foreground">아직 상담 이력이 없습니다.</p>

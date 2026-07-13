@@ -3,7 +3,7 @@ import { useLocation } from 'wouter';
 import { trpc } from '@/lib/trpc';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Building2, Edit, Trash2, Plus, Save, X, Loader2, CalendarDays, Search, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Building2, Edit, Trash2, Plus, Save, X, Loader2, CalendarDays, Search, ChevronLeft, ChevronRight, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar } from '@/components/ui/calendar';
@@ -118,6 +118,7 @@ export default function Clients() {
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
   const [workflowFilter, setWorkflowFilter] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [nameSort, setNameSort] = useState<'asc' | 'desc' | null>(null);
 
   const ONE_MONTH_MS = 30 * 24 * 60 * 60 * 1000;
 
@@ -137,9 +138,20 @@ export default function Clients() {
     return matchStatus && matchWorkflow;
   });
 
-  const totalPages = Math.max(1, Math.ceil(displayedClients.length / PAGE_SIZE));
+  const sortedClients = nameSort
+    ? [...displayedClients].sort((a, b) =>
+        nameSort === 'asc' ? a.name.localeCompare(b.name, 'ko') : b.name.localeCompare(a.name, 'ko')
+      )
+    : displayedClients;
+
+  const totalPages = Math.max(1, Math.ceil(sortedClients.length / PAGE_SIZE));
   const safePage = Math.min(currentPage, totalPages);
-  const pagedClients = displayedClients.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+  const pagedClients = sortedClients.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+
+  const handleToggleNameSort = () => {
+    setNameSort((prev) => (prev === null ? 'asc' : prev === 'asc' ? 'desc' : null));
+    setCurrentPage(1);
+  };
 
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -461,7 +473,21 @@ export default function Clients() {
             <thead>
               <tr className="bg-muted/50 border-b border-border">
                 <th className="text-left text-xs font-semibold text-muted-foreground px-3 py-2.5">No.</th>
-                <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-2.5">고객사명</th>
+                <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-2.5">
+                  <button
+                    onClick={handleToggleNameSort}
+                    className="flex items-center gap-1 hover:text-foreground transition-colors"
+                  >
+                    고객사명
+                    {nameSort === 'asc' ? (
+                      <ArrowUp className="w-3 h-3" />
+                    ) : nameSort === 'desc' ? (
+                      <ArrowDown className="w-3 h-3" />
+                    ) : (
+                      <ArrowUpDown className="w-3 h-3 opacity-50" />
+                    )}
+                  </button>
+                </th>
                 <th className="text-left text-xs font-semibold text-muted-foreground px-3 py-2.5">담당자</th>
                 <th className="text-left text-xs font-semibold text-muted-foreground px-3 py-2.5">연락처</th>
                 <th className="text-left text-xs font-semibold text-muted-foreground px-3 py-2.5">상태</th>
