@@ -683,6 +683,38 @@ export const appRouter = router({
         return db.deletePdfFile(input.id, ctx.user.id);
       }),
   }),
+
+  todos: router({
+    list: protectedProcedure.query(async ({ ctx }) => {
+      return db.listTodos(ctx.user.id);
+    }),
+    create: protectedProcedure
+      .input(z.object({
+        content: z.string().min(1),
+        priority: z.enum(["low", "medium", "high"]).default("medium"),
+        clientId: z.number().nullable().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        return db.createTodo(ctx.user.id, input.content, input.priority, input.clientId ?? null);
+      }),
+    update: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        content: z.string().optional(),
+        priority: z.enum(["low", "medium", "high"]).optional(),
+        clientId: z.number().nullable().optional(),
+        completed: z.boolean().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const { id, ...data } = input;
+        return db.updateTodo(id, ctx.user.id, data);
+      }),
+    delete: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        return db.deleteTodo(input.id, ctx.user.id);
+      }),
+  }),
 });
 
 export type AppRouter = typeof appRouter;

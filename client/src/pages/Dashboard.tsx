@@ -3,6 +3,7 @@ import { useLocation } from 'wouter';
 import { trpc } from '@/lib/trpc';
 import { FileText, FileCheck, Building2, TrendingUp, AlertCircle, Loader2, Edit } from 'lucide-react';
 import KanbanBoard from '@/components/KanbanBoard';
+import TodoList from '@/components/TodoList';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend,
@@ -198,6 +199,9 @@ export default function Dashboard() {
           )}
         </div>
       )}
+
+      {/* 할 일 */}
+      <TodoList />
 
       {/* 중간: 최근 활동 + 도넛 차트 */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

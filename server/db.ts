@@ -1,8 +1,8 @@
 import { eq, and, or, ne, desc, asc, gte, lte, isNull, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
-import { InsertUser, users, documents, InsertDocument, noteTemplates, InsertNoteTemplate, payments, serviceItems, clients, consultations, hktbInvoices, pdfFiles } from "../drizzle/schema";
-import type { InsertPayment, InsertServiceItem, InsertClient, InsertConsultation, InsertHktbInvoice, InsertPdfFile } from "../drizzle/schema";
+import { InsertUser, users, documents, InsertDocument, noteTemplates, InsertNoteTemplate, payments, serviceItems, clients, consultations, hktbInvoices, pdfFiles, todos } from "../drizzle/schema";
+import type { InsertPayment, InsertServiceItem, InsertClient, InsertConsultation, InsertHktbInvoice, InsertPdfFile, InsertTodo } from "../drizzle/schema";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
@@ -897,5 +897,46 @@ export async function deletePdfFile(id: number, userId: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   await db.delete(pdfFiles).where(and(eq(pdfFiles.id, id), eq(pdfFiles.userId, userId)));
+  return { success: true };
+}
+
+// ─── Todos ─────────────────────────────────────────────────────
+
+export async function listTodos(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select({
+    id: todos.id,
+    content: todos.content,
+    priority: todos.priority,
+    completed: todos.completed,
+    clientId: todos.clientId,
+    clientName: clients.name,
+    createdAt: todos.createdAt,
+  })
+    .from(todos)
+    .leftJoin(clients, eq(todos.clientId, clients.id))
+    .where(eq(todos.userId, userId))
+    .orderBy(asc(todos.completed), desc(todos.createdAt));
+}
+
+export async function createTodo(userId: number, content: string, priority: "low" | "medium" | "high", clientId: number | null) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const [inserted] = await db.insert(todos).values({ userId, content, priority, clientId }).returning({ id: todos.id });
+  return inserted;
+}
+
+export async function updateTodo(id: number, userId: number, data: Partial<Pick<InsertTodo, "content" | "priority" | "clientId" | "completed">>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(todos).set(data).where(and(eq(todos.id, id), eq(todos.userId, userId)));
+  return { success: true };
+}
+
+export async function deleteTodo(id: number, userId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(todos).where(and(eq(todos.id, id), eq(todos.userId, userId)));
   return { success: true };
 }

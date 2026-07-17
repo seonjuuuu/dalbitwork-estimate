@@ -265,3 +265,22 @@ export const pdfFiles = pgTable("pdf_files", {
 
 export type PdfFile = typeof pdfFiles.$inferSelect;
 export type InsertPdfFile = typeof pdfFiles.$inferInsert;
+
+export const todoPriorityEnum = pgEnum("todo_priority", ["low", "medium", "high"]);
+
+export const todos = pgTable("todos", {
+  id: serial("id").primaryKey(),
+  userId: integer("userId").notNull(),
+  content: text("content").notNull(),
+  priority: todoPriorityEnum("priority").default("medium").notNull(),
+  clientId: integer("clientId"),
+  completed: boolean("completed").default(false).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt")
+    .defaultNow()
+    .notNull()
+    .$onUpdateFn(() => new Date()),
+});
+
+export type Todo = typeof todos.$inferSelect;
+export type InsertTodo = typeof todos.$inferInsert;
