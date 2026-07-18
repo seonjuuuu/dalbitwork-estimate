@@ -79,7 +79,14 @@ export async function updateDocument(id: number, userId: number, data: Partial<O
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   await db.update(documents).set(data).where(and(eq(documents.id, id), eq(documents.userId, userId)));
-  return getDocument(id, userId);
+  const doc = await getDocument(id, userId);
+  // 견적서 금액/일자가 바뀌면, 이 견적서에 연동된 고객사의 계약금액/계약일도 함께 갱신
+  if (doc && doc.type === "estimate" && (data.totalMin !== undefined || data.totalMax !== undefined || data.date !== undefined)) {
+    await db.update(clients)
+      .set({ contractAmount: doc.totalMax, contractDate: doc.date.replace(/\./g, "-") })
+      .where(and(eq(clients.linkedEstimateId, id), eq(clients.userId, userId)));
+  }
+  return doc;
 }
 
 export async function deleteDocument(id: number, userId: number) {
@@ -625,6 +632,7 @@ export async function confirmDepositForClient(documentId: number, userId: number
       workflowStatus: '진행대기',
       contractDate: doc[0].date.replace(/\./g, '-'),
       contractAmount: doc[0].totalMax,
+      linkedEstimateId: documentId,
     })
     .where(and(
       eq(clients.userId, userId),
@@ -734,7 +742,18 @@ export async function updateClient(id: number, userId: number, data: Partial<Omi
       .where(and(eq(clients.id, id), eq(clients.userId, userId), eq(clients.workflowStatus, '상담')));
   }
   const result = await db.select().from(clients).where(eq(clients.id, id)).limit(1);
-  return result[0];
+  const client = result[0];
+  // 계약금액/계약일을 직접 수정하면, 연동된 견적서 금액/일자도 함께 갱신
+  if (client?.linkedEstimateId && (data.contractAmount !== undefined || data.contractDate !== undefined)) {
+    await db.update(documents)
+      .set({
+        totalMin: client.contractAmount,
+        totalMax: client.contractAmount,
+        date: client.contractDate.replace(/\./g, "-"),
+      })
+      .where(and(eq(documents.id, client.linkedEstimateId), eq(documents.userId, userId)));
+  }
+  return client;
 }
 
 export async function deleteClient(id: number, userId: number) {

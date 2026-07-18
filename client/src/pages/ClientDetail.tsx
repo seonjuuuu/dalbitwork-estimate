@@ -399,6 +399,7 @@ export default function ClientDetail({ id }: { id: string }) {
         id: clientId,
         contractDate: est.date || '',
         contractAmount: est.totalMin || 0,
+        linkedEstimateId: est.id,
       });
       await refetchClient();
       setSyncedEstimateId(est.id);
