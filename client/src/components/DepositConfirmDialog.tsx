@@ -81,7 +81,7 @@ export default function DepositConfirmDialog({
 
   const handleConfirm = async () => {
     const amount = Math.round(Number(depositAmount));
-    if (!amount || amount <= 0) {
+    if (depositAmount === '' || isNaN(amount)) {
       toast.error('유효한 금액을 입력해주세요.');
       return;
     }
@@ -168,6 +168,7 @@ export default function DepositConfirmDialog({
                     mode="single"
                     locale={ko}
                     selected={dotStrToDate(paymentDate)}
+                    defaultMonth={dotStrToDate(paymentDate) ?? new Date()}
                     onSelect={date => {
                       if (!date) return;
                       const y = date.getFullYear();
@@ -208,6 +209,7 @@ export default function DepositConfirmDialog({
                       mode="single"
                       locale={ko}
                       selected={dotStrToDate(cashReceiptDate)}
+                      defaultMonth={dotStrToDate(cashReceiptDate) ?? new Date()}
                       onSelect={date => {
                         if (!date) return;
                         const y = date.getFullYear();

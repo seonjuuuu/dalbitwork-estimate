@@ -291,6 +291,52 @@ export async function updatePaymentCashReceipt(id: number, userId: number, issue
   await db.update(payments).set({ cashReceiptIssued: issued, cashReceiptDate: date }).where(and(eq(payments.id, id), eq(payments.userId, userId)));
 }
 
+// 잔금 결제(type: 'final')의 clients.finalPaymentDate/Amount 미러를 해당 문서에 남은 잔금 기록으로 재동기화.
+// 잔금 기록이 여러 건이면(중복 확정 등) 가장 최근 입금건을 기준으로 삼고, 하나도 없으면 미러를 비운다.
+async function resyncFinalPaymentMirror(documentId: number, userId: number) {
+  const db = await getDb();
+  if (!db) return;
+  const doc = await db.select({ clientName: documents.clientName }).from(documents)
+    .where(and(eq(documents.id, documentId), eq(documents.userId, userId))).limit(1);
+  const clientName = doc[0]?.clientName;
+  if (!clientName) return;
+  const remaining = await db.select().from(payments)
+    .where(and(eq(payments.documentId, documentId), eq(payments.userId, userId), eq(payments.type, 'final')))
+    .orderBy(desc(payments.paymentDate), desc(payments.id));
+  const latest = remaining[0];
+  await db.update(clients)
+    .set({
+      finalPaymentDate: latest ? latest.paymentDate.replace(/-/g, '.') : null,
+      finalPaymentAmount: latest ? latest.amount : null,
+    })
+    .where(and(eq(clients.userId, userId), eq(clients.name, clientName)));
+}
+
+export async function updatePayment(id: number, userId: number, data: { amount: number; paymentDate: string }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const [existing] = await db.select().from(payments).where(and(eq(payments.id, id), eq(payments.userId, userId))).limit(1);
+  if (!existing) throw new Error("Payment not found");
+  await db.update(payments)
+    .set({ amount: data.amount, paymentDate: data.paymentDate })
+    .where(and(eq(payments.id, id), eq(payments.userId, userId)));
+  if (existing.type === 'final') {
+    await resyncFinalPaymentMirror(existing.documentId, userId);
+  }
+  return getPaymentById(id);
+}
+
+export async function deletePayment(id: number, userId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const [existing] = await db.select().from(payments).where(and(eq(payments.id, id), eq(payments.userId, userId))).limit(1);
+  if (!existing) throw new Error("Payment not found");
+  await db.delete(payments).where(and(eq(payments.id, id), eq(payments.userId, userId)));
+  if (existing.type === 'final') {
+    await resyncFinalPaymentMirror(existing.documentId, userId);
+  }
+}
+
 export async function updateHktbCashReceipt(id: number, userId: number, issued: boolean, date: string | null) {
   const db = await getDb();
   if (!db) return;

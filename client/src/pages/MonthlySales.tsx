@@ -1,14 +1,15 @@
-import { useState, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import { useLocation } from 'wouter';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
-import { ChevronLeft, ChevronRight, CalendarDays, Pencil, Loader2, Save } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CalendarDays, Pencil, Loader2, Save, Trash2, X } from 'lucide-react';
 import { trpc } from '@/lib/trpc';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { ko } from 'date-fns/locale';
+import { toast } from 'sonner';
 import Linkify from '@/components/Linkify';
 
 function fmt(n: number) {
@@ -55,27 +56,24 @@ function CashReceiptToggle({
   onDateChange: (date: string) => void;
 }) {
   const [calendarOpen, setCalendarOpen] = useState(false);
-  const [inputVal, setInputVal] = useState(date ?? todayStr());
-  // 날짜가 이미 저장된 경우 뷰 모드, 아니면 편집 모드
-  const [isEditing, setIsEditing] = useState(!issued || !date);
+  const [isEditing, setIsEditing] = useState(false);
+  const [inputVal, setInputVal] = useState('');
+  const editGroupRef = useRef<HTMLDivElement>(null);
 
-  // 서버에서 date가 바뀌면 동기화
-  useEffect(() => {
-    if (date) {
-      setInputVal(date);
-      setIsEditing(false);
-    }
-  }, [date]);
+  const startEdit = () => {
+    setInputVal(date ?? todayStr());
+    setIsEditing(true);
+  };
 
   const handleToggle = (checked: boolean) => {
     if (checked) {
-      const d = inputVal || todayStr();
-      onToggle(true, d);
-      setIsEditing(true);
+      // 기존에 저장된 날짜가 있으면 그대로 유지하고, 없을 때만 오늘 날짜를 기본값으로 사용
+      onToggle(true, date ?? todayStr());
     } else {
-      onToggle(false, null);
-      setIsEditing(false);
+      // 발급 여부만 끄고 날짜는 서버에 보존 → 다시 켰을 때 원래 날짜로 복원됨
+      onToggle(false, date ?? null);
     }
+    setIsEditing(false);
   };
 
   const saveDate = (val: string) => {
@@ -102,7 +100,9 @@ function CashReceiptToggle({
     if (e.key === 'Enter') saveDate(inputVal);
   };
 
-  const handleBlur = () => {
+  const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+    // 달력 버튼 등 같은 편집 그룹 안으로 포커스가 이동한 경우엔 닫지 않음 (그래야 달력 아이콘 클릭이 먹힘)
+    if (e.relatedTarget && editGroupRef.current?.contains(e.relatedTarget as Node)) return;
     saveDate(inputVal);
   };
 
@@ -127,7 +127,7 @@ function CashReceiptToggle({
         {issued ? (
           isEditing ? (
             /* 편집 모드: 입력 + 달력 */
-            <div className="flex items-center gap-1">
+            <div ref={editGroupRef} className="flex items-center gap-1">
               <Input
                 type="text"
                 value={inputVal}
@@ -142,7 +142,6 @@ function CashReceiptToggle({
                 <PopoverTrigger asChild>
                   <button
                     type="button"
-                    onMouseDown={(e) => e.preventDefault()}
                     className="text-muted-foreground hover:text-foreground p-0.5"
                   >
                     <CalendarDays className="w-3.5 h-3.5" />
@@ -152,6 +151,7 @@ function CashReceiptToggle({
                   <Calendar
                     mode="single"
                     selected={parseDateStr(inputVal)}
+                    defaultMonth={parseDateStr(inputVal) ?? new Date()}
                     onSelect={handleCalendarSelect}
                     locale={ko}
                     initialFocus
@@ -164,12 +164,12 @@ function CashReceiptToggle({
             <div className="flex items-center gap-1.5">
               <button
                 type="button"
-                onClick={() => setIsEditing(true)}
+                onClick={startEdit}
                 className="text-muted-foreground hover:text-foreground transition-colors"
               >
                 <Pencil className="w-3 h-3" />
               </button>
-              <span className="text-xs text-foreground font-medium tabular-nums">{formatDateForDisplay(inputVal)}</span>
+              <span className="text-xs text-foreground font-medium tabular-nums">{date ? formatDateForDisplay(date) : '-'}</span>
             </div>
           )
         ) : (
@@ -305,6 +305,36 @@ export default function MonthlySales() {
     else if (kind === 'hktb') await updateHktbMemo.mutateAsync({ id, memo: memoDraft });
     else await updateFinalMemo.mutateAsync({ id, memo: memoDraft });
     setEditingMemo(null);
+  };
+
+  // 계약금/잔금 입금 기록 금액·날짜 정정 (중복 확정 등 실수 수정용)
+  const [editingPayment, setEditingPayment] = useState<{ id: number; amount: string; paymentDate: string } | null>(null);
+  const updatePayment = trpc.sales.updatePayment.useMutation({
+    onSuccess: () => { utils.sales.getMonthly.invalidate(); setEditingPayment(null); },
+    onError: () => toast.error('입금 기록 수정에 실패했습니다.'),
+  });
+  const deletePayment = trpc.sales.deletePayment.useMutation({
+    onSuccess: () => { utils.sales.getMonthly.invalidate(); toast.success('입금 기록이 삭제되었습니다.'); },
+    onError: () => toast.error('입금 기록 삭제에 실패했습니다.'),
+  });
+
+  const handleSavePaymentEdit = () => {
+    if (!editingPayment) return;
+    const amount = Number(editingPayment.amount);
+    if (editingPayment.amount === '' || isNaN(amount)) {
+      toast.error('유효한 금액을 입력해주세요.');
+      return;
+    }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(editingPayment.paymentDate)) {
+      toast.error('유효한 날짜를 입력해주세요 (YYYY-MM-DD).');
+      return;
+    }
+    updatePayment.mutate({ id: editingPayment.id, amount, paymentDate: editingPayment.paymentDate });
+  };
+
+  const handleDeletePayment = (id: number) => {
+    if (!window.confirm('이 입금 기록을 삭제하시겠습니까? 계약금/잔금 확정 상태에 영향을 줄 수 있습니다.')) return;
+    deletePayment.mutate({ id });
   };
 
   return (
@@ -489,12 +519,24 @@ export default function MonthlySales() {
               <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground">금액</th>
               <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground">현금영수증</th>
               <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground">메모</th>
+              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground">관리</th>
             </tr>
           </thead>
           <tbody>
-            {payments.length > 0 ? payments.map((p) => (
+            {payments.length > 0 ? payments.map((p) => {
+              const isEditingPayment = editingPayment?.id === p.id;
+              return (
               <tr key={p.id} className="border-b border-border/50 hover:bg-muted/30 transition-colors">
-                <td className="py-2.5 px-3 text-xs text-muted-foreground">{p.paymentDate}</td>
+                <td className="py-2.5 px-3 text-xs text-muted-foreground">
+                  {isEditingPayment ? (
+                    <Input
+                      value={editingPayment.paymentDate}
+                      onChange={e => setEditingPayment({ ...editingPayment, paymentDate: e.target.value.replace(/[^0-9-]/g, '') })}
+                      placeholder="YYYY-MM-DD"
+                      className="h-6 text-xs w-24 py-0 px-1.5"
+                    />
+                  ) : p.paymentDate}
+                </td>
                 <td className="py-2.5 px-3 text-xs">
                   {p.clientName && clientIdByName.has(p.clientName) ? (
                     <button onClick={() => navigate(`/clients/${clientIdByName.get(p.clientName)}`)} className="hover:text-primary hover:underline transition-colors">
@@ -510,7 +552,15 @@ export default function MonthlySales() {
                     {p.type === 'deposit' ? '계약금' : '잔금'}
                   </span>
                 </td>
-                <td className="py-2.5 px-3 text-right font-semibold">{fmt(p.amount)}</td>
+                <td className="py-2.5 px-3 text-right font-semibold">
+                  {isEditingPayment ? (
+                    <Input
+                      value={editingPayment.amount ? Number(editingPayment.amount).toLocaleString('ko-KR') : ''}
+                      onChange={e => setEditingPayment({ ...editingPayment, amount: e.target.value.replace(/[^0-9]/g, '') })}
+                      className="h-6 text-xs w-28 text-right py-0 px-1.5 ml-auto"
+                    />
+                  ) : fmt(p.amount)}
+                </td>
                 <td className="py-2.5 px-3">
                   <div className="flex justify-end">
                     <CashReceiptToggle
@@ -533,10 +583,34 @@ export default function MonthlySales() {
                     onCancel={() => setEditingMemo(null)}
                   />
                 </td>
+                <td className="py-2.5 px-3">
+                  <div className="flex items-center justify-end gap-1">
+                    {isEditingPayment ? (
+                      <>
+                        <button type="button" onClick={() => setEditingPayment(null)} disabled={updatePayment.isPending} className="text-muted-foreground hover:text-foreground p-1">
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                        <button type="button" onClick={handleSavePaymentEdit} disabled={updatePayment.isPending} className="text-muted-foreground hover:text-foreground p-1">
+                          {updatePayment.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button type="button" onClick={() => setEditingPayment({ id: p.id, amount: String(p.amount), paymentDate: p.paymentDate })} className="text-muted-foreground hover:text-foreground p-1">
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
+                        <button type="button" onClick={() => handleDeletePayment(p.id)} disabled={deletePayment.isPending} className="text-muted-foreground hover:text-red-600 p-1">
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </td>
               </tr>
-            )) : (
+              );
+            }) : (
               <tr>
-                <td colSpan={7} className="py-8 px-3 text-center text-xs text-muted-foreground">
+                <td colSpan={8} className="py-8 px-3 text-center text-xs text-muted-foreground">
                   {monthString}의 일반 매출 내역이 없습니다.
                 </td>
               </tr>

@@ -80,7 +80,7 @@ export default function FinalPaymentConfirmDialog({
 
   const handleConfirm = async () => {
     const amount = Number(finalAmount.replace(/,/g, ''));
-    if (!amount || amount <= 0) {
+    if (finalAmount === '' || isNaN(amount)) {
       toast.error('유효한 금액을 입력해주세요.');
       return;
     }
@@ -173,6 +173,7 @@ export default function FinalPaymentConfirmDialog({
                     mode="single"
                     locale={ko}
                     selected={dotStrToDate(paymentDate)}
+                    defaultMonth={dotStrToDate(paymentDate) ?? new Date()}
                     onSelect={date => {
                       if (!date) return;
                       const y = date.getFullYear();
@@ -213,6 +214,7 @@ export default function FinalPaymentConfirmDialog({
                       mode="single"
                       locale={ko}
                       selected={dotStrToDate(cashReceiptDate)}
+                      defaultMonth={dotStrToDate(cashReceiptDate) ?? new Date()}
                       onSelect={date => {
                         if (!date) return;
                         const y = date.getFullYear();

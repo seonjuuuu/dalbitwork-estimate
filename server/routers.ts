@@ -628,6 +628,21 @@ export const appRouter = router({
         await db.updatePaymentMemo(input.id, ctx.user.id, input.memo);
       }),
 
+    /** 계약금/잔금 입금 기록 수정 (금액·날짜 정정용) */
+    updatePayment: protectedProcedure
+      .input(z.object({ id: z.number(), amount: z.number(), paymentDate: z.string() }))
+      .mutation(async ({ ctx, input }) => {
+        return db.updatePayment(input.id, ctx.user.id, { amount: input.amount, paymentDate: input.paymentDate });
+      }),
+
+    /** 계약금/잔금 입금 기록 삭제 (중복 확정 등 정정용) */
+    deletePayment: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        await db.deletePayment(input.id, ctx.user.id);
+        return { success: true };
+      }),
+
     /** HKTB 인보이스 메모 */
     updateHktbMemo: protectedProcedure
       .input(z.object({ id: z.number(), memo: z.string() }))
