@@ -464,6 +464,30 @@ export async function getDashboardData(userId: number) {
   }
 
   const contractedClients = allClients.filter(c => c.status === '계약' || c.status === '완료');
+
+  // 이번 달 실적: contractDate가 이번 달인 신규 계약 건수/금액
+  const monthlyNewContracts = contractedClients.filter(
+    c => normDate(c.contractDate) >= monthStart && normDate(c.contractDate) <= monthEnd
+  );
+  const monthlyNewContractCount = monthlyNewContracts.length;
+  const monthlyNewContractAmount = monthlyNewContracts.reduce((s, c) => s + (c.contractAmount || 0), 0);
+
+  // 이번 달 상담 건수: consultations.date 기준
+  const monthlyConsultationRows = await db
+    .select({ date: consultations.date })
+    .from(consultations)
+    .where(eq(consultations.userId, userId));
+  const monthlyConsultationCount = monthlyConsultationRows.filter(
+    c => normDate(c.date) >= monthStart && normDate(c.date) <= monthEnd
+  ).length;
+
+  // 이번 달 입금액: payments.paymentDate 기준 (계약금+잔금 합계)
+  const monthlyPaymentRows = await db
+    .select({ amount: payments.amount })
+    .from(payments)
+    .where(and(eq(payments.userId, userId), gte(payments.paymentDate, monthStart), lte(payments.paymentDate, monthEnd)));
+  const monthlyPaymentAmount = monthlyPaymentRows.reduce((s, p) => s + p.amount, 0);
+
   const monthlySummary = months.map(({ year: y, month: m }) => {
     const start = `${y}-${String(m).padStart(2, '0')}-01`;
     const end = `${y}-${String(m).padStart(2, '0')}-${String(new Date(y, m, 0).getDate()).padStart(2, '0')}`;
@@ -482,6 +506,10 @@ export async function getDashboardData(userId: number) {
     thisMonthContractAmount,
     unpaidAmount,
     consultingCount,
+    monthlyNewContractCount,
+    monthlyNewContractAmount,
+    monthlyConsultationCount,
+    monthlyPaymentAmount,
     recentDocs,
     monthlySummary,
     clientStatus: [

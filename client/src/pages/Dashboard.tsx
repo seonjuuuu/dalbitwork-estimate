@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useLocation } from 'wouter';
 import { trpc } from '@/lib/trpc';
-import { FileText, FileCheck, Building2, TrendingUp, AlertCircle, Loader2, Edit } from 'lucide-react';
+import { FileText, FileCheck, Building2, TrendingUp, AlertCircle, Loader2, Edit, MessageSquare, Wallet } from 'lucide-react';
 import KanbanBoard from '@/components/KanbanBoard';
 import TodoList from '@/components/TodoList';
 import {
@@ -54,12 +54,77 @@ function SummaryCard({
   );
 }
 
+function MonthlyPerformanceBanner({
+  contractCount,
+  contractAmount,
+  consultationCount,
+  paymentAmount,
+}: {
+  contractCount: number;
+  contractAmount: number;
+  consultationCount: number;
+  paymentAmount: number;
+}) {
+  const stats = [
+    {
+      icon: TrendingUp,
+      label: '이번 달 실적',
+      value: `${formatAmount(contractAmount)}원`,
+      sub: `${contractCount}건`,
+    },
+    {
+      icon: MessageSquare,
+      label: '상담 건수',
+      value: `${consultationCount}건`,
+    },
+    {
+      icon: Wallet,
+      label: '입금액',
+      value: `${formatAmount(paymentAmount)}원`,
+    },
+  ];
+
+  return (
+    <div className="bg-primary/5 border border-primary/20 rounded-xl px-5 py-4 flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-8">
+      {stats.map((s) => (
+        <div key={s.label} className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 bg-primary/10 text-primary">
+            <s.icon className="w-4 h-4" />
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">{s.label}</p>
+            <p className="text-base font-bold text-foreground">
+              {s.value}
+              {s.sub && <span className="text-xs font-normal text-muted-foreground ml-1">{s.sub}</span>}
+            </p>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function Dashboard() {
   const [, navigate] = useLocation();
-  const { data, isLoading } = trpc.dashboard.getData.useQuery();
+  const { data, isLoading, refetch } = trpc.dashboard.getData.useQuery();
   const [expandedStatus, setExpandedStatus] = useState<string | null>('계약');
   const { data: allClients = [] } = trpc.clients.list.useQuery(undefined, { enabled: !!expandedStatus });
   const [expandedCard, setExpandedCard] = useState<'contract' | 'consulting' | 'unpaid' | null>(null);
+
+  // 자정이 지나면 "이번 달" 데이터를 자동으로 새로고침 (탭을 켜둔 채로 날짜가 바뀌어도 반영)
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout>;
+    const scheduleNextRefetch = () => {
+      const now = new Date();
+      const nextMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 5);
+      timer = setTimeout(() => {
+        refetch();
+        scheduleNextRefetch();
+      }, nextMidnight.getTime() - now.getTime());
+    };
+    scheduleNextRefetch();
+    return () => clearTimeout(timer);
+  }, [refetch]);
 
   if (isLoading) {
     return (
@@ -76,6 +141,10 @@ export default function Dashboard() {
     thisMonthContractAmount,
     unpaidAmount,
     consultingCount,
+    monthlyNewContractCount,
+    monthlyNewContractAmount,
+    monthlyConsultationCount,
+    monthlyPaymentAmount,
     recentDocs,
     monthlySummary,
     clientStatus,
@@ -98,6 +167,14 @@ export default function Dashboard() {
         <h1 className="text-2xl font-bold text-foreground">대시보드</h1>
         <p className="text-sm text-muted-foreground mt-1">{now.getFullYear()}년 {monthLabel} 현황</p>
       </div>
+
+      {/* 이번 달 실적 알림 */}
+      <MonthlyPerformanceBanner
+        contractCount={monthlyNewContractCount}
+        contractAmount={monthlyNewContractAmount}
+        consultationCount={monthlyConsultationCount}
+        paymentAmount={monthlyPaymentAmount}
+      />
 
       {/* 요약 카드 */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
