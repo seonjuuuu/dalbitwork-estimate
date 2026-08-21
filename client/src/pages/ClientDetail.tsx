@@ -12,12 +12,13 @@ import {
   ArrowLeft, Plus, Trash2, Save, X, Loader2,
   Phone, User, CalendarDays, CircleDollarSign,
   MessageSquare, ChevronDown, ChevronUp, Edit, LinkIcon, FileText, ExternalLink, Hash,
-  Upload, Download, Eye, Copy, FileDown, CreditCard, CheckCircle2, Image as ImageIcon,
+  Upload, Download, Eye, Copy, FileDown, CreditCard, CheckCircle2, Image as ImageIcon, Sparkles,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import DepositConfirmDialog from '@/components/DepositConfirmDialog';
 import FinalPaymentConfirmDialog from '@/components/FinalPaymentConfirmDialog';
 import NotesEditPdfDialog from '@/components/NotesEditPdfDialog';
+import AIEstimateDraftDialog from '@/components/AIEstimateDraftDialog';
 import Linkify from '@/components/Linkify';
 import { formatPhone } from '@/lib/utils';
 import type { DocumentData } from '@/lib/types';
@@ -297,6 +298,7 @@ export default function ClientDetail({ id }: { id: string }) {
   const [savingMemoId, setSavingMemoId] = useState<number | null>(null);
   const [finalPaymentDate, setFinalPaymentDate] = useState('');
   const [finalPaymentAmount, setFinalPaymentAmount] = useState('');
+  const [aiDraftDialogOpen, setAiDraftDialogOpen] = useState(false);
   const [isSavingFinal, setIsSavingFinal] = useState(false);
   const [editingFinal, setEditingFinal] = useState(false);
 
@@ -1302,10 +1304,16 @@ export default function ClientDetail({ id }: { id: string }) {
               <span className="text-xs text-muted-foreground font-normal">({consultations.length}건)</span>
             )}
           </h2>
-          <Button size="sm" onClick={handleNew} className="gap-1 h-7 text-xs">
-            <Plus className="w-3.5 h-3.5" />
-            추가
-          </Button>
+          <div className="flex gap-1.5">
+            <Button size="sm" variant="outline" onClick={() => setAiDraftDialogOpen(true)} className="gap-1 h-7 text-xs">
+              <Sparkles className="w-3.5 h-3.5" />
+              AI 초안 생성
+            </Button>
+            <Button size="sm" onClick={handleNew} className="gap-1 h-7 text-xs">
+              <Plus className="w-3.5 h-3.5" />
+              추가
+            </Button>
+          </div>
         </div>
 
         {/* 추가/수정 폼 */}
@@ -1467,6 +1475,14 @@ export default function ClientDetail({ id }: { id: string }) {
           onClose={() => setNotesDialogDoc(null)}
         />
       )}
+      <AIEstimateDraftDialog
+        isOpen={aiDraftDialogOpen}
+        onClose={() => setAiDraftDialogOpen(false)}
+        clientName={client.name}
+        contactName={client.contactName}
+        contactPhone={client.contactPhone}
+        consultations={consultations}
+      />
     </div>
   );
 }

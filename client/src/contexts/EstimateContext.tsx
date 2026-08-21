@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react';
-import { type DocumentData, type DocumentItem, type DocumentType, type NotesMode, defaultProposal, defaultEstimate } from '@/lib/types';
+import { type DocumentData, type DocumentItem, type DocumentType, type NotesMode, type OptionalItem, defaultProposal, defaultEstimate } from '@/lib/types';
 import { nanoid } from 'nanoid';
 import { trpc } from '@/lib/trpc';
 
@@ -9,12 +9,16 @@ interface EstimateContextType {
   proposals: DocumentData[];
   estimates: DocumentData[];
   newDocument: (type: DocumentType) => void;
+  loadDraft: (draft: EstimateDraft) => void;
   saveDocument: () => void;
   loadDocument: (id: string, type: DocumentType) => void;
   deleteDocument: (id: string, type: DocumentType) => void;
   addItem: () => void;
   removeItem: (id: string) => void;
   updateItem: (id: string, field: keyof DocumentItem, value: string) => void;
+  addOptionalItem: () => void;
+  removeOptionalItem: (id: string) => void;
+  updateOptionalItem: (id: string, field: keyof OptionalItem, value: string) => void;
   addNote: () => void;
   removeNote: (index: number) => void;
   updateNote: (index: number, value: string) => void;
@@ -26,6 +30,19 @@ interface EstimateContextType {
 }
 
 const EstimateContext = createContext<EstimateContextType | null>(null);
+
+export interface EstimateDraft {
+  type: DocumentType;
+  clientName?: string;
+  contactName?: string;
+  contactPhone?: string;
+  projectName?: string;
+  platform?: string;
+  businessType?: string;
+  items?: { name: string; quantity: string; unitPrice?: string; originalPrice: string; discountPrice?: string; discountAmount?: string }[];
+  optionalItems?: { name: string; description?: string; quantity?: string; price?: string; payer?: string }[];
+  notes?: string[];
+}
 
 /** Convert a DB document row into the frontend DocumentData shape */
 function dbDocToLocal(doc: {
@@ -154,6 +171,44 @@ export function EstimateProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const loadDraft = useCallback((draft: EstimateDraft) => {
+    const template = draft.type === 'proposal' ? defaultProposal : defaultEstimate;
+    setCurrentDoc({
+      ...template,
+      id: '',
+      title: '',
+      memo: '',
+      clientName: draft.clientName || '',
+      contactName: draft.contactName || '',
+      contactPhone: draft.contactPhone || '',
+      projectName: draft.projectName || '',
+      platform: draft.platform || template.platform,
+      businessType: draft.businessType || '',
+      date: new Date().toISOString().split('T')[0],
+      items: (draft.items && draft.items.length > 0 ? draft.items : template.items).map((item) => ({
+        id: nanoid(),
+        name: item.name,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice || '',
+        originalPrice: item.originalPrice,
+        discountPrice: item.discountPrice || '',
+        discountAmount: item.discountAmount || '',
+      })),
+      notes: draft.notes && draft.notes.length > 0 ? draft.notes : [...template.notes],
+      notesMode: 'list',
+      freeformNotes: null,
+      templateVariables: null,
+      optionalItems: (draft.optionalItems || []).map((item) => ({
+        id: nanoid(),
+        name: item.name,
+        description: item.description || '',
+        quantity: item.quantity || '1',
+        price: item.price || '',
+        payer: item.payer || '',
+      })),
+    });
+  }, []);
+
   const saveDocument = useCallback(async () => {
     setIsSaving(true);
     try {
@@ -174,6 +229,14 @@ export function EstimateProvider({ children }: { children: ReactNode }) {
           originalPrice: item.originalPrice,
           discountPrice: item.discountPrice,
           discountAmount: item.discountAmount || '',
+        })),
+        optionalItems: (currentDoc.optionalItems || []).map((item) => ({
+          id: item.id,
+          name: item.name,
+          description: item.description || '',
+          quantity: item.quantity || '1',
+          price: item.price || '',
+          payer: item.payer || '',
         })),
         notes: currentDoc.notes,
         notesMode: currentDoc.notesMode,
@@ -265,6 +328,29 @@ export function EstimateProvider({ children }: { children: ReactNode }) {
     }));
   }, []);
 
+  const addOptionalItem = useCallback(() => {
+    setCurrentDoc((prev) => ({
+      ...prev,
+      optionalItems: [...(prev.optionalItems || []), { id: nanoid(), name: '', description: '', quantity: '1', price: '', payer: '당사' }],
+    }));
+  }, []);
+
+  const removeOptionalItem = useCallback((id: string) => {
+    setCurrentDoc((prev) => ({
+      ...prev,
+      optionalItems: (prev.optionalItems || []).filter((item) => item.id !== id),
+    }));
+  }, []);
+
+  const updateOptionalItem = useCallback((id: string, field: keyof OptionalItem, value: string) => {
+    setCurrentDoc((prev) => ({
+      ...prev,
+      optionalItems: (prev.optionalItems || []).map((item) =>
+        item.id === id ? { ...item, [field]: value } : item
+      ),
+    }));
+  }, []);
+
   const addNote = useCallback(() => {
     setCurrentDoc((prev) => ({
       ...prev,
@@ -292,6 +378,7 @@ export function EstimateProvider({ children }: { children: ReactNode }) {
       id: '',
       date: new Date().toISOString().split('T')[0],
       items: doc.items.map((item) => ({ ...item, id: nanoid() })),
+      optionalItems: (doc.optionalItems || []).map((item) => ({ ...item, id: nanoid() })),
       notes: [...doc.notes],
     });
   }, []);
@@ -322,6 +409,7 @@ export function EstimateProvider({ children }: { children: ReactNode }) {
         proposals,
         estimates,
         newDocument,
+        loadDraft,
         saveDocument,
         loadDocument,
         deleteDocument,
@@ -330,6 +418,9 @@ export function EstimateProvider({ children }: { children: ReactNode }) {
         addItem,
         removeItem,
         updateItem,
+        addOptionalItem,
+        removeOptionalItem,
+        updateOptionalItem,
         addNote,
         removeNote,
         updateNote,

@@ -1,8 +1,10 @@
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { z } from "zod";
+import { nanoid } from "nanoid";
 import * as db from "./db";
-import type { DocumentItemRow } from "../drizzle/schema";
+import type { DocumentItemRow, OptionalItemRow } from "../drizzle/schema";
+import { generateEstimateDraft } from "./ai";
 
 // Zod schema for document item validation
 const documentItemSchema = z.object({
@@ -13,6 +15,16 @@ const documentItemSchema = z.object({
   discountPrice: z.string(),
   discountAmount: z.string().optional().default(''),
   unitPrice: z.string().optional().default(''),
+});
+
+// Zod schema for optional-item validation (선택사항, excluded from the total)
+const optionalItemSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  description: z.string().default(''),
+  quantity: z.string().default('1'),
+  price: z.string().default(''),
+  payer: z.string().default(''),
 });
 
 // Zod schema for creating/updating a document
@@ -26,6 +38,7 @@ const documentInputSchema = z.object({
   platform: z.string().default(""),
   date: z.string().default(""),
   items: z.array(documentItemSchema),
+  optionalItems: z.array(optionalItemSchema).default([]),
   notes: z.array(z.string()),
   notesMode: z.enum(["list", "freeform"]).default("list"),
   freeformNotes: z.string().nullable().default(null),
@@ -180,6 +193,7 @@ export const appRouter = router({
           platform: input.platform,
           date: input.date,
           items: input.items as DocumentItemRow[],
+          optionalItems: input.optionalItems as OptionalItemRow[],
           notes: input.notes,
           notesMode: input.notesMode,
           freeformNotes: input.freeformNotes,
@@ -214,6 +228,7 @@ export const appRouter = router({
         if (input.data.platform !== undefined) updateData.platform = input.data.platform;
         if (input.data.date !== undefined) updateData.date = input.data.date;
         if (input.data.items !== undefined) updateData.items = input.data.items;
+        if (input.data.optionalItems !== undefined) updateData.optionalItems = input.data.optionalItems;
         if (input.data.notes !== undefined) updateData.notes = input.data.notes;
         if (input.data.notesMode !== undefined) updateData.notesMode = input.data.notesMode;
         if (input.data.freeformNotes !== undefined) updateData.freeformNotes = input.data.freeformNotes;
@@ -266,6 +281,7 @@ export const appRouter = router({
           platform: proposal.platform,
           date: new Date().toISOString().split('T')[0],
           items: proposal.items as DocumentItemRow[],
+          optionalItems: proposal.optionalItems as OptionalItemRow[],
           notes: proposal.notes,
           notesMode: proposal.notesMode,
           freeformNotes: proposal.freeformNotes,
@@ -296,6 +312,7 @@ export const appRouter = router({
           platform: original.platform,
           date: new Date().toISOString().split('T')[0],
           items: original.items as DocumentItemRow[],
+          optionalItems: original.optionalItems as OptionalItemRow[],
           notes: original.notes,
           notesMode: original.notesMode,
           freeformNotes: original.freeformNotes,
@@ -696,6 +713,83 @@ export const appRouter = router({
       .input(z.object({ id: z.number() }))
       .mutation(async ({ ctx, input }) => {
         return db.deletePdfFile(input.id, ctx.user.id);
+      }),
+  }),
+
+  ai: router({
+    /** 문의 내용을 분석해 제안서/견적서 초안(프로젝트 정보·품목·참고사항)을 생성 */
+    draftEstimate: protectedProcedure
+      .input(
+        z.object({
+          inquiryText: z.string().min(1),
+          docType: z.enum(["proposal", "estimate"]).default("proposal"),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        const serviceItems = await db.listServiceItems(ctx.user.id);
+        const draft = await generateEstimateDraft(
+          input.inquiryText,
+          serviceItems.map(i => ({
+            name: i.name,
+            description: i.description,
+            unitPrice: i.unitPrice,
+            category: i.category,
+          })),
+          input.docType
+        );
+
+        const itemsByName = new Map(serviceItems.map(i => [i.name, i]));
+        const items = draft.items
+          .map(di => {
+            const match = itemsByName.get(di.serviceItemName);
+            if (!match) return null;
+            const unitPriceNum = parseInt((match.unitPrice || "0").replace(/[^0-9]/g, ""), 10) || 0;
+            const total = unitPriceNum * di.quantity;
+            return {
+              name: match.name,
+              quantity: String(di.quantity),
+              unitPrice: match.unitPrice || "",
+              originalPrice: total.toLocaleString("ko-KR"),
+              discountPrice: "",
+              discountAmount: "",
+            };
+          })
+          .filter((x): x is NonNullable<typeof x> => x !== null);
+
+        const optionalItems = draft.optionalItems
+          .map(oi => {
+            const match = itemsByName.get(oi.serviceItemName);
+            if (!match) return null;
+            return {
+              id: nanoid(),
+              name: match.name,
+              description: match.description || "",
+              quantity: "1",
+              price: match.unitPrice ? Number(match.unitPrice.replace(/[^0-9]/g, "")).toLocaleString("ko-KR") : "",
+              payer: "당사",
+            };
+          })
+          .filter((x): x is NonNullable<typeof x> => x !== null);
+
+        // 도메인/호스팅/SSL 비용 고지는 AI에게 맡기지 않고 항상 고정으로 추가 (정책 누락 방지)
+        optionalItems.push({
+          id: nanoid(),
+          name: "도메인/호스팅/SSL (연 단위)",
+          description: "견적 합계에 포함되지 않으며 고객사(사업주)가 직접 결제합니다.",
+          quantity: "1",
+          price: "",
+          payer: "고객사",
+        });
+
+        return {
+          projectName: draft.projectName,
+          platform: draft.platform,
+          businessType: draft.businessType,
+          items,
+          optionalItems,
+          notes: draft.notes,
+          summary: draft.summary,
+        };
       }),
   }),
 

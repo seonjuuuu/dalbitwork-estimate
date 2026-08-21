@@ -202,7 +202,7 @@ function MemoCell({
 }) {
   if (isEditing) {
     return (
-      <div className="space-y-1.5 w-[200px]">
+      <div className="space-y-1.5 w-[150px]">
         <textarea
           value={draft}
           onChange={(e) => onDraftChange(e.target.value)}
@@ -224,7 +224,7 @@ function MemoCell({
     );
   }
   return (
-    <button type="button" className="w-[200px] text-left group/memo" onClick={onStartEdit}>
+    <button type="button" className="w-[150px] text-left group/memo" onClick={onStartEdit}>
       {memo ? (
         <p className="text-xs text-muted-foreground whitespace-pre-wrap break-words group-hover/memo:text-foreground transition-colors"><Linkify text={memo} /></p>
       ) : (
@@ -514,7 +514,7 @@ export default function MonthlySales() {
             <tr className="border-b border-border">
               <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground">날짜</th>
               <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground">고객사</th>
-              <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground">프로젝트</th>
+              <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground w-[160px]">프로젝트</th>
               <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground">구분</th>
               <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground">금액</th>
               <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground">현금영수증</th>
@@ -546,7 +546,7 @@ export default function MonthlySales() {
                     p.clientName
                   )}
                 </td>
-                <td className="py-2.5 px-3 text-xs text-muted-foreground">{p.documentTitle}</td>
+                <td className="py-2.5 px-3 text-xs text-muted-foreground max-w-[160px] truncate" title={p.documentTitle ?? undefined}>{p.documentTitle}</td>
                 <td className="py-2.5 px-3">
                   <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold ${p.type === 'deposit' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'}`}>
                     {p.type === 'deposit' ? '계약금' : '잔금'}

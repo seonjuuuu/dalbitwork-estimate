@@ -19,6 +19,7 @@ import { nanoid } from 'nanoid';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Plus, Trash2, Save, GripVertical, Tag, StickyNote, Loader2, BookOpen, BookmarkPlus, Download, Replace, List, FileText, Variable, Boxes, Gift, Copy } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import ServiceItemPicker from '@/components/ServiceItemPicker';
 import ClientAutocomplete from '@/components/ClientAutocomplete';
 import CopyFromDocumentDialog from '@/components/CopyFromDocumentDialog';
@@ -538,6 +539,9 @@ export default function EstimateForm() {
     removeItem,
     updateItem,
     reorderItems,
+    addOptionalItem,
+    removeOptionalItem,
+    updateOptionalItem,
     addNote,
     removeNote,
     updateNote,
@@ -1237,6 +1241,83 @@ export default function EstimateForm() {
               <span className="font-semibold text-foreground">할인 적용 금액</span>
               <span className="font-bold text-foreground amount">{totalFinal.toLocaleString('ko-KR')}원</span>
             </div>
+          </div>
+        )}
+      </div>
+
+      {/* Optional Items (선택사항) - 견적 합계에 포함되지 않음 */}
+      <div className="bg-card rounded-lg border border-dashed border-muted-foreground/30 p-5">
+        <div className="flex items-center justify-between mb-1">
+          <div className="flex items-center gap-2">
+            <h3 className="text-sm font-semibold text-foreground section-title">선택사항</h3>
+            <span className="text-[10px] font-medium text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full">합계 미포함</span>
+          </div>
+          <Button variant="outline" size="sm" onClick={addOptionalItem} className="text-xs gap-1.5">
+            <Plus className="w-3.5 h-3.5" />
+            선택사항 추가
+          </Button>
+        </div>
+        <p className="text-[11px] text-muted-foreground mb-4">
+          여기 추가한 항목은 견적 합계에 포함되지 않고, 문서에는 "선택사항"으로 별도 표시됩니다.
+        </p>
+
+        {(currentDoc.optionalItems || []).length === 0 ? (
+          <p className="text-xs text-muted-foreground text-center py-4">등록된 선택사항이 없습니다.</p>
+        ) : (
+          <div className="space-y-2">
+            <div className="grid grid-cols-[1.3fr_1fr_0.5fr_0.8fr_0.9fr_auto] gap-1.5 mb-1">
+              <span className="text-[11px] font-medium text-muted-foreground px-1">항목명</span>
+              <span className="text-[11px] font-medium text-muted-foreground px-1">설명</span>
+              <span className="text-[11px] font-medium text-muted-foreground px-1">수량</span>
+              <span className="text-[11px] font-medium text-muted-foreground px-1">금액(원)</span>
+              <span className="text-[11px] font-medium text-muted-foreground px-1">결제 주체</span>
+              <span className="w-8" />
+            </div>
+            {(currentDoc.optionalItems || []).map((item) => (
+              <div key={item.id} className="grid grid-cols-[1.3fr_1fr_0.5fr_0.8fr_0.9fr_auto] gap-1.5 items-center group">
+                <Input
+                  value={item.name}
+                  onChange={(e) => updateOptionalItem(item.id, 'name', e.target.value)}
+                  placeholder="예: SEO 설정"
+                  className="text-sm bg-background h-9"
+                />
+                <Input
+                  value={item.description}
+                  onChange={(e) => updateOptionalItem(item.id, 'description', e.target.value)}
+                  placeholder="설명 (선택)"
+                  className="text-sm bg-background h-9"
+                />
+                <Input
+                  value={item.quantity}
+                  onChange={(e) => updateOptionalItem(item.id, 'quantity', e.target.value.replace(/[^0-9]/g, ''))}
+                  placeholder="1"
+                  className="text-sm bg-background h-9"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                />
+                <Input
+                  value={item.price}
+                  onChange={(e) => handleNumberInput(e.target.value, (v) => updateOptionalItem(item.id, 'price', v))}
+                  placeholder="금액 (선택)"
+                  className="text-sm bg-background h-9 amount"
+                />
+                <Select value={item.payer || '당사'} onValueChange={(v) => updateOptionalItem(item.id, 'payer', v)}>
+                  <SelectTrigger className="h-9 text-sm">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="당사">당사 청구</SelectItem>
+                    <SelectItem value="고객사">고객사 직접결제</SelectItem>
+                  </SelectContent>
+                </Select>
+                <button
+                  onClick={() => removeOptionalItem(item.id)}
+                  className="w-8 h-8 flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-all"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ))}
           </div>
         )}
       </div>

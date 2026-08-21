@@ -283,6 +283,87 @@ const s = StyleSheet.create({
     paddingVertical: 4,
     paddingHorizontal: 6,
   },
+  // Optional items (선택사항) - excluded from total
+  optionalSection: {
+    marginBottom: 20,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: '#cccccc',
+    borderRadius: 6,
+    padding: 12,
+    backgroundColor: '#fafafa',
+  },
+  optionalTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+    gap: 6,
+  },
+  optionalBadge: {
+    fontSize: 8,
+    fontWeight: 700,
+    color: '#ffffff',
+    backgroundColor: '#999999',
+    paddingVertical: 2,
+    paddingHorizontal: 6,
+    borderRadius: 3,
+  },
+  optionalTitle: {
+    fontSize: 10,
+    fontWeight: 700,
+    color: '#555555',
+  },
+  optionalHint: {
+    fontSize: 8,
+    color: '#999999',
+  },
+  optionalRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    paddingVertical: 6,
+    borderTopWidth: 1,
+    borderTopColor: '#e5e5e5',
+  },
+  optionalRowFirst: {
+    borderTopWidth: 0,
+  },
+  optionalNameCol: {
+    flex: 1,
+    paddingRight: 8,
+  },
+  optionalName: {
+    fontSize: 9.5,
+    color: '#333333',
+    fontWeight: 500,
+  },
+  optionalDesc: {
+    fontSize: 8,
+    color: '#999999',
+    marginTop: 2,
+  },
+  optionalMeta: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+  },
+  optionalPrice: {
+    fontSize: 9.5,
+    color: '#555555',
+    width: 76,
+    textAlign: 'right',
+  },
+  optionalPayerBadge: {
+    fontSize: 7.5,
+    color: '#777777',
+    borderWidth: 1,
+    borderColor: '#cccccc',
+    borderRadius: 3,
+    paddingVertical: 2,
+    paddingHorizontal: 5,
+    width: 70,
+    textAlign: 'center',
+  },
   // Notes
   notesSection: {
     marginBottom: 16,
@@ -810,6 +891,33 @@ export default function PdfDocument({ doc }: PdfDocumentProps) {
             </Text>
           </View>
         </View>
+
+        {/* Optional Items (선택사항) - 견적 합계에 포함되지 않음 */}
+        {doc.optionalItems && doc.optionalItems.length > 0 && (
+          <View style={s.optionalSection}>
+            <View style={s.optionalTitleRow}>
+              <Text style={s.optionalBadge}>선택</Text>
+              <Text style={s.optionalTitle}>선택사항</Text>
+              <Text style={s.optionalHint}>· 위 견적 합계에 포함되지 않습니다</Text>
+            </View>
+            {doc.optionalItems.map((item, idx) => (
+              <View key={item.id} style={idx === 0 ? [s.optionalRow, s.optionalRowFirst] : s.optionalRow}>
+                <View style={s.optionalNameCol}>
+                  <Text style={s.optionalName}>{item.name || '-'}</Text>
+                  {item.description ? <Text style={s.optionalDesc}>{item.description}</Text> : null}
+                </View>
+                <View style={s.optionalMeta}>
+                  <Text style={s.optionalPrice}>
+                    {item.price ? `${formatNumber(parseAmount(item.price))}원` : '협의'}
+                  </Text>
+                  <Text style={s.optionalPayerBadge}>
+                    {item.payer === '고객사' ? '고객사 직접결제' : '당사 청구'}
+                  </Text>
+                </View>
+              </View>
+            ))}
+          </View>
+        )}
 
         {/* Notes */}
         <View style={s.notesSection}>
