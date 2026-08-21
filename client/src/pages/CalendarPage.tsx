@@ -1,9 +1,16 @@
 import { useState } from 'react';
 import { trpc } from '@/lib/trpc';
-import { ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, X, Plus, Trash2 } from 'lucide-react';
 import { useLocation } from 'wouter';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { toast } from 'sonner';
 
-type EventType = 'consultation' | 'proposal' | 'estimate' | 'contract' | 'pcDraft' | 'mobileDraft' | 'finalDelivery';
+type EventType = 'consultation' | 'proposal' | 'estimate' | 'contract' | 'pcDraft' | 'mobileDraft' | 'finalDelivery' | 'custom';
 
 const EVENT_STYLE: Record<EventType, { bg: string; text: string; dot: string; label: string }> = {
   consultation:  { bg: 'bg-blue-100 dark:bg-blue-900/40',    text: 'text-blue-700 dark:text-blue-300',    dot: 'bg-blue-500',    label: '상담' },
@@ -13,6 +20,7 @@ const EVENT_STYLE: Record<EventType, { bg: string; text: string; dot: string; la
   pcDraft:       { bg: 'bg-sky-100 dark:bg-sky-900/40',       text: 'text-sky-700 dark:text-sky-300',       dot: 'bg-sky-400',     label: 'PC시안' },
   mobileDraft:   { bg: 'bg-indigo-100 dark:bg-indigo-900/40', text: 'text-indigo-700 dark:text-indigo-300', dot: 'bg-indigo-400',  label: '모바일시안' },
   finalDelivery: { bg: 'bg-rose-100 dark:bg-rose-900/40',     text: 'text-rose-700 dark:text-rose-300',     dot: 'bg-rose-500',    label: '완성전달' },
+  custom:        { bg: 'bg-teal-100 dark:bg-teal-900/40',     text: 'text-teal-700 dark:text-teal-300',     dot: 'bg-teal-500',    label: '일정' },
 };
 
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
@@ -192,7 +200,19 @@ function MainCalendar({
 
 // ─── Day detail panel ─────────────────────────────────────────────
 
-function DayDetail({ date, events, onClose }: { date: string; events: CalEvent[]; onClose?: () => void }) {
+function DayDetail({
+  date,
+  events,
+  onClose,
+  onAddEvent,
+  onDeleteCustomEvent,
+}: {
+  date: string;
+  events: CalEvent[];
+  onClose?: () => void;
+  onAddEvent?: () => void;
+  onDeleteCustomEvent?: (id: number) => void;
+}) {
   const [, navigate] = useLocation();
   const d = new Date(date + 'T00:00:00');
   const label = `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일 (${WEEKDAYS[d.getDay()]})`;
@@ -201,14 +221,25 @@ function DayDetail({ date, events, onClose }: { date: string; events: CalEvent[]
     <div className="p-4 flex flex-col gap-3">
       <div className="flex items-center justify-between">
         <p className="text-sm font-semibold text-foreground">{label}</p>
-        {onClose && (
-          <button
-            onClick={onClose}
-            className="w-6 h-6 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors flex-shrink-0"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        )}
+        <div className="flex items-center gap-1">
+          {onAddEvent && (
+            <button
+              onClick={onAddEvent}
+              className="w-6 h-6 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors flex-shrink-0"
+              title="이 날짜에 일정 추가"
+            >
+              <Plus className="w-4 h-4" />
+            </button>
+          )}
+          {onClose && (
+            <button
+              onClick={onClose}
+              className="w-6 h-6 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors flex-shrink-0"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
+        </div>
       </div>
       {events.length === 0 ? (
         <p className="text-xs text-muted-foreground">일정 없음</p>
@@ -216,15 +247,28 @@ function DayDetail({ date, events, onClose }: { date: string; events: CalEvent[]
         events.map((e) => (
           <div
             key={e.id}
-            onClick={() => e.clientId && navigate(`/clients/${e.clientId}`)}
-            className={`rounded-lg p-3 ${EVENT_STYLE[e.type].bg} ${e.clientId ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`}
+            className={`group rounded-lg p-3 ${EVENT_STYLE[e.type].bg} flex items-start justify-between gap-2`}
           >
-            <span className={`text-[10px] font-semibold uppercase tracking-wide ${EVENT_STYLE[e.type].text}`}>
-              {EVENT_STYLE[e.type].label}
-            </span>
-            <p className={`text-xs font-medium mt-0.5 ${EVENT_STYLE[e.type].text} ${e.clientId ? 'underline underline-offset-2' : ''}`}>
-              {e.label}
-            </p>
+            <div
+              onClick={() => e.clientId && navigate(`/clients/${e.clientId}`)}
+              className={`min-w-0 flex-1 ${e.clientId ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`}
+            >
+              <span className={`text-[10px] font-semibold uppercase tracking-wide ${EVENT_STYLE[e.type].text}`}>
+                {EVENT_STYLE[e.type].label}
+              </span>
+              <p className={`text-xs font-medium mt-0.5 ${EVENT_STYLE[e.type].text} ${e.clientId ? 'underline underline-offset-2' : ''}`}>
+                {e.label}
+              </p>
+            </div>
+            {e.type === 'custom' && onDeleteCustomEvent && (
+              <button
+                onClick={() => onDeleteCustomEvent(Number(e.id.replace('custom-', '')))}
+                className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity w-6 h-6 flex items-center justify-center rounded-md text-muted-foreground hover:text-destructive hover:bg-background/60 flex-shrink-0"
+                title="일정 삭제"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
         ))
       )}
@@ -232,21 +276,132 @@ function DayDetail({ date, events, onClose }: { date: string; events: CalEvent[]
   );
 }
 
+// ─── 일정 추가 다이얼로그 ────────────────────────────────────────────
+
+function AddEventDialog({
+  open,
+  onOpenChange,
+  defaultDate,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  defaultDate: string;
+}) {
+  const utils = trpc.useUtils();
+  const { data: clientsList = [] } = trpc.clients.list.useQuery(undefined);
+  const createMutation = trpc.calendar.createCustomEvent.useMutation();
+
+  const [title, setTitle] = useState('');
+  const [date, setDate] = useState(defaultDate);
+  const [memo, setMemo] = useState('');
+  const [clientId, setClientId] = useState<string>('none');
+
+  const resetAndClose = () => {
+    setTitle('');
+    setDate(defaultDate);
+    setMemo('');
+    setClientId('none');
+    onOpenChange(false);
+  };
+
+  const handleSubmit = async () => {
+    if (!title.trim()) {
+      toast.error('일정 제목을 입력해주세요.');
+      return;
+    }
+    if (!date) {
+      toast.error('날짜를 선택해주세요.');
+      return;
+    }
+    try {
+      await createMutation.mutateAsync({
+        title: title.trim(),
+        date,
+        memo: memo.trim() || undefined,
+        clientId: clientId === 'none' ? undefined : Number(clientId),
+      });
+      await utils.calendar.getEvents.invalidate();
+      toast.success('일정을 추가했습니다.');
+      resetAndClose();
+    } catch {
+      toast.error('일정 추가에 실패했습니다.');
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => (v ? onOpenChange(v) : resetAndClose())}>
+      <DialogContent className="sm:max-w-[420px]">
+        <DialogHeader>
+          <DialogTitle>일정 추가</DialogTitle>
+        </DialogHeader>
+        <div className="flex flex-col gap-3 py-1">
+          <div>
+            <Label className="text-xs mb-1.5 block">제목</Label>
+            <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="예: OOO 클라이언트 미팅" autoFocus />
+          </div>
+          <div>
+            <Label className="text-xs mb-1.5 block">날짜</Label>
+            <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+          </div>
+          <div>
+            <Label className="text-xs mb-1.5 block">관련 고객 (선택)</Label>
+            <Select value={clientId} onValueChange={setClientId}>
+              <SelectTrigger className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">없음</SelectItem>
+                {clientsList.map((c) => (
+                  <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label className="text-xs mb-1.5 block">메모 (선택)</Label>
+            <Textarea value={memo} onChange={(e) => setMemo(e.target.value)} rows={3} placeholder="세부 내용을 적어두세요" />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" size="sm" onClick={resetAndClose}>취소</Button>
+          <Button size="sm" onClick={handleSubmit} disabled={createMutation.isPending}>추가</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // ─── Page ─────────────────────────────────────────────────────────
 
 export default function CalendarPage() {
   const today = new Date();
+  const todayStr = toDateStr(today.getFullYear(), today.getMonth(), today.getDate());
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth());
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [rightOpen, setRightOpen] = useState(true);
+  const [addEventOpen, setAddEventOpen] = useState(false);
   const toggleSelectedDay = (date: string) => {
     setSelectedDay((prev) => (prev === date ? null : date));
   };
 
+  const utils = trpc.useUtils();
   const { data: rawEvents = [] } = trpc.calendar.getEvents.useQuery();
   const events = rawEvents as CalEvent[];
   const eventMap = buildEventMap(events);
+  const deleteCustomEventMutation = trpc.calendar.deleteCustomEvent.useMutation();
+
+  const handleDeleteCustomEvent = async (id: number) => {
+    try {
+      await deleteCustomEventMutation.mutateAsync({ id });
+      await utils.calendar.getEvents.invalidate();
+      toast.success('일정을 삭제했습니다.');
+    } catch {
+      toast.error('일정 삭제에 실패했습니다.');
+    }
+  };
+
+  const addEventDefaultDate = selectedDay || todayStr;
 
   const prevYear = month === 0 ? year - 1 : year;
   const prevMonth = month === 0 ? 11 : month - 1;
@@ -282,6 +437,10 @@ export default function CalendarPage() {
               <ChevronRight className="w-4 h-4" />
             </button>
           </div>
+          <Button size="sm" variant="outline" onClick={() => setAddEventOpen(true)} className="gap-1.5 flex-shrink-0">
+            <Plus className="w-3.5 h-3.5" />
+            일정 추가
+          </Button>
         </div>
 
         <div className="flex items-center gap-5">
@@ -342,7 +501,13 @@ export default function CalendarPage() {
         {/* 모바일: 선택한 날짜의 일정을 캘린더 아래에 바로 표시 */}
         {selectedDay && (
           <div className="lg:hidden border-t border-border bg-card">
-            <DayDetail date={selectedDay} events={selectedEvents} onClose={() => setSelectedDay(null)} />
+            <DayDetail
+              date={selectedDay}
+              events={selectedEvents}
+              onClose={() => setSelectedDay(null)}
+              onAddEvent={() => setAddEventOpen(true)}
+              onDeleteCustomEvent={handleDeleteCustomEvent}
+            />
           </div>
         )}
 
@@ -361,7 +526,12 @@ export default function CalendarPage() {
               </div>
               <div className="flex-1 overflow-y-auto">
                 {selectedDay ? (
-                  <DayDetail date={selectedDay} events={selectedEvents} />
+                  <DayDetail
+                    date={selectedDay}
+                    events={selectedEvents}
+                    onAddEvent={() => setAddEventOpen(true)}
+                    onDeleteCustomEvent={handleDeleteCustomEvent}
+                  />
                 ) : (
                   <div className="p-4">
                     <p className="text-xs text-muted-foreground">날짜를 클릭하면 일정이 표시됩니다.</p>
@@ -372,6 +542,8 @@ export default function CalendarPage() {
           )}
         </div>
       </div>
+
+      <AddEventDialog key={addEventDefaultDate} open={addEventOpen} onOpenChange={setAddEventOpen} defaultDate={addEventDefaultDate} />
     </div>
   );
 }

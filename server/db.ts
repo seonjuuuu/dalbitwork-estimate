@@ -1,7 +1,7 @@
 import { eq, and, or, ne, desc, asc, gte, lte, gt, isNull, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
-import { InsertUser, users, documents, InsertDocument, noteTemplates, InsertNoteTemplate, payments, serviceItems, clients, consultations, hktbInvoices, pdfFiles, todos, pushSubscriptions, notificationEvents } from "../drizzle/schema";
+import { InsertUser, users, documents, InsertDocument, noteTemplates, InsertNoteTemplate, payments, serviceItems, clients, consultations, hktbInvoices, pdfFiles, todos, pushSubscriptions, notificationEvents, customEvents } from "../drizzle/schema";
 import type { InsertPayment, InsertServiceItem, InsertClient, InsertConsultation, InsertHktbInvoice, InsertPdfFile, InsertTodo } from "../drizzle/schema";
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -562,7 +562,7 @@ export async function getCalendarEvents(userId: number) {
   const db = await getDb();
   if (!db) return [];
 
-  const [allConsultations, allClients, allDocuments] = await Promise.all([
+  const [allConsultations, allClients, allDocuments, allCustomEvents] = await Promise.all([
     db.select({
       id: consultations.id,
       date: consultations.date,
@@ -584,6 +584,7 @@ export async function getCalendarEvents(userId: number) {
       clientName: documents.clientName,
       projectName: documents.projectName,
     }).from(documents).where(eq(documents.userId, userId)),
+    db.select().from(customEvents).where(eq(customEvents.userId, userId)),
   ]);
 
   const clientMap = new Map(allClients.map((c) => [c.id, c.name]));
@@ -620,7 +621,39 @@ export async function getCalendarEvents(userId: number) {
     }
   }
 
+  for (const ev of allCustomEvents) {
+    events.push({ date: normDate(ev.date), type: 'custom', label: ev.title, id: `custom-${ev.id}`, clientId: ev.clientId ?? undefined });
+  }
+
   return events;
+}
+
+// ─── 자유 등록 캘린더 일정 (미팅 등) ─────────────────────────────────
+
+export async function createCustomEvent(
+  userId: number,
+  data: { title: string; date: string; memo?: string; clientId?: number }
+) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const [row] = await db
+    .insert(customEvents)
+    .values({
+      userId,
+      title: data.title,
+      date: data.date,
+      memo: data.memo || "",
+      clientId: data.clientId ?? null,
+    })
+    .returning();
+  return row;
+}
+
+export async function deleteCustomEvent(userId: number, id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(customEvents).where(and(eq(customEvents.id, id), eq(customEvents.userId, userId)));
+  return { success: true };
 }
 
 export async function getWorkRanges(userId: number) {

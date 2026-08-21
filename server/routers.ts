@@ -735,6 +735,24 @@ export const appRouter = router({
     getWorkRanges: protectedProcedure.query(async ({ ctx }) => {
       return db.getWorkRanges(ctx.user.id);
     }),
+    /** 미팅 등 자유롭게 등록하는 일정 추가 */
+    createCustomEvent: protectedProcedure
+      .input(
+        z.object({
+          title: z.string().min(1).max(200),
+          date: z.string().min(1),
+          memo: z.string().optional(),
+          clientId: z.number().optional(),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        return db.createCustomEvent(ctx.user.id, input);
+      }),
+    deleteCustomEvent: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        return db.deleteCustomEvent(ctx.user.id, input.id);
+      }),
   }),
 
   pdfFiles: router({

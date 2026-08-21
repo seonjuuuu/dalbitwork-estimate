@@ -323,3 +323,17 @@ export const notificationEvents = pgTable("notification_events", {
 
 export type NotificationEvent = typeof notificationEvents.$inferSelect;
 export type InsertNotificationEvent = typeof notificationEvents.$inferInsert;
+
+// 상담/계약/시안/납품처럼 정해진 항목이 아닌, 미팅 등 자유롭게 등록하는 캘린더 일정
+export const customEvents = pgTable("custom_events", {
+  id: serial("id").primaryKey(),
+  userId: integer("userId").notNull(),
+  title: varchar("title", { length: 200 }).notNull(),
+  date: varchar("date", { length: 20 }).notNull(),
+  memo: text("memo").default("").notNull(),
+  clientId: integer("clientId"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type CustomEvent = typeof customEvents.$inferSelect;
+export type InsertCustomEvent = typeof customEvents.$inferInsert;

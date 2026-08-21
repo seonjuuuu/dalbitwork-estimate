@@ -11,6 +11,7 @@ const EVENT_TYPE_LABELS: Record<string, string> = {
   pcDraft: "PC시안",
   mobileDraft: "모바일시안",
   finalDelivery: "완성전달",
+  custom: "일정",
 };
 
 /** 서버가 UTC로 돌아도 "오늘"을 한국 시간(KST) 기준으로 계산 */
