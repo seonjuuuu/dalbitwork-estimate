@@ -3,6 +3,7 @@ import { useLocation } from 'wouter';
 import { trpc } from '@/lib/trpc';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Building2, Edit, Trash2, Plus, Save, X, Loader2, CalendarDays, Search, ChevronLeft, ChevronRight, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -15,13 +16,15 @@ interface ClientForm {
   name: string;
   contactName: string;
   contactPhone: string;
+  contactEmail: string;
+  noContact: boolean;
   businessNumber: string;
   contractDate: string;
   contractAmount: string;
   memo: string;
 }
 
-const emptyForm: ClientForm = { name: '', contactName: '', contactPhone: '', businessNumber: '', contractDate: '', contractAmount: '', memo: '' };
+const emptyForm: ClientForm = { name: '', contactName: '', contactPhone: '', contactEmail: '', noContact: false, businessNumber: '', contractDate: '', contractAmount: '', memo: '' };
 
 const PAGE_SIZE = 10;
 
@@ -181,6 +184,8 @@ export default function Clients() {
       name: client.name,
       contactName: client.contactName,
       contactPhone: client.contactPhone,
+      contactEmail: client.contactEmail,
+      noContact: client.noContact,
       businessNumber: client.businessNumber,
       contractDate: client.contractDate,
       contractAmount: client.contractAmount ? client.contractAmount.toLocaleString('ko-KR') : '',
@@ -340,11 +345,34 @@ export default function Clients() {
               />
             </div>
             <div>
-              <label className="text-xs text-muted-foreground mb-1 block">연락처</label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-xs text-muted-foreground">연락처</label>
+                <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer">
+                  <Checkbox
+                    checked={form.noContact}
+                    onCheckedChange={(checked) => {
+                      const isChecked = checked === true;
+                      setForm((f) => ({ ...f, noContact: isChecked, ...(isChecked && { contactPhone: '', contactEmail: '' }) }));
+                    }}
+                  />
+                  연락처 없음
+                </label>
+              </div>
               <Input
                 value={form.contactPhone}
                 onChange={(e) => setForm((f) => ({ ...f, contactPhone: formatPhone(e.target.value) }))}
                 placeholder="예: 010-1234-5678"
+                disabled={form.noContact}
+              />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">이메일 <span className="text-muted-foreground/70">(연락처 없을 때 대신 입력)</span></label>
+              <Input
+                type="email"
+                value={form.contactEmail}
+                onChange={(e) => setForm((f) => ({ ...f, contactEmail: e.target.value }))}
+                placeholder="예: example@company.com"
+                disabled={form.noContact}
               />
             </div>
             <div>
@@ -517,7 +545,11 @@ export default function Clients() {
                     </td>
                     <td className="px-3 py-3 whitespace-nowrap text-left">
                       <span className="text-muted-foreground">
-                        {client.contactPhone ? <Highlight text={client.contactPhone} query={search} /> : '—'}
+                        {client.contactPhone ? (
+                          <Highlight text={client.contactPhone} query={search} />
+                        ) : client.contactEmail ? (
+                          <Highlight text={client.contactEmail} query={search} />
+                        ) : '—'}
                       </span>
                     </td>
                     <td className="px-1 py-2 text-left" onClick={(e) => e.stopPropagation()}>

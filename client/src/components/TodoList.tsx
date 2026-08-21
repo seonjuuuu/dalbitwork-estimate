@@ -44,6 +44,7 @@ export default function TodoList() {
   const invalidate = () => utils.todos.list.invalidate();
 
   const handleAdd = async () => {
+    if (adding) return;
     if (!content.trim()) {
       toast.error('할 일 내용을 입력해주세요.');
       return;

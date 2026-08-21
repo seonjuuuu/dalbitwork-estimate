@@ -20,6 +20,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Plus, Trash2, Save, GripVertical, Tag, StickyNote, Loader2, BookOpen, BookmarkPlus, Download, Replace, List, FileText, Variable, Boxes, Gift, Copy } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
 import ServiceItemPicker from '@/components/ServiceItemPicker';
 import ClientAutocomplete from '@/components/ClientAutocomplete';
 import CopyFromDocumentDialog from '@/components/CopyFromDocumentDialog';
@@ -569,7 +570,7 @@ export default function EstimateForm() {
     return type === 'amount' ? val.toLocaleString('ko-KR') : String(val);
   })();
 
-  const updateField = (field: string, value: string | number) => {
+  const updateField = (field: string, value: string | number | boolean) => {
     setCurrentDoc((prev) => ({ ...prev, [field]: value }));
   };
 
@@ -600,29 +601,36 @@ export default function EstimateForm() {
   const upsertClientMutation = trpc.clients.upsertFromDocument.useMutation({
     onSuccess: () => {
       utils.clients.list.invalidate();
-      toast.success('고객사가 저장되었습니다.');
-    },
-    onError: () => {
-      toast.error('고객사 저장에 실패했습니다.');
     },
   });
 
-  const handleSaveClient = () => {
-    if (!currentDoc.clientName.trim()) {
-      toast.error('수신처(고객사명)를 입력해주세요.');
-      return;
-    }
+  const upsertClientFromCurrentDoc = () => {
     const isEstimate = currentDoc.type === 'estimate';
-    upsertClientMutation.mutate({
+    return upsertClientMutation.mutateAsync({
       name: currentDoc.clientName.trim(),
       contactName: currentDoc.contactName || '',
       contactPhone: currentDoc.contactPhone || '',
+      contactEmail: currentDoc.contactEmail || '',
+      noContact: currentDoc.noContact || false,
       isEstimate,
       ...(isEstimate && {
         contractDate: currentDoc.date || '',
         contractAmount: currentDoc.totalMin || 0,
       }),
     });
+  };
+
+  const handleSaveClient = async () => {
+    if (!currentDoc.clientName.trim()) {
+      toast.error('수신처(고객사명)를 입력해주세요.');
+      return;
+    }
+    try {
+      await upsertClientFromCurrentDoc();
+      toast.success('고객사가 저장되었습니다.');
+    } catch {
+      toast.error('고객사 저장에 실패했습니다.');
+    }
   };
 
   const handleSave = async () => {
@@ -632,6 +640,8 @@ export default function EstimateForm() {
     }
     try {
       await saveDocument();
+      // 문서를 저장하는 시점은 곧 고객사에게 제안서/견적서가 전달되는 시점이므로 고객사 상태도 함께 진행시킴
+      await upsertClientFromCurrentDoc();
       toast.success(`${docLabel}가 저장되었습니다.`);
     } catch (err) {
       toast.error('저장에 실패했습니다. 다시 시도해주세요.');
@@ -946,6 +956,8 @@ export default function EstimateForm() {
                 updateField('clientName', client.name);
                 if (client.contactName) updateField('contactName', client.contactName);
                 if (client.contactPhone) updateField('contactPhone', client.contactPhone);
+                if (client.contactEmail) updateField('contactEmail', client.contactEmail);
+                updateField('noContact', client.noContact);
               }}
               placeholder="주식회사 OOO 귀중"
               className="bg-background"
@@ -979,12 +991,40 @@ export default function EstimateForm() {
             />
           </div>
           <div>
-            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">담당자 연락처</label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-xs font-medium text-muted-foreground">담당자 연락처</label>
+              <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer">
+                <Checkbox
+                  checked={currentDoc.noContact}
+                  onCheckedChange={(checked) => {
+                    const isChecked = checked === true;
+                    updateField('noContact', isChecked);
+                    if (isChecked) {
+                      updateField('contactPhone', '');
+                      updateField('contactEmail', '');
+                    }
+                  }}
+                />
+                연락처 없음
+              </label>
+            </div>
             <Input
               value={currentDoc.contactPhone}
               onChange={(e) => updateField('contactPhone', formatPhone(e.target.value))}
               placeholder="010-1234-5678"
               className="bg-background"
+              disabled={currentDoc.noContact}
+            />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">담당자 이메일 <span className="font-normal text-muted-foreground/70">(연락처가 없을 때 대신 입력)</span></label>
+            <Input
+              type="email"
+              value={currentDoc.contactEmail}
+              onChange={(e) => updateField('contactEmail', e.target.value)}
+              placeholder="example@company.com"
+              className="bg-background"
+              disabled={currentDoc.noContact}
             />
           </div>
           <div>

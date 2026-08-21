@@ -22,6 +22,7 @@ interface AIEstimateDraftDialogProps {
   clientName?: string;
   contactName?: string;
   contactPhone?: string;
+  contactEmail?: string;
   consultations?: Consultation[];
 }
 
@@ -31,6 +32,7 @@ export default function AIEstimateDraftDialog({
   clientName,
   contactName,
   contactPhone,
+  contactEmail,
   consultations = [],
 }: AIEstimateDraftDialogProps) {
   const [, navigate] = useLocation();
@@ -59,6 +61,7 @@ export default function AIEstimateDraftDialog({
         clientName,
         contactName,
         contactPhone,
+        contactEmail,
         projectName: draft.projectName,
         platform: draft.platform,
         businessType: draft.businessType,

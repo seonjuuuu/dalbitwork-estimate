@@ -683,10 +683,16 @@ export default function PdfDocument({ doc }: PdfDocumentProps) {
               <Text style={s.infoLabel}>담당자이름</Text>
               {doc.contactName ? <Text style={s.infoValue}>{doc.contactName}</Text> : <View style={s.infoUnderline} />}
             </View>
-            <View style={s.infoLine}>
-              <Text style={s.infoLabel}>연 락 처</Text>
-              {doc.contactPhone ? <Text style={s.infoValue}>{doc.contactPhone}</Text> : <View style={s.infoUnderline} />}
-            </View>
+            {!doc.noContact && (
+              <View style={s.infoLine}>
+                <Text style={s.infoLabel}>연 락 처</Text>
+                {doc.contactPhone || doc.contactEmail ? (
+                  <Text style={s.infoValue}>{doc.contactPhone || doc.contactEmail}</Text>
+                ) : (
+                  <View style={s.infoUnderline} />
+                )}
+              </View>
+            )}
           </View>
           <View style={s.infoRight}>
             <View style={s.infoLine}>

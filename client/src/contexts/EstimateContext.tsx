@@ -36,6 +36,8 @@ export interface EstimateDraft {
   clientName?: string;
   contactName?: string;
   contactPhone?: string;
+  contactEmail?: string;
+  noContact?: boolean;
   projectName?: string;
   platform?: string;
   businessType?: string;
@@ -63,6 +65,8 @@ function dbDocToLocal(doc: {
   totalMax: number;
   useRange?: boolean;
   contactPhone: string;
+  contactEmail?: string;
+  noContact?: boolean;
   businessType: string;
   optionalItems?: { id: string; name: string; description: string; quantity: string; price: string; payer: string }[];
   createdAt: Date | string;
@@ -98,6 +102,8 @@ function dbDocToLocal(doc: {
     extraDiscountValue: (doc as any).extraDiscountValue || 0,
     depositRatio: (doc as any).depositRatio || 50,
     contactPhone: doc.contactPhone || '',
+    contactEmail: doc.contactEmail || '',
+    noContact: doc.noContact || false,
     businessType: doc.businessType || '',
     optionalItems: (doc.optionalItems || []).map((item) => ({
       id: item.id || nanoid(),
@@ -181,6 +187,7 @@ export function EstimateProvider({ children }: { children: ReactNode }) {
       clientName: draft.clientName || '',
       contactName: draft.contactName || '',
       contactPhone: draft.contactPhone || '',
+      contactEmail: draft.contactEmail || '',
       projectName: draft.projectName || '',
       platform: draft.platform || template.platform,
       businessType: draft.businessType || '',
@@ -249,6 +256,8 @@ export function EstimateProvider({ children }: { children: ReactNode }) {
         extraDiscountValue: currentDoc.extraDiscountValue || 0,
         depositRatio: currentDoc.depositRatio || 50,
         contactPhone: currentDoc.contactPhone || '',
+        contactEmail: currentDoc.contactEmail || '',
+        noContact: currentDoc.noContact || false,
         businessType: currentDoc.businessType || '',
       };
 

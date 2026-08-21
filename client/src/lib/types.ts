@@ -34,6 +34,8 @@ export interface DocumentData {
   extraDiscountValue?: number;
   depositRatio?: number; // 계약금 비율(%), 참고사항 {{계약금}}/{{잔금}} 자동계산에 사용
   contactPhone: string; // 담당자 번호
+  contactEmail: string; // 담당자 이메일 (연락처 대안, 핸드폰 번호가 없는 고객용)
+  noContact: boolean; // 연락처(번호/이메일) 자체가 없는 고객. PDF에서 연락처 줄을 아예 생략
   businessType: string; // 업종
   optionalItems: OptionalItem[]; // 선택사항
   depositPaidDate?: string; // 계약금 입금일 (YYYY-MM-DD)
@@ -160,6 +162,8 @@ export const defaultProposal: DocumentData = {
   extraDiscountValue: 0,
   depositRatio: 50,
   contactPhone: '',
+  contactEmail: '',
+  noContact: false,
   businessType: '',
   optionalItems: [],
 };
@@ -188,6 +192,8 @@ export const defaultEstimate: DocumentData = {
   extraDiscountValue: 0,
   depositRatio: 50,
   contactPhone: '',
+  contactEmail: '',
+  noContact: false,
   businessType: '',
   optionalItems: [],
 };

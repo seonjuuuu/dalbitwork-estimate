@@ -841,7 +841,7 @@ const STATUS_RANK: Record<string, number> = { '상담': 0, '제안서': 1, '계�
 
 export async function upsertClientFromDocument(
   userId: number,
-  data: { name: string; contactName: string; contactPhone: string; isEstimate: boolean; contractDate?: string; contractAmount?: number }
+  data: { name: string; contactName: string; contactPhone: string; contactEmail?: string; noContact?: boolean; isEstimate: boolean; contractDate?: string; contractAmount?: number }
 ) {
   const db = await getDb();
   if (!db) return;
@@ -859,6 +859,8 @@ export async function upsertClientFromDocument(
       name: data.name,
       contactName: data.contactName || '',
       contactPhone: data.contactPhone ? normalizePhone(data.contactPhone) : '',
+      contactEmail: data.contactEmail || '',
+      noContact: data.noContact || false,
       businessNumber: '',
       contractDate: data.contractDate || '',
       contractAmount: data.contractAmount || 0,
@@ -870,6 +872,8 @@ export async function upsertClientFromDocument(
     const updates: Partial<typeof clients.$inferInsert> = {};
     if (!client.contactName && data.contactName) updates.contactName = data.contactName;
     if (!client.contactPhone && data.contactPhone) updates.contactPhone = normalizePhone(data.contactPhone);
+    if (!client.contactEmail && data.contactEmail) updates.contactEmail = data.contactEmail;
+    if (!client.noContact && data.noContact) updates.noContact = true;
     if (data.contractDate && !client.contractDate) updates.contractDate = data.contractDate;
     if (data.contractAmount && !client.contractAmount) updates.contractAmount = data.contractAmount;
     // 상태는 앞으로만 진행 (상담→제안서→계약, 역방향 불가)

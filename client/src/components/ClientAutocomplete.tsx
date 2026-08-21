@@ -5,7 +5,7 @@ import { Building2, Check } from 'lucide-react';
 interface ClientAutocompleteProps {
   value: string;
   onChange: (value: string) => void;
-  onSelect: (client: { name: string; contactName: string; contactPhone: string }) => void;
+  onSelect: (client: { name: string; contactName: string; contactPhone: string; contactEmail: string; noContact: boolean }) => void;
   placeholder?: string;
   className?: string;
 }
@@ -64,7 +64,7 @@ export default function ClientAutocomplete({
 
   const handleSelect = (client: typeof clients[0]) => {
     setSearch(client.name);
-    onSelect({ name: client.name, contactName: client.contactName, contactPhone: client.contactPhone });
+    onSelect({ name: client.name, contactName: client.contactName, contactPhone: client.contactPhone, contactEmail: client.contactEmail, noContact: client.noContact });
     setOpen(false);
     setActiveIndex(-1);
   };
@@ -132,9 +132,9 @@ export default function ClientAutocomplete({
               <Building2 className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-foreground truncate">{client.name}</p>
-                {(client.contactName || client.contactPhone) && (
+                {(client.contactName || client.contactPhone || client.contactEmail) && (
                   <p className="text-xs text-muted-foreground truncate">
-                    {[client.contactName, client.contactPhone].filter(Boolean).join(' · ')}
+                    {[client.contactName, client.contactPhone || client.contactEmail].filter(Boolean).join(' · ')}
                   </p>
                 )}
               </div>

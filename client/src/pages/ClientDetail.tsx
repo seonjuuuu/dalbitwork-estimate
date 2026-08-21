@@ -4,13 +4,14 @@ import { trpc } from '@/lib/trpc';
 import { useEstimate } from '@/contexts/EstimateContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { ko } from 'date-fns/locale';
 import {
   ArrowLeft, Plus, Trash2, Save, X, Loader2,
-  Phone, User, CalendarDays, CircleDollarSign,
+  Phone, Mail, User, CalendarDays, CircleDollarSign,
   MessageSquare, ChevronDown, ChevronUp, Edit, LinkIcon, FileText, ExternalLink, Hash,
   Upload, Download, Eye, Copy, FileDown, CreditCard, CheckCircle2, Image as ImageIcon, Sparkles,
 } from 'lucide-react';
@@ -311,6 +312,8 @@ export default function ClientDetail({ id }: { id: string }) {
         name: client.name ?? '',
         contactName: client.contactName ?? '',
         contactPhone: client.contactPhone ?? '',
+        contactEmail: client.contactEmail ?? '',
+        noContact: client.noContact ?? false,
         businessNumber: client.businessNumber ?? '',
         contractDate: client.contractDate ?? '',
         contractAmount: client.contractAmount ? client.contractAmount.toLocaleString('ko-KR') : '',
@@ -324,7 +327,7 @@ export default function ClientDetail({ id }: { id: string }) {
   const [syncedEstimateId, setSyncedEstimateId] = useState<number | null>(null);
   const [editingInfo, setEditingInfo] = useState(false);
   const [infoForm, setInfoForm] = useState({
-    name: '', contactName: '', contactPhone: '', businessNumber: '',
+    name: '', contactName: '', contactPhone: '', contactEmail: '', noContact: false, businessNumber: '',
     contractDate: '', contractAmount: '', memo: '',
   });
   const [isSavingInfo, setIsSavingInfo] = useState(false);
@@ -441,6 +444,8 @@ export default function ClientDetail({ id }: { id: string }) {
         name: infoForm.name.trim(),
         contactName: infoForm.contactName,
         contactPhone: infoForm.contactPhone,
+        contactEmail: infoForm.contactEmail,
+        noContact: infoForm.noContact,
         businessNumber: infoForm.businessNumber,
         contractDate: infoForm.contractDate,
         contractAmount: infoForm.contractAmount ? Number(infoForm.contractAmount.replace(/,/g, '')) : 0,
@@ -705,8 +710,24 @@ export default function ClientDetail({ id }: { id: string }) {
                 <Input value={infoForm.contactName} onChange={e => setInfoForm(f => ({ ...f, contactName: e.target.value }))} className="text-sm" />
               </div>
               <div>
-                <label className="text-xs text-muted-foreground mb-1 block">연락처</label>
-                <Input value={infoForm.contactPhone} onChange={e => setInfoForm(f => ({ ...f, contactPhone: formatPhone(e.target.value) }))} className="text-sm" placeholder="010-0000-0000" />
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-xs text-muted-foreground">연락처</label>
+                  <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer">
+                    <Checkbox
+                      checked={infoForm.noContact}
+                      onCheckedChange={(checked) => {
+                        const isChecked = checked === true;
+                        setInfoForm(f => ({ ...f, noContact: isChecked, ...(isChecked && { contactPhone: '', contactEmail: '' }) }));
+                      }}
+                    />
+                    연락처 없음
+                  </label>
+                </div>
+                <Input value={infoForm.contactPhone} onChange={e => setInfoForm(f => ({ ...f, contactPhone: formatPhone(e.target.value) }))} className="text-sm" placeholder="010-0000-0000" disabled={infoForm.noContact} />
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">이메일 <span className="text-muted-foreground/70">(연락처 없을 때 대신 입력)</span></label>
+                <Input type="email" value={infoForm.contactEmail} onChange={e => setInfoForm(f => ({ ...f, contactEmail: e.target.value }))} className="text-sm" placeholder="example@company.com" disabled={infoForm.noContact} />
               </div>
               <div>
                 <label className="text-xs text-muted-foreground mb-1 block">계약일</label>
@@ -749,6 +770,18 @@ export default function ClientDetail({ id }: { id: string }) {
                 <div className="flex items-center gap-2 text-muted-foreground">
                   <Phone className="w-3.5 h-3.5 flex-shrink-0" />
                   <span>{client.contactPhone}</span>
+                </div>
+              )}
+              {client.contactEmail && (
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Mail className="w-3.5 h-3.5 flex-shrink-0" />
+                  <span>{client.contactEmail}</span>
+                </div>
+              )}
+              {client.noContact && !client.contactPhone && !client.contactEmail && (
+                <div className="flex items-center gap-2 text-muted-foreground/70">
+                  <Phone className="w-3.5 h-3.5 flex-shrink-0" />
+                  <span>연락처 없음</span>
                 </div>
               )}
               {client.contractDate && (
@@ -1481,6 +1514,7 @@ export default function ClientDetail({ id }: { id: string }) {
         clientName={client.name}
         contactName={client.contactName}
         contactPhone={client.contactPhone}
+        contactEmail={client.contactEmail}
         consultations={consultations}
       />
     </div>

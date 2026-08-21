@@ -59,6 +59,8 @@ export const documents = pgTable("documents", {
   extraDiscountValue: integer("extraDiscountValue").default(0).notNull(),
   depositRatio: integer("depositRatio").default(50).notNull(),
   contactPhone: varchar("contactPhone", { length: 50 }).default("").notNull(),
+  contactEmail: varchar("contactEmail", { length: 255 }).default("").notNull(),
+  noContact: boolean("noContact").default(false).notNull(),
   businessType: varchar("businessType", { length: 100 }).default("").notNull(),
   optionalItems: json("optionalItems")
     .$type<OptionalItemRow[]>()
@@ -154,6 +156,8 @@ export const clients = pgTable("clients", {
   name: varchar("name", { length: 500 }).notNull(),
   contactName: varchar("contactName", { length: 200 }).default("").notNull(),
   contactPhone: varchar("contactPhone", { length: 50 }).default("").notNull(),
+  contactEmail: varchar("contactEmail", { length: 255 }).default("").notNull(),
+  noContact: boolean("noContact").default(false).notNull(),
   businessNumber: varchar("businessNumber", { length: 50 })
     .default("")
     .notNull(),

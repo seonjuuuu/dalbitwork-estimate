@@ -50,6 +50,8 @@ const documentInputSchema = z.object({
   extraDiscountValue: z.number().default(0),
   depositRatio: z.number().default(50),
   contactPhone: z.string().default(""),
+  contactEmail: z.string().default(""),
+  noContact: z.boolean().default(false),
   businessType: z.string().default(""),
 });
 
@@ -205,6 +207,8 @@ export const appRouter = router({
           extraDiscountValue: input.extraDiscountValue ?? 0,
           depositRatio: input.depositRatio ?? 50,
           contactPhone: input.contactPhone,
+          contactEmail: input.contactEmail,
+          noContact: input.noContact,
           businessType: input.businessType,
         });
         return doc;
@@ -240,6 +244,8 @@ export const appRouter = router({
         if (input.data.extraDiscountValue !== undefined) updateData.extraDiscountValue = input.data.extraDiscountValue;
         if (input.data.depositRatio !== undefined) updateData.depositRatio = input.data.depositRatio;
         if (input.data.contactPhone !== undefined) updateData.contactPhone = input.data.contactPhone;
+        if (input.data.contactEmail !== undefined) updateData.contactEmail = input.data.contactEmail;
+        if (input.data.noContact !== undefined) updateData.noContact = input.data.noContact;
         if (input.data.businessType !== undefined) updateData.businessType = input.data.businessType;
         if (input.data.contactName !== undefined) updateData.contactName = input.data.contactName;
 
@@ -277,6 +283,8 @@ export const appRouter = router({
           clientName: proposal.clientName,
           contactName: proposal.contactName,
           contactPhone: proposal.contactPhone,
+          contactEmail: proposal.contactEmail,
+          noContact: proposal.noContact,
           projectName: proposal.projectName,
           platform: proposal.platform,
           date: new Date().toISOString().split('T')[0],
@@ -307,6 +315,8 @@ export const appRouter = router({
           clientName: '',
           contactName: '',
           contactPhone: '',
+          contactEmail: '',
+          noContact: false,
           businessType: '',
           projectName: original.projectName,
           platform: original.platform,
@@ -401,6 +411,8 @@ export const appRouter = router({
         name: z.string().min(1),
         contactName: z.string().default(''),
         contactPhone: z.string().default(''),
+        contactEmail: z.string().default(''),
+        noContact: z.boolean().default(false),
         businessNumber: z.string().default(''),
         contractDate: z.string().default(''),
         contractAmount: z.number().default(0),
@@ -416,6 +428,8 @@ export const appRouter = router({
         name: z.string().min(1).optional(),
         contactName: z.string().optional(),
         contactPhone: z.string().optional(),
+        contactEmail: z.string().optional(),
+        noContact: z.boolean().optional(),
         businessNumber: z.string().optional(),
         contractDate: z.string().optional(),
         contractAmount: z.number().optional(),
@@ -458,6 +472,8 @@ export const appRouter = router({
         name: z.string(),
         contactName: z.string().default(''),
         contactPhone: z.string().default(''),
+        contactEmail: z.string().default(''),
+        noContact: z.boolean().default(false),
         isEstimate: z.boolean().default(false),
         contractDate: z.string().optional(),
         contractAmount: z.number().optional(),
