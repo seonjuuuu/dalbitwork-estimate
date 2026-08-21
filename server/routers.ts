@@ -743,6 +743,9 @@ export const appRouter = router({
           date: z.string().min(1),
           memo: z.string().optional(),
           clientId: z.number().optional(),
+          isMeeting: z.boolean().optional(),
+          time: z.string().optional(),
+          timeUnknown: z.boolean().optional(),
         })
       )
       .mutation(async ({ ctx, input }) => {

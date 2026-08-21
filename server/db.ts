@@ -592,7 +592,16 @@ export async function getCalendarEvents(userId: number) {
   // 날짜가 "2026.01.15"(점) / "2026-01-15"(대시) 형식이 혼용되어 저장되므로 대시 형식으로 통일
   const normDate = (d: string) => d.replace(/\./g, "-");
 
-  const events: { date: string; type: string; label: string; id: string; clientId?: number }[] = [];
+  const events: {
+    date: string;
+    type: string;
+    label: string;
+    id: string;
+    clientId?: number;
+    isMeeting?: boolean;
+    time?: string | null;
+    timeUnknown?: boolean;
+  }[] = [];
 
   for (const c of allConsultations) {
     if (c.date) {
@@ -622,7 +631,16 @@ export async function getCalendarEvents(userId: number) {
   }
 
   for (const ev of allCustomEvents) {
-    events.push({ date: normDate(ev.date), type: 'custom', label: ev.title, id: `custom-${ev.id}`, clientId: ev.clientId ?? undefined });
+    events.push({
+      date: normDate(ev.date),
+      type: 'custom',
+      label: ev.title,
+      id: `custom-${ev.id}`,
+      clientId: ev.clientId ?? undefined,
+      isMeeting: ev.isMeeting,
+      time: ev.time,
+      timeUnknown: ev.timeUnknown,
+    });
   }
 
   return events;
@@ -632,7 +650,15 @@ export async function getCalendarEvents(userId: number) {
 
 export async function createCustomEvent(
   userId: number,
-  data: { title: string; date: string; memo?: string; clientId?: number }
+  data: {
+    title: string;
+    date: string;
+    memo?: string;
+    clientId?: number;
+    isMeeting?: boolean;
+    time?: string;
+    timeUnknown?: boolean;
+  }
 ) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
@@ -644,6 +670,9 @@ export async function createCustomEvent(
       date: data.date,
       memo: data.memo || "",
       clientId: data.clientId ?? null,
+      isMeeting: data.isMeeting ?? false,
+      time: data.isMeeting && !data.timeUnknown ? data.time || null : null,
+      timeUnknown: data.isMeeting ? !!data.timeUnknown : false,
     })
     .returning();
   return row;

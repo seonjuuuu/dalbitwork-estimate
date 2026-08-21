@@ -332,6 +332,9 @@ export const customEvents = pgTable("custom_events", {
   date: varchar("date", { length: 20 }).notNull(),
   memo: text("memo").default("").notNull(),
   clientId: integer("clientId"),
+  isMeeting: boolean("isMeeting").default(false).notNull(),
+  time: varchar("time", { length: 10 }), // "HH:MM", 미팅이고 시간이 정해진 경우만
+  timeUnknown: boolean("timeUnknown").default(false).notNull(), // 미팅인데 시간이 아직 미정인 경우
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 

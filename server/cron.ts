@@ -24,6 +24,20 @@ function kstDateString(offsetDays = 0): string {
   return kst.toISOString().slice(0, 10);
 }
 
+function formatEventLine(e: {
+  type: string;
+  label: string;
+  isMeeting?: boolean;
+  time?: string | null;
+  timeUnknown?: boolean;
+}): string {
+  const base = `${EVENT_TYPE_LABELS[e.type] || e.type} · ${e.label}`;
+  if (!e.isMeeting) return `• ${base}`;
+  if (e.timeUnknown) return `• ${base} (시간 미정)`;
+  if (e.time) return `• ${base} (${e.time})`;
+  return `• ${base}`;
+}
+
 /** 매일 아침 각 유저에게 오늘의 일정 + 완료되지 않은 할 일을 요약해서 알림으로 보낸다 */
 export async function sendDailyTodoSummaries() {
   const users = await db.listUsers();
@@ -45,9 +59,7 @@ export async function sendDailyTodoSummaries() {
     const sections: string[] = [];
 
     if (todayEvents.length > 0) {
-      const lines = todayEvents
-        .slice(0, MAX_ITEMS_IN_BODY)
-        .map((e) => `• ${EVENT_TYPE_LABELS[e.type] || e.type} · ${e.label}`);
+      const lines = todayEvents.slice(0, MAX_ITEMS_IN_BODY).map(formatEventLine);
       if (todayEvents.length > MAX_ITEMS_IN_BODY) {
         lines.push(`외 ${todayEvents.length - MAX_ITEMS_IN_BODY}건`);
       }
@@ -63,9 +75,7 @@ export async function sendDailyTodoSummaries() {
     }
 
     if (tomorrowReminders.length > 0) {
-      const lines = tomorrowReminders
-        .slice(0, MAX_ITEMS_IN_BODY)
-        .map((e) => `• ${EVENT_TYPE_LABELS[e.type] || e.type} · ${e.label}`);
+      const lines = tomorrowReminders.slice(0, MAX_ITEMS_IN_BODY).map(formatEventLine);
       if (tomorrowReminders.length > MAX_ITEMS_IN_BODY) {
         lines.push(`외 ${tomorrowReminders.length - MAX_ITEMS_IN_BODY}건`);
       }

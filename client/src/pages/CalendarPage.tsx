@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 
 type EventType = 'consultation' | 'proposal' | 'estimate' | 'contract' | 'pcDraft' | 'mobileDraft' | 'finalDelivery' | 'custom';
@@ -36,7 +37,23 @@ function toDateStr(year: number, month: number, day: number) {
   return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 }
 
-type CalEvent = { date: string; type: EventType; label: string; id: string; clientId?: number };
+type CalEvent = {
+  date: string;
+  type: EventType;
+  label: string;
+  id: string;
+  clientId?: number;
+  isMeeting?: boolean;
+  time?: string | null;
+  timeUnknown?: boolean;
+};
+
+function formatMeetingTime(e: CalEvent): string | null {
+  if (!e.isMeeting) return null;
+  if (e.timeUnknown) return '시간 미정';
+  if (e.time) return e.time;
+  return null;
+}
 
 function buildEventMap(events: CalEvent[]) {
   const map = new Map<string, CalEvent[]>();
@@ -183,6 +200,7 @@ function MainCalendar({
                     className={`text-[10px] px-1.5 py-0.5 rounded truncate leading-tight ${EVENT_STYLE[e.type].bg} ${EVENT_STYLE[e.type].text} ${e.clientId ? 'cursor-pointer hover:opacity-75 transition-opacity' : ''}`}
                   >
                     {EVENT_STYLE[e.type].label} · {e.label}
+                    {formatMeetingTime(e) && ` (${formatMeetingTime(e)})`}
                   </span>
                 ))}
                 {dayEvents.length > 3 && (
@@ -254,6 +272,7 @@ function DayDetail({
             >
               <span className={`text-[10px] font-semibold uppercase tracking-wide ${EVENT_STYLE[e.type].text}`}>
                 {EVENT_STYLE[e.type].label}
+                {formatMeetingTime(e) && ` · ${formatMeetingTime(e)}`}
               </span>
               <p className={`text-xs font-medium mt-0.5 ${EVENT_STYLE[e.type].text} ${e.clientId ? 'underline underline-offset-2' : ''}`}>
                 {e.label}
@@ -297,6 +316,9 @@ function AddEventDialog({
   const [clientPickerOpen, setClientPickerOpen] = useState(false);
   const [clientSearch, setClientSearch] = useState('');
   const clientPickerRef = useRef<HTMLDivElement>(null);
+  const [isMeeting, setIsMeeting] = useState(false);
+  const [time, setTime] = useState('');
+  const [timeUnknown, setTimeUnknown] = useState(false);
 
   const selectedClientName = clientId === 'none' ? null : clientsList.find((c) => String(c.id) === clientId)?.name ?? null;
   const q = clientSearch.trim().toLowerCase();
@@ -325,6 +347,9 @@ function AddEventDialog({
     setClientId('none');
     setClientSearch('');
     setClientPickerOpen(false);
+    setIsMeeting(false);
+    setTime('');
+    setTimeUnknown(false);
     onOpenChange(false);
   };
 
@@ -343,6 +368,9 @@ function AddEventDialog({
         date,
         memo: memo.trim() || undefined,
         clientId: clientId === 'none' ? undefined : Number(clientId),
+        isMeeting,
+        time: isMeeting && !timeUnknown ? time || undefined : undefined,
+        timeUnknown: isMeeting ? timeUnknown : undefined,
       });
       await utils.calendar.getEvents.invalidate();
       toast.success('일정을 추가했습니다.');
@@ -367,6 +395,31 @@ function AddEventDialog({
             <Label className="text-xs mb-1.5 block">날짜</Label>
             <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
           </div>
+          <label className="flex items-center gap-1.5 text-xs text-foreground cursor-pointer">
+            <Checkbox checked={isMeeting} onCheckedChange={(checked) => { const v = checked === true; setIsMeeting(v); if (!v) { setTime(''); setTimeUnknown(false); } }} />
+            미팅이에요
+          </label>
+          {isMeeting && (
+            <div>
+              <Label className="text-xs mb-1.5 block">시간 {timeUnknown ? '' : '(선택)'}</Label>
+              <div className="flex items-center gap-2">
+                <Input
+                  type="time"
+                  value={time}
+                  onChange={(e) => setTime(e.target.value)}
+                  disabled={timeUnknown}
+                  className="flex-1 disabled:opacity-50"
+                />
+                <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer flex-shrink-0">
+                  <Checkbox
+                    checked={timeUnknown}
+                    onCheckedChange={(checked) => { const v = checked === true; setTimeUnknown(v); if (v) setTime(''); }}
+                  />
+                  시간 미정
+                </label>
+              </div>
+            </div>
+          )}
           <div>
             <Label className="text-xs mb-1.5 block">관련 고객 (선택)</Label>
             <div ref={clientPickerRef} className="relative">
