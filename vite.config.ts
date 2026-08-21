@@ -5,6 +5,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { defineConfig, type Plugin, type ViteDevServer } from "vite";
 import { vitePluginManusRuntime } from "vite-plugin-manus-runtime";
+import { VitePWA } from "vite-plugin-pwa";
 
 // =============================================================================
 // Manus Debug Collector - Vite Plugin
@@ -150,7 +151,44 @@ function vitePluginManusDebugCollector(): Plugin {
   };
 }
 
-const plugins = [react(), tailwindcss(), jsxLocPlugin(), vitePluginManusRuntime(), vitePluginManusDebugCollector()];
+const plugins = [
+  react(),
+  tailwindcss(),
+  jsxLocPlugin(),
+  vitePluginManusRuntime(),
+  vitePluginManusDebugCollector(),
+  VitePWA({
+    registerType: "autoUpdate",
+    includeAssets: ["favicon.png", "apple-touch-icon.png", "icons/*.png"],
+    manifest: {
+      name: "달빛워크 어드민",
+      short_name: "달빛워크",
+      description: "달빛워크 견적/고객/일정 관리",
+      start_url: "/",
+      scope: "/",
+      display: "standalone",
+      background_color: "#141414",
+      theme_color: "#141414",
+      icons: [
+        { src: "/icons/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
+        { src: "/icons/icon-512.png", sizes: "512x512", type: "image/png", purpose: "any" },
+        { src: "/icons/icon-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
+      ],
+    },
+    workbox: {
+      // 번들 용량이 커서 기본 2MB 제한을 넘기므로 상향 (앱 셸 사전 캐싱용)
+      maximumFileSizeToCacheInBytes: 8 * 1024 * 1024,
+      // API 요청은 캐시하지 않고 항상 네트워크로 보냄 (오래된 데이터로 오작동 방지)
+      navigateFallbackDenylist: [/^\/api\//],
+      runtimeCaching: [
+        {
+          urlPattern: /^\/api\//,
+          handler: "NetworkOnly",
+        },
+      ],
+    },
+  }),
+];
 
 export default defineConfig({
   plugins,
