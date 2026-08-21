@@ -1,0 +1,33 @@
+{
+  "name": "dalbitwork-desktop",
+  "version": "1.0.0",
+  "private": true,
+  "description": "달빛워크 견적 관리 - macOS 데스크톱 앱 (배포된 웹앱을 감싸는 Electron 셸)",
+  "author": "달빛워크",
+  "main": "main.cjs",
+  "scripts": {
+    "dev": "electron .",
+    "build:mac": "electron-builder --mac"
+  },
+  "devDependencies": {
+    "electron": "^43.4.1",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.dalbitwork.estimate",
+    "productName": "Dalbit",
+    "npmRebuild": false,
+    "files": [
+      "main.cjs"
+    ],
+    "icon": "build/icon.icns",
+    "afterSign": "afterSign.cjs",
+    "mac": {
+      "category": "public.app-category.business",
+      "target": [
+        "dmg",
+        "zip"
+      ]
+    }
+  }
+}
