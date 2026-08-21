@@ -1313,3 +1313,37 @@ export async function getExpenseMonthlySummary(userId: number) {
   }
   return Array.from(totals.values()).sort((a, b) => b.month.localeCompare(a.month));
 }
+
+/** 연도별(카테고리·통화별) 합계 */
+export async function getExpenseYearlySummary(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  const rows = await db
+    .select({
+      date: cardTransactions.date,
+      amount: cardTransactions.amount,
+      category: cardTransactions.category,
+      currency: cardTransactions.currency,
+    })
+    .from(cardTransactions)
+    .where(eq(cardTransactions.userId, userId));
+  const totals = new Map<string, { year: string; category: string; currency: string; amount: number }>();
+  for (const r of rows) {
+    const year = r.date.slice(0, 4);
+    const key = `${year}|${r.category}|${r.currency}`;
+    const existing = totals.get(key);
+    if (existing) existing.amount += r.amount;
+    else totals.set(key, { year, category: r.category, currency: r.currency, amount: r.amount });
+  }
+  return Array.from(totals.values()).sort((a, b) => a.year.localeCompare(b.year));
+}
+
+/** 특정 월(YYYY-MM)에 저장된 지출을 전부 삭제 (다시 업로드해서 새로 체크할 수 있도록) */
+export async function deleteExpensesForMonth(userId: number, month: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db
+    .delete(cardTransactions)
+    .where(and(eq(cardTransactions.userId, userId), sql`${cardTransactions.date} LIKE ${month + "%"}`));
+  return { success: true };
+}

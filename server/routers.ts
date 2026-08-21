@@ -974,6 +974,16 @@ export const appRouter = router({
     monthlySummary: protectedProcedure.query(async ({ ctx }) => {
       return db.getExpenseMonthlySummary(ctx.user.id);
     }),
+    /** 연도별 그래프용 데이터 */
+    yearlySummary: protectedProcedure.query(async ({ ctx }) => {
+      return db.getExpenseYearlySummary(ctx.user.id);
+    }),
+    /** 특정 월에 저장된 지출을 전부 삭제 (다시 업로드해서 새로 체크하고 싶을 때) */
+    deleteMonth: protectedProcedure
+      .input(z.object({ month: z.string() }))
+      .mutation(async ({ ctx, input }) => {
+        return db.deleteExpensesForMonth(ctx.user.id, input.month);
+      }),
   }),
 
   push: router({
