@@ -14,6 +14,7 @@ import {
   Phone, Mail, User, CalendarDays, CircleDollarSign,
   MessageSquare, ChevronDown, ChevronUp, Edit, LinkIcon, FileText, ExternalLink, Hash,
   Upload, Download, Eye, Copy, FileDown, CreditCard, CheckCircle2, Image as ImageIcon, Sparkles, ListTree,
+  Clock,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import DepositConfirmDialog from '@/components/DepositConfirmDialog';
@@ -265,6 +266,8 @@ export default function ClientDetail({ id }: { id: string }) {
     { clientName: client?.name ?? '' },
     { enabled: !!client?.name }
   );
+  const { data: linkedEvents = [], refetch: refetchLinkedEvents } = trpc.calendar.listCustomEventsByClient.useQuery({ clientId });
+  const deleteLinkedEventMutation = trpc.calendar.deleteCustomEvent.useMutation();
   const updateClientMutation = trpc.clients.update.useMutation();
   const updateDocumentMutation = trpc.documents.update.useMutation();
   const createMutation = trpc.consultations.create.useMutation();
@@ -371,6 +374,17 @@ export default function ClientDetail({ id }: { id: string }) {
       toast.error('저장에 실패했습니다.');
     } finally {
       setIsSavingWorkSchedule(false);
+    }
+  };
+
+  const handleDeleteLinkedEvent = async (eventId: number) => {
+    if (!window.confirm('이 일정을 삭제하시겠습니까?')) return;
+    try {
+      await deleteLinkedEventMutation.mutateAsync({ id: eventId });
+      await refetchLinkedEvents();
+      toast.success('일정을 삭제했습니다.');
+    } catch {
+      toast.error('일정 삭제에 실패했습니다.');
     }
   };
 
@@ -873,6 +887,46 @@ export default function ClientDetail({ id }: { id: string }) {
           </div>
         )}
       </div>
+
+      {/* 일정 (미팅 등) */}
+      {linkedEvents.length > 0 && (
+        <div className="bg-card border border-border rounded-xl p-5">
+          <h2 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+            <CalendarDays className="w-4 h-4 text-muted-foreground" />
+            일정
+            <span className="text-xs text-muted-foreground font-normal">({linkedEvents.length}건)</span>
+          </h2>
+          <div className="space-y-2">
+            {linkedEvents.map((ev) => (
+              <div key={ev.id} className="flex items-start justify-between gap-2 border border-border rounded-lg p-3">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center flex-wrap gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
+                    <span className="flex items-center gap-1">
+                      <CalendarDays className="w-3 h-3" />
+                      {ev.date}
+                    </span>
+                    {ev.isMeeting && (
+                      <span className="flex items-center gap-1 text-teal-700 dark:text-teal-300">
+                        <Clock className="w-3 h-3" />
+                        미팅{ev.timeUnknown ? ' · 시간 미정' : ev.time ? ` · ${ev.time}` : ''}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-sm font-medium text-foreground mt-1 truncate">{ev.title}</p>
+                  {ev.memo && <p className="text-xs text-muted-foreground mt-0.5 whitespace-pre-wrap">{ev.memo}</p>}
+                </div>
+                <button
+                  onClick={() => handleDeleteLinkedEvent(ev.id)}
+                  className="w-6 h-6 flex items-center justify-center rounded-md text-muted-foreground hover:text-destructive hover:bg-accent transition-colors flex-shrink-0"
+                  title="일정 삭제"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* 제안서 연결 */}
       {isLoadingMatchedProposals ? (

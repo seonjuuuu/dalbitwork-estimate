@@ -774,6 +774,12 @@ export const appRouter = router({
       .mutation(async ({ ctx, input }) => {
         return db.deleteCustomEvent(ctx.user.id, input.id);
       }),
+    /** 특정 고객에 연결된 자유 등록 일정(미팅 등) 목록 */
+    listCustomEventsByClient: protectedProcedure
+      .input(z.object({ clientId: z.number() }))
+      .query(async ({ ctx, input }) => {
+        return db.listCustomEventsByClient(ctx.user.id, input.clientId);
+      }),
   }),
 
   pdfFiles: router({

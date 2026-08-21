@@ -718,6 +718,16 @@ export async function deleteCustomEvent(userId: number, id: number) {
   return { success: true };
 }
 
+export async function listCustomEventsByClient(userId: number, clientId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select()
+    .from(customEvents)
+    .where(and(eq(customEvents.userId, userId), eq(customEvents.clientId, clientId)))
+    .orderBy(asc(customEvents.date));
+}
+
 export async function getWorkRanges(userId: number) {
   const db = await getDb();
   if (!db) return [];

@@ -5,6 +5,7 @@ import { FileText, FileCheck, Building2, TrendingUp, AlertCircle, Loader2, Edit,
 import KanbanBoard from '@/components/KanbanBoard';
 import TodoList from '@/components/TodoList';
 import PushNotificationCard from '@/components/PushNotificationCard';
+import TodayBriefCard from '@/components/TodayBriefCard';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend,
@@ -168,6 +169,9 @@ export default function Dashboard() {
         <h1 className="text-2xl font-bold text-foreground">대시보드</h1>
         <p className="text-sm text-muted-foreground mt-1">{now.getFullYear()}년 {monthLabel} 현황</p>
       </div>
+
+      {/* 오늘의 할 일 및 일정 */}
+      <TodayBriefCard />
 
       {/* 이번 달 실적 알림 */}
       <MonthlyPerformanceBanner
