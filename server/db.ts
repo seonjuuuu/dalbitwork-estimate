@@ -1,7 +1,7 @@
-import { eq, and, or, ne, desc, asc, gte, lte, isNull, sql } from "drizzle-orm";
+import { eq, and, or, ne, desc, asc, gte, lte, gt, isNull, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
-import { InsertUser, users, documents, InsertDocument, noteTemplates, InsertNoteTemplate, payments, serviceItems, clients, consultations, hktbInvoices, pdfFiles, todos, pushSubscriptions } from "../drizzle/schema";
+import { InsertUser, users, documents, InsertDocument, noteTemplates, InsertNoteTemplate, payments, serviceItems, clients, consultations, hktbInvoices, pdfFiles, todos, pushSubscriptions, notificationEvents } from "../drizzle/schema";
 import type { InsertPayment, InsertServiceItem, InsertClient, InsertConsultation, InsertHktbInvoice, InsertPdfFile, InsertTodo } from "../drizzle/schema";
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -1087,4 +1087,29 @@ export async function deletePushSubscriptionByEndpoint(endpoint: string) {
   const db = await getDb();
   if (!db) return;
   await db.delete(pushSubscriptions).where(eq(pushSubscriptions.endpoint, endpoint));
+}
+
+// ─── 알림 이벤트 (데스크탑 앱 등 폴링 클라이언트용) ──────────────────
+
+export async function insertNotificationEvent(
+  userId: number,
+  evt: { title: string; body: string; url?: string }
+) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const [row] = await db
+    .insert(notificationEvents)
+    .values({ userId, title: evt.title, body: evt.body, url: evt.url || "/" })
+    .returning();
+  return row;
+}
+
+export async function listNotificationEventsSince(userId: number, sinceId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select()
+    .from(notificationEvents)
+    .where(and(eq(notificationEvents.userId, userId), gt(notificationEvents.id, sinceId)))
+    .orderBy(notificationEvents.id);
 }

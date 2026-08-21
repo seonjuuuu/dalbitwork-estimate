@@ -310,3 +310,16 @@ export const pushSubscriptions = pgTable("push_subscriptions", {
 
 export type PushSubscription = typeof pushSubscriptions.$inferSelect;
 export type InsertPushSubscription = typeof pushSubscriptions.$inferInsert;
+
+// 웹 푸시 구독이 없는 클라이언트(예: 데스크탑 앱)도 폴링으로 받아갈 수 있도록 알림 이벤트를 별도로 기록
+export const notificationEvents = pgTable("notification_events", {
+  id: serial("id").primaryKey(),
+  userId: integer("userId").notNull(),
+  title: varchar("title", { length: 200 }).notNull(),
+  body: text("body").notNull(),
+  url: varchar("url", { length: 500 }).default("/").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type NotificationEvent = typeof notificationEvents.$inferSelect;
+export type InsertNotificationEvent = typeof notificationEvents.$inferInsert;

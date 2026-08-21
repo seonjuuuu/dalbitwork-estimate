@@ -50,3 +50,21 @@ export async function sendPushToUser(
     total: subs.length,
   };
 }
+
+/**
+ * 알림 이벤트를 기록하고(폴링 클라이언트용) 웹 푸시 구독이 있는 기기에도 함께 보낸다.
+ * 데스크탑 앱처럼 웹 푸시를 지원하지 않는 클라이언트는 이벤트 기록만으로 폴링을 통해 받아간다.
+ */
+export async function notifyUser(
+  userId: number,
+  payload: { title: string; body: string; url?: string }
+) {
+  const event = await db.insertNotificationEvent(userId, payload);
+  try {
+    const result = await sendPushToUser(userId, payload);
+    return { event, ...result };
+  } catch {
+    // VAPID 미설정 등으로 웹 푸시 발송에 실패해도 이벤트 기록(폴링용)은 이미 남았으므로 무시
+    return { event, sent: 0, total: 0 };
+  }
+}

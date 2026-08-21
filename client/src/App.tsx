@@ -5,6 +5,7 @@ import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { EstimateProvider } from "./contexts/EstimateContext";
+import { DesktopNotificationProvider } from "./contexts/DesktopNotificationContext";
 import Home from "./pages/Home";
 import Dashboard from "./pages/Dashboard";
 import DocumentList from "./pages/DocumentList";
@@ -88,15 +89,17 @@ function App() {
         <TooltipProvider>
           <Toaster />
           <AuthGate>
-            <EstimateProvider>
-              <div className="flex h-screen overflow-hidden">
-                <Sidebar />
-                <main className="flex-1 min-w-0 overflow-y-auto overflow-x-auto h-full">
-                  <Router />
-                </main>
-                <GlobalSearch />
-              </div>
-            </EstimateProvider>
+            <DesktopNotificationProvider>
+              <EstimateProvider>
+                <div className="flex h-screen overflow-hidden">
+                  <Sidebar />
+                  <main className="flex-1 min-w-0 overflow-y-auto overflow-x-auto h-full">
+                    <Router />
+                  </main>
+                  <GlobalSearch />
+                </div>
+              </EstimateProvider>
+            </DesktopNotificationProvider>
           </AuthGate>
         </TooltipProvider>
       </ThemeProvider>

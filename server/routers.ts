@@ -5,7 +5,7 @@ import { nanoid } from "nanoid";
 import * as db from "./db";
 import type { DocumentItemRow, OptionalItemRow } from "../drizzle/schema";
 import { generateEstimateDraft, generateSiteStructure } from "./ai";
-import { sendPushToUser } from "./push";
+import { notifyUser } from "./push";
 import { ENV } from "./_core/env";
 
 // Zod schema for document item validation
@@ -916,14 +916,32 @@ export const appRouter = router({
       return subs.map(s => ({ id: s.id, endpoint: s.endpoint, userAgent: s.userAgent, createdAt: s.createdAt }));
     }),
 
-    /** 테스트 알림 발송 */
+    /** 테스트 알림 발송 (웹 푸시 + 폴링 이벤트 기록을 함께 처리) */
     sendTest: protectedProcedure.mutation(async ({ ctx }) => {
-      return sendPushToUser(ctx.user.id, {
+      const result = await notifyUser(ctx.user.id, {
         title: "달빛워크 어드민",
         body: "테스트 알림이에요. 잘 도착했다면 정상 작동하는 거예요!",
         url: "/",
       });
+      return { sent: result.sent, total: result.total };
     }),
+
+    /**
+     * 웹 푸시를 지원하지 않는 클라이언트(데스크탑 앱 등)가 새 알림 이벤트를
+     * 주기적으로 확인해가기 위한 폴링 엔드포인트
+     */
+    pollEvents: protectedProcedure
+      .input(z.object({ sinceId: z.number().default(0) }))
+      .query(async ({ ctx, input }) => {
+        const events = await db.listNotificationEventsSince(ctx.user.id, input.sinceId);
+        return events.map((e) => ({
+          id: e.id,
+          title: e.title,
+          body: e.body,
+          url: e.url,
+          createdAt: e.createdAt,
+        }));
+      }),
   }),
 
   todos: router({

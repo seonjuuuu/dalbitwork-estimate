@@ -3,6 +3,7 @@ import { Bell, BellOff, BellRing, Loader2, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { trpc } from '@/lib/trpc';
+import { useDesktopNotification } from '@/contexts/DesktopNotificationContext';
 
 function urlBase64ToUint8Array(base64String: string): Uint8Array {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
@@ -11,10 +12,11 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
   return Uint8Array.from(Array.from(rawData).map((c) => c.charCodeAt(0)));
 }
 
-type SupportState = 'checking' | 'unsupported-browser' | 'not-installed' | 'supported';
+type SupportState = 'checking' | 'unsupported-browser' | 'not-installed' | 'electron' | 'supported';
 
 export default function PushNotificationCard() {
   const utils = trpc.useUtils();
+  const desktop = useDesktopNotification();
   const [support, setSupport] = useState<SupportState>('checking');
   const [permission, setPermission] = useState<NotificationPermission>('default');
   const [isSubscribing, setIsSubscribing] = useState(false);
@@ -27,6 +29,12 @@ export default function PushNotificationCard() {
   const sendTestMutation = trpc.push.sendTest.useMutation();
 
   useEffect(() => {
+    // 데스크탑 앱은 브라우저 웹 푸시(PushManager)를 지원하지 않아서 별도 폴링 방식으로 처리
+    if (desktop.isElectron) {
+      setSupport('electron');
+      setPermission(desktop.permission);
+      return;
+    }
     if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) {
       setSupport('unsupported-browser');
       return;
@@ -40,7 +48,7 @@ export default function PushNotificationCard() {
       return;
     }
     setSupport('supported');
-  }, []);
+  }, [desktop.isElectron, desktop.permission]);
 
   const isDeviceSubscribed = async (): Promise<boolean> => {
     const reg = await navigator.serviceWorker.ready;
@@ -120,7 +128,10 @@ export default function PushNotificationCard() {
     setIsSendingTest(true);
     try {
       const result = await sendTestMutation.mutateAsync();
-      if (result.total === 0) {
+      if (support === 'electron') {
+        // 데스크탑 앱은 웹 푸시 구독이 없어도 폴링으로 곧 알림을 받으므로 total 값과 무관하게 안내
+        toast.success('테스트 알림을 보냈습니다. 20초 이내에 뜰 거예요.');
+      } else if (result.total === 0) {
         toast.error('켜진 알림 기기가 없습니다. 먼저 알림을 켜주세요.');
       } else {
         toast.success(`테스트 알림을 보냈습니다 (${result.sent}/${result.total}대).`);
@@ -131,6 +142,25 @@ export default function PushNotificationCard() {
     } finally {
       setIsSendingTest(false);
     }
+  };
+
+  const handleElectronEnable = async () => {
+    setIsSubscribing(true);
+    try {
+      const ok = await desktop.requestEnable();
+      if (ok) {
+        toast.success('알림이 켜졌습니다. 앱이 켜져 있는 동안 알림을 받아요.');
+      } else {
+        toast.error('알림 권한이 거부되었습니다.');
+      }
+    } finally {
+      setIsSubscribing(false);
+    }
+  };
+
+  const handleElectronDisable = () => {
+    desktop.disable();
+    toast.success('알림이 꺼졌습니다.');
   };
 
   return (
@@ -155,6 +185,34 @@ export default function PushNotificationCard() {
         <p className="text-xs text-amber-600 dark:text-amber-400">
           iOS에서는 먼저 사파리 공유 버튼 → "홈 화면에 추가"로 앱을 설치한 뒤, 그 아이콘으로 열어야 알림을 켤 수 있어요.
         </p>
+      )}
+
+      {support === 'electron' && (
+        <div className="space-y-3">
+          <div className="flex flex-wrap items-center gap-2">
+            {desktop.enabled && desktop.permission === 'granted' ? (
+              <Button variant="outline" size="sm" onClick={handleElectronDisable} disabled={isSubscribing} className="gap-1.5">
+                {isSubscribing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <BellOff className="w-3.5 h-3.5" />}
+                이 기기 알림 끄기
+              </Button>
+            ) : (
+              <Button size="sm" onClick={handleElectronEnable} disabled={isSubscribing} className="gap-1.5">
+                {isSubscribing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Bell className="w-3.5 h-3.5" />}
+                이 기기 알림 켜기
+              </Button>
+            )}
+            <Button variant="outline" size="sm" onClick={handleSendTest} disabled={isSendingTest} className="gap-1.5">
+              {isSendingTest ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+              테스트 알림 보내기
+            </Button>
+          </div>
+          {desktop.permission === 'denied' && (
+            <p className="text-xs text-destructive">시스템 알림 권한이 차단되어 있어요. macOS 시스템 설정 → 알림에서 이 앱의 알림을 허용해주세요.</p>
+          )}
+          <p className="text-xs text-muted-foreground">
+            데스크탑 앱은 웹 푸시 대신, 앱이 켜져 있는 동안 20초마다 새 알림을 확인해서 macOS 알림으로 띄워요. 앱을 완전히 종료하면 알림을 받을 수 없어요.
+          </p>
+        </div>
       )}
 
       {support === 'supported' && (
