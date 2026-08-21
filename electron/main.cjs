@@ -5,6 +5,11 @@ const APP_NAME = '달빛워크 어드민';
 const APP_URL = process.env.DALBITWORK_APP_URL || 'https://dalbitwork-estimate-5zcu.vercel.app/';
 const DOCK_ICON_PATH = path.join(__dirname, 'build', 'icon.png');
 
+// 구글은 UA에 "Electron"이 보이면 OAuth 로그인을 막아버려서(Error 400: disallowed_useragent)
+// 일반 데스크탑 크롬처럼 보이는 UA로 바꿔줘야 구글 로그인이 통과됨
+const DESKTOP_CHROME_UA =
+  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
+
 // 패키징 전(`electron .`)에도 Dock 아이콘 hover 시 "Electron" 대신 이 이름이 보이도록 가장 먼저 설정
 app.setName(APP_NAME);
 
@@ -25,6 +30,7 @@ function createWindow() {
     },
   });
 
+  mainWindow.webContents.setUserAgent(DESKTOP_CHROME_UA);
   mainWindow.loadURL(APP_URL);
 
   // 외부 링크(대상=_blank 등)는 앱 창이 아니라 기본 브라우저에서 열기
