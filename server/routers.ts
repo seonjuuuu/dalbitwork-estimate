@@ -751,6 +751,24 @@ export const appRouter = router({
       .mutation(async ({ ctx, input }) => {
         return db.createCustomEvent(ctx.user.id, input);
       }),
+    /** 자유 등록 일정 수정 */
+    updateCustomEvent: protectedProcedure
+      .input(
+        z.object({
+          id: z.number(),
+          title: z.string().min(1).max(200),
+          date: z.string().min(1),
+          memo: z.string().optional(),
+          clientId: z.number().optional(),
+          isMeeting: z.boolean().optional(),
+          time: z.string().optional(),
+          timeUnknown: z.boolean().optional(),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        const { id, ...data } = input;
+        return db.updateCustomEvent(ctx.user.id, id, data);
+      }),
     deleteCustomEvent: protectedProcedure
       .input(z.object({ id: z.number() }))
       .mutation(async ({ ctx, input }) => {

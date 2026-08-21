@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { trpc } from '@/lib/trpc';
-import { ChevronLeft, ChevronRight, X, Plus, Trash2, Check, ChevronsUpDown, Building2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, X, Plus, Trash2, Check, ChevronsUpDown, Building2, Pencil } from 'lucide-react';
 import { useLocation } from 'wouter';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -46,6 +46,7 @@ type CalEvent = {
   isMeeting?: boolean;
   time?: string | null;
   timeUnknown?: boolean;
+  memo?: string;
 };
 
 function formatMeetingTime(e: CalEvent): string | null {
@@ -222,12 +223,14 @@ function DayDetail({
   events,
   onClose,
   onAddEvent,
+  onEditCustomEvent,
   onDeleteCustomEvent,
 }: {
   date: string;
   events: CalEvent[];
   onClose?: () => void;
   onAddEvent?: () => void;
+  onEditCustomEvent?: (event: CalEvent) => void;
   onDeleteCustomEvent?: (id: number) => void;
 }) {
   const [, navigate] = useLocation();
@@ -278,14 +281,27 @@ function DayDetail({
                 {e.label}
               </p>
             </div>
-            {e.type === 'custom' && onDeleteCustomEvent && (
-              <button
-                onClick={() => onDeleteCustomEvent(Number(e.id.replace('custom-', '')))}
-                className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity w-6 h-6 flex items-center justify-center rounded-md text-muted-foreground hover:text-destructive hover:bg-background/60 flex-shrink-0"
-                title="일정 삭제"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-              </button>
+            {e.type === 'custom' && (onEditCustomEvent || onDeleteCustomEvent) && (
+              <div className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity flex items-center gap-0.5 flex-shrink-0">
+                {onEditCustomEvent && (
+                  <button
+                    onClick={() => onEditCustomEvent(e)}
+                    className="w-6 h-6 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-background/60"
+                    title="일정 수정"
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
+                  </button>
+                )}
+                {onDeleteCustomEvent && (
+                  <button
+                    onClick={() => onDeleteCustomEvent(Number(e.id.replace('custom-', '')))}
+                    className="w-6 h-6 flex items-center justify-center rounded-md text-muted-foreground hover:text-destructive hover:bg-background/60"
+                    title="일정 삭제"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
             )}
           </div>
         ))
@@ -300,25 +316,28 @@ function AddEventDialog({
   open,
   onOpenChange,
   defaultDate,
+  editingEvent,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   defaultDate: string;
+  editingEvent?: CalEvent | null;
 }) {
   const utils = trpc.useUtils();
   const { data: clientsList = [] } = trpc.clients.list.useQuery(undefined);
   const createMutation = trpc.calendar.createCustomEvent.useMutation();
+  const updateMutation = trpc.calendar.updateCustomEvent.useMutation();
 
-  const [title, setTitle] = useState('');
-  const [date, setDate] = useState(defaultDate);
-  const [memo, setMemo] = useState('');
-  const [clientId, setClientId] = useState<string>('none');
+  const [title, setTitle] = useState(editingEvent?.label ?? '');
+  const [date, setDate] = useState(editingEvent?.date ?? defaultDate);
+  const [memo, setMemo] = useState(editingEvent?.memo ?? '');
+  const [clientId, setClientId] = useState<string>(editingEvent?.clientId ? String(editingEvent.clientId) : 'none');
   const [clientPickerOpen, setClientPickerOpen] = useState(false);
   const [clientSearch, setClientSearch] = useState('');
   const clientPickerRef = useRef<HTMLDivElement>(null);
-  const [isMeeting, setIsMeeting] = useState(false);
-  const [time, setTime] = useState('');
-  const [timeUnknown, setTimeUnknown] = useState(false);
+  const [isMeeting, setIsMeeting] = useState(editingEvent?.isMeeting ?? false);
+  const [time, setTime] = useState(editingEvent?.time ?? '');
+  const [timeUnknown, setTimeUnknown] = useState(editingEvent?.timeUnknown ?? false);
 
   const selectedClientName = clientId === 'none' ? null : clientsList.find((c) => String(c.id) === clientId)?.name ?? null;
   const q = clientSearch.trim().toLowerCase();
@@ -341,15 +360,15 @@ function AddEventDialog({
   }, [clientPickerOpen]);
 
   const resetAndClose = () => {
-    setTitle('');
-    setDate(defaultDate);
-    setMemo('');
-    setClientId('none');
+    setTitle(editingEvent?.label ?? '');
+    setDate(editingEvent?.date ?? defaultDate);
+    setMemo(editingEvent?.memo ?? '');
+    setClientId(editingEvent?.clientId ? String(editingEvent.clientId) : 'none');
     setClientSearch('');
     setClientPickerOpen(false);
-    setIsMeeting(false);
-    setTime('');
-    setTimeUnknown(false);
+    setIsMeeting(editingEvent?.isMeeting ?? false);
+    setTime(editingEvent?.time ?? '');
+    setTimeUnknown(editingEvent?.timeUnknown ?? false);
     onOpenChange(false);
   };
 
@@ -362,21 +381,26 @@ function AddEventDialog({
       toast.error('날짜를 선택해주세요.');
       return;
     }
+    const payload = {
+      title: title.trim(),
+      date,
+      memo: memo.trim() || undefined,
+      clientId: clientId === 'none' ? undefined : Number(clientId),
+      isMeeting,
+      time: isMeeting && !timeUnknown ? time || undefined : undefined,
+      timeUnknown: isMeeting ? timeUnknown : undefined,
+    };
     try {
-      await createMutation.mutateAsync({
-        title: title.trim(),
-        date,
-        memo: memo.trim() || undefined,
-        clientId: clientId === 'none' ? undefined : Number(clientId),
-        isMeeting,
-        time: isMeeting && !timeUnknown ? time || undefined : undefined,
-        timeUnknown: isMeeting ? timeUnknown : undefined,
-      });
+      if (editingEvent) {
+        await updateMutation.mutateAsync({ id: Number(editingEvent.id.replace('custom-', '')), ...payload });
+      } else {
+        await createMutation.mutateAsync(payload);
+      }
       await utils.calendar.getEvents.invalidate();
-      toast.success('일정을 추가했습니다.');
+      toast.success(editingEvent ? '일정을 수정했습니다.' : '일정을 추가했습니다.');
       resetAndClose();
     } catch {
-      toast.error('일정 추가에 실패했습니다.');
+      toast.error(editingEvent ? '일정 수정에 실패했습니다.' : '일정 추가에 실패했습니다.');
     }
   };
 
@@ -384,7 +408,7 @@ function AddEventDialog({
     <Dialog open={open} onOpenChange={(v) => (v ? onOpenChange(v) : resetAndClose())}>
       <DialogContent className="sm:max-w-[420px]">
         <DialogHeader>
-          <DialogTitle>일정 추가</DialogTitle>
+          <DialogTitle>{editingEvent ? '일정 수정' : '일정 추가'}</DialogTitle>
         </DialogHeader>
         <div className="flex flex-col gap-3 py-1">
           <div>
@@ -480,7 +504,9 @@ function AddEventDialog({
         </div>
         <DialogFooter>
           <Button variant="outline" size="sm" onClick={resetAndClose}>취소</Button>
-          <Button size="sm" onClick={handleSubmit} disabled={createMutation.isPending}>추가</Button>
+          <Button size="sm" onClick={handleSubmit} disabled={createMutation.isPending || updateMutation.isPending}>
+            {editingEvent ? '저장' : '추가'}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -497,6 +523,7 @@ export default function CalendarPage() {
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [rightOpen, setRightOpen] = useState(true);
   const [addEventOpen, setAddEventOpen] = useState(false);
+  const [editingEvent, setEditingEvent] = useState<CalEvent | null>(null);
   const toggleSelectedDay = (date: string) => {
     setSelectedDay((prev) => (prev === date ? null : date));
   };
@@ -518,6 +545,9 @@ export default function CalendarPage() {
   };
 
   const addEventDefaultDate = selectedDay || todayStr;
+
+  const openAddEvent = () => { setEditingEvent(null); setAddEventOpen(true); };
+  const openEditEvent = (event: CalEvent) => { setEditingEvent(event); setAddEventOpen(true); };
 
   const prevYear = month === 0 ? year - 1 : year;
   const prevMonth = month === 0 ? 11 : month - 1;
@@ -553,7 +583,7 @@ export default function CalendarPage() {
               <ChevronRight className="w-4 h-4" />
             </button>
           </div>
-          <Button size="sm" variant="outline" onClick={() => setAddEventOpen(true)} className="gap-1.5 flex-shrink-0">
+          <Button size="sm" variant="outline" onClick={() => openAddEvent()} className="gap-1.5 flex-shrink-0">
             <Plus className="w-3.5 h-3.5" />
             일정 추가
           </Button>
@@ -621,7 +651,8 @@ export default function CalendarPage() {
               date={selectedDay}
               events={selectedEvents}
               onClose={() => setSelectedDay(null)}
-              onAddEvent={() => setAddEventOpen(true)}
+              onAddEvent={() => openAddEvent()}
+              onEditCustomEvent={openEditEvent}
               onDeleteCustomEvent={handleDeleteCustomEvent}
             />
           </div>
@@ -645,7 +676,8 @@ export default function CalendarPage() {
                   <DayDetail
                     date={selectedDay}
                     events={selectedEvents}
-                    onAddEvent={() => setAddEventOpen(true)}
+                    onAddEvent={() => openAddEvent()}
+                    onEditCustomEvent={openEditEvent}
                     onDeleteCustomEvent={handleDeleteCustomEvent}
                   />
                 ) : (
@@ -659,7 +691,13 @@ export default function CalendarPage() {
         </div>
       </div>
 
-      <AddEventDialog key={addEventDefaultDate} open={addEventOpen} onOpenChange={setAddEventOpen} defaultDate={addEventDefaultDate} />
+      <AddEventDialog
+        key={editingEvent ? `edit-${editingEvent.id}` : `add-${addEventDefaultDate}`}
+        open={addEventOpen}
+        onOpenChange={setAddEventOpen}
+        defaultDate={addEventDefaultDate}
+        editingEvent={editingEvent}
+      />
     </div>
   );
 }

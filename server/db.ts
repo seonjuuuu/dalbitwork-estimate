@@ -601,6 +601,7 @@ export async function getCalendarEvents(userId: number) {
     isMeeting?: boolean;
     time?: string | null;
     timeUnknown?: boolean;
+    memo?: string;
   }[] = [];
 
   for (const c of allConsultations) {
@@ -640,6 +641,7 @@ export async function getCalendarEvents(userId: number) {
       isMeeting: ev.isMeeting,
       time: ev.time,
       timeUnknown: ev.timeUnknown,
+      memo: ev.memo,
     });
   }
 
@@ -674,6 +676,37 @@ export async function createCustomEvent(
       time: data.isMeeting && !data.timeUnknown ? data.time || null : null,
       timeUnknown: data.isMeeting ? !!data.timeUnknown : false,
     })
+    .returning();
+  return row;
+}
+
+export async function updateCustomEvent(
+  userId: number,
+  id: number,
+  data: {
+    title: string;
+    date: string;
+    memo?: string;
+    clientId?: number;
+    isMeeting?: boolean;
+    time?: string;
+    timeUnknown?: boolean;
+  }
+) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const [row] = await db
+    .update(customEvents)
+    .set({
+      title: data.title,
+      date: data.date,
+      memo: data.memo || "",
+      clientId: data.clientId ?? null,
+      isMeeting: data.isMeeting ?? false,
+      time: data.isMeeting && !data.timeUnknown ? data.time || null : null,
+      timeUnknown: data.isMeeting ? !!data.timeUnknown : false,
+    })
+    .where(and(eq(customEvents.id, id), eq(customEvents.userId, userId)))
     .returning();
   return row;
 }
