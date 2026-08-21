@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { trpc } from '@/lib/trpc';
 import { ChevronLeft, ChevronRight, X, Plus, Trash2, Check, ChevronsUpDown, Building2 } from 'lucide-react';
 import { useLocation } from 'wouter';
@@ -7,8 +7,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from '@/components/ui/command';
 import { toast } from 'sonner';
 
 type EventType = 'consultation' | 'proposal' | 'estimate' | 'contract' | 'pcDraft' | 'mobileDraft' | 'finalDelivery' | 'custom';
@@ -298,6 +296,7 @@ function AddEventDialog({
   const [clientId, setClientId] = useState<string>('none');
   const [clientPickerOpen, setClientPickerOpen] = useState(false);
   const [clientSearch, setClientSearch] = useState('');
+  const clientPickerRef = useRef<HTMLDivElement>(null);
 
   const selectedClientName = clientId === 'none' ? null : clientsList.find((c) => String(c.id) === clientId)?.name ?? null;
   const q = clientSearch.trim().toLowerCase();
@@ -305,12 +304,27 @@ function AddEventDialog({
     ? clientsList.filter((c) => c.name.toLowerCase().includes(q))
     : clientsList;
 
+  // Radix Popover는 Dialog 안에서 포털이 별도 트리로 렌더링돼서 스크롤 잠금과 충돌해
+  // 마우스 휠 스크롤이 막히는 문제가 있어, 다이얼로그 안에서는 직접 만든 드롭다운을 사용
+  useEffect(() => {
+    if (!clientPickerOpen) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (clientPickerRef.current && !clientPickerRef.current.contains(e.target as Node)) {
+        setClientPickerOpen(false);
+        setClientSearch('');
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [clientPickerOpen]);
+
   const resetAndClose = () => {
     setTitle('');
     setDate(defaultDate);
     setMemo('');
     setClientId('none');
     setClientSearch('');
+    setClientPickerOpen(false);
     onOpenChange(false);
   };
 
@@ -355,41 +369,56 @@ function AddEventDialog({
           </div>
           <div>
             <Label className="text-xs mb-1.5 block">관련 고객 (선택)</Label>
-            <Popover open={clientPickerOpen} onOpenChange={(open) => { setClientPickerOpen(open); if (!open) setClientSearch(''); }}>
-              <PopoverTrigger asChild>
-                <Button variant="outline" className="w-full justify-between font-normal">
-                  <span className="truncate">{selectedClientName ?? '없음'}</span>
-                  <ChevronsUpDown className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
-                <Command shouldFilter={false}>
-                  <CommandInput placeholder="고객사 검색..." value={clientSearch} onValueChange={setClientSearch} />
-                  <CommandList>
-                    <CommandItem onSelect={() => { setClientId('none'); setClientPickerOpen(false); setClientSearch(''); }}>
-                      {clientId === 'none' && <Check className="w-3.5 h-3.5 mr-1" />}
+            <div ref={clientPickerRef} className="relative">
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full justify-between font-normal"
+                onClick={() => setClientPickerOpen((o) => !o)}
+              >
+                <span className="truncate">{selectedClientName ?? '없음'}</span>
+                <ChevronsUpDown className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+              </Button>
+              {clientPickerOpen && (
+                <div className="absolute z-50 mt-1 w-full rounded-md border border-border bg-popover text-popover-foreground shadow-md overflow-hidden">
+                  <div className="p-1.5 border-b border-border">
+                    <Input
+                      autoFocus
+                      value={clientSearch}
+                      onChange={(e) => setClientSearch(e.target.value)}
+                      placeholder="고객사 검색..."
+                      className="h-8"
+                    />
+                  </div>
+                  <div className="max-h-[220px] overflow-y-auto p-1">
+                    <button
+                      type="button"
+                      onClick={() => { setClientId('none'); setClientPickerOpen(false); setClientSearch(''); }}
+                      className="w-full flex items-center gap-1.5 rounded-sm px-2 py-1.5 text-sm text-left hover:bg-accent hover:text-accent-foreground"
+                    >
+                      {clientId === 'none' && <Check className="w-3.5 h-3.5" />}
                       없음
-                    </CommandItem>
+                    </button>
                     {clientOptions.length === 0 ? (
-                      <CommandEmpty>검색 결과가 없습니다.</CommandEmpty>
+                      <p className="px-2 py-3 text-xs text-muted-foreground text-center">검색 결과가 없습니다.</p>
                     ) : (
-                      <CommandGroup>
-                        {clientOptions.map((c) => (
-                          <CommandItem
-                            key={c.id}
-                            onSelect={() => { setClientId(String(c.id)); setClientPickerOpen(false); setClientSearch(''); }}
-                          >
-                            {clientId === String(c.id) && <Check className="w-3.5 h-3.5 mr-1" />}
-                            <Building2 className="w-3.5 h-3.5 text-muted-foreground mr-1" />
-                            {c.name}
-                          </CommandItem>
-                        ))}
-                      </CommandGroup>
+                      clientOptions.map((c) => (
+                        <button
+                          type="button"
+                          key={c.id}
+                          onClick={() => { setClientId(String(c.id)); setClientPickerOpen(false); setClientSearch(''); }}
+                          className="w-full flex items-center gap-1.5 rounded-sm px-2 py-1.5 text-sm text-left hover:bg-accent hover:text-accent-foreground"
+                        >
+                          {clientId === String(c.id) && <Check className="w-3.5 h-3.5" />}
+                          <Building2 className="w-3.5 h-3.5 text-muted-foreground" />
+                          <span className="truncate">{c.name}</span>
+                        </button>
+                      ))
                     )}
-                  </CommandList>
-                </Command>
-              </PopoverContent>
-            </Popover>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
           <div>
             <Label className="text-xs mb-1.5 block">메모 (선택)</Label>
