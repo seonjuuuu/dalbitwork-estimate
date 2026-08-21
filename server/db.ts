@@ -865,6 +865,8 @@ export async function upsertClientFromDocument(
       contractDate: data.contractDate || '',
       contractAmount: data.contractAmount || 0,
       status: newStatus as "상담" | "제안서" | "계약",
+      // 계약 상태로 바로 시작하는 경우 진행현황도 함께 시작
+      workflowStatus: newStatus === '계약' ? '진행대기' : '상담',
       memo: '',
     });
   } else {
@@ -879,6 +881,10 @@ export async function upsertClientFromDocument(
     // 상태는 앞으로만 진행 (상담→제안서→계약, 역방향 불가)
     if (STATUS_RANK[newStatus] > STATUS_RANK[client.status ?? '상담']) {
       updates.status = newStatus as "상담" | "제안서" | "계약";
+      // 상태가 '계약'으로 처음 바뀌면 진행현황도 '진행대기'로 함께 시작
+      if (newStatus === '계약' && client.workflowStatus === '상담') {
+        updates.workflowStatus = '진행대기';
+      }
     }
     if (Object.keys(updates).length > 0) {
       await db.update(clients).set(updates).where(eq(clients.id, client.id));
