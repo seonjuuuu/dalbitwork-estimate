@@ -113,8 +113,8 @@ export default function TodoList() {
         <Input
           value={content}
           onChange={(e) => setContent(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') handleAdd();
+          onKeyUp={(e) => {
+            if (e.key === 'Enter' && !e.nativeEvent.isComposing) handleAdd();
           }}
           placeholder="할 일을 입력하세요..."
           className="flex-1 h-9 text-sm"
