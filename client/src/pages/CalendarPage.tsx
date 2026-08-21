@@ -1,13 +1,14 @@
 import { useState } from 'react';
 import { trpc } from '@/lib/trpc';
-import { ChevronLeft, ChevronRight, X, Plus, Trash2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, X, Plus, Trash2, Check, ChevronsUpDown, Building2 } from 'lucide-react';
 import { useLocation } from 'wouter';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from '@/components/ui/command';
 import { toast } from 'sonner';
 
 type EventType = 'consultation' | 'proposal' | 'estimate' | 'contract' | 'pcDraft' | 'mobileDraft' | 'finalDelivery' | 'custom';
@@ -295,12 +296,21 @@ function AddEventDialog({
   const [date, setDate] = useState(defaultDate);
   const [memo, setMemo] = useState('');
   const [clientId, setClientId] = useState<string>('none');
+  const [clientPickerOpen, setClientPickerOpen] = useState(false);
+  const [clientSearch, setClientSearch] = useState('');
+
+  const selectedClientName = clientId === 'none' ? null : clientsList.find((c) => String(c.id) === clientId)?.name ?? null;
+  const q = clientSearch.trim().toLowerCase();
+  const clientOptions = q
+    ? clientsList.filter((c) => c.name.toLowerCase().includes(q))
+    : clientsList;
 
   const resetAndClose = () => {
     setTitle('');
     setDate(defaultDate);
     setMemo('');
     setClientId('none');
+    setClientSearch('');
     onOpenChange(false);
   };
 
@@ -345,17 +355,41 @@ function AddEventDialog({
           </div>
           <div>
             <Label className="text-xs mb-1.5 block">관련 고객 (선택)</Label>
-            <Select value={clientId} onValueChange={setClientId}>
-              <SelectTrigger className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">없음</SelectItem>
-                {clientsList.map((c) => (
-                  <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Popover open={clientPickerOpen} onOpenChange={(open) => { setClientPickerOpen(open); if (!open) setClientSearch(''); }}>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="w-full justify-between font-normal">
+                  <span className="truncate">{selectedClientName ?? '없음'}</span>
+                  <ChevronsUpDown className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+                <Command shouldFilter={false}>
+                  <CommandInput placeholder="고객사 검색..." value={clientSearch} onValueChange={setClientSearch} />
+                  <CommandList>
+                    <CommandItem onSelect={() => { setClientId('none'); setClientPickerOpen(false); setClientSearch(''); }}>
+                      {clientId === 'none' && <Check className="w-3.5 h-3.5 mr-1" />}
+                      없음
+                    </CommandItem>
+                    {clientOptions.length === 0 ? (
+                      <CommandEmpty>검색 결과가 없습니다.</CommandEmpty>
+                    ) : (
+                      <CommandGroup>
+                        {clientOptions.map((c) => (
+                          <CommandItem
+                            key={c.id}
+                            onSelect={() => { setClientId(String(c.id)); setClientPickerOpen(false); setClientSearch(''); }}
+                          >
+                            {clientId === String(c.id) && <Check className="w-3.5 h-3.5 mr-1" />}
+                            <Building2 className="w-3.5 h-3.5 text-muted-foreground mr-1" />
+                            {c.name}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    )}
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
           </div>
           <div>
             <Label className="text-xs mb-1.5 block">메모 (선택)</Label>
