@@ -1,7 +1,7 @@
 import { eq, and, or, ne, desc, asc, gte, lte, gt, isNull, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
-import { InsertUser, users, documents, InsertDocument, noteTemplates, InsertNoteTemplate, payments, serviceItems, clients, consultations, hktbInvoices, pdfFiles, todos, pushSubscriptions, notificationEvents, customEvents } from "../drizzle/schema";
+import { InsertUser, users, documents, InsertDocument, noteTemplates, InsertNoteTemplate, payments, serviceItems, clients, consultations, hktbInvoices, pdfFiles, todos, pushSubscriptions, notificationEvents, customEvents, cardTransactions, expenseMerchantRules } from "../drizzle/schema";
 import type { InsertPayment, InsertServiceItem, InsertClient, InsertConsultation, InsertHktbInvoice, InsertPdfFile, InsertTodo } from "../drizzle/schema";
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -1223,4 +1223,93 @@ export async function listNotificationEventsSince(userId: number, sinceId: numbe
     .from(notificationEvents)
     .where(and(eq(notificationEvents.userId, userId), gt(notificationEvents.id, sinceId)))
     .orderBy(notificationEvents.id);
+}
+
+// ─── 카드 이용내역 업로드 / 지출(광고비·AI비용) 관리 ─────────────────
+// 엑셀 전체를 저장하는 게 아니라, 검토 후 카테고리를 지정한 항목만 저장한다.
+
+/** 가맹점별로 마지막에 지정했던 카테고리 (다음 업로드 때 자동으로 미리 체크해주기 위함) */
+export async function getExpenseMerchantRules(userId: number): Promise<Map<string, string>> {
+  const db = await getDb();
+  if (!db) return new Map();
+  const rows = await db
+    .select({ merchant: expenseMerchantRules.merchant, category: expenseMerchantRules.category })
+    .from(expenseMerchantRules)
+    .where(eq(expenseMerchantRules.userId, userId));
+  return new Map(rows.map((r) => [r.merchant, r.category]));
+}
+
+/** 검토 후 카테고리가 지정된 항목만 저장하고, 가맹점별 카테고리 규칙도 함께 기억해둔다 */
+export async function saveExpenseEntries(
+  userId: number,
+  entries: {
+    date: string;
+    time?: string;
+    merchant: string;
+    amount: number;
+    currency?: string;
+    installment?: string;
+    approvalNo: string;
+    category: string;
+  }[]
+) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  if (entries.length === 0) return { total: 0, inserted: 0, skipped: 0 };
+
+  const values = entries.map((e) => ({
+    userId,
+    date: e.date,
+    time: e.time || "",
+    merchant: e.merchant,
+    amount: e.amount,
+    currency: e.currency || "KRW",
+    installment: e.installment || "",
+    approvalNo: e.approvalNo,
+    category: e.category,
+  }));
+
+  const inserted = await db
+    .insert(cardTransactions)
+    .values(values)
+    .onConflictDoNothing({ target: [cardTransactions.userId, cardTransactions.approvalNo] })
+    .returning({ id: cardTransactions.id });
+
+  // 가맹점 → 카테고리 규칙 갱신 (다음 달 업로드 때 자동 반영)
+  const uniqueMerchantCategories = new Map<string, string>();
+  for (const e of entries) uniqueMerchantCategories.set(e.merchant, e.category);
+  for (const [merchant, category] of Array.from(uniqueMerchantCategories)) {
+    await db
+      .insert(expenseMerchantRules)
+      .values({ userId, merchant, category })
+      .onConflictDoUpdate({
+        target: [expenseMerchantRules.userId, expenseMerchantRules.merchant],
+        set: { category },
+      });
+  }
+
+  return { total: entries.length, inserted: inserted.length, skipped: entries.length - inserted.length };
+}
+
+export async function getExpenseMonthlySummary(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  const rows = await db
+    .select({
+      date: cardTransactions.date,
+      amount: cardTransactions.amount,
+      category: cardTransactions.category,
+      currency: cardTransactions.currency,
+    })
+    .from(cardTransactions)
+    .where(eq(cardTransactions.userId, userId));
+  const totals = new Map<string, { month: string; category: string; currency: string; amount: number }>();
+  for (const r of rows) {
+    const month = r.date.slice(0, 7);
+    const key = `${month}|${r.category}|${r.currency}`;
+    const existing = totals.get(key);
+    if (existing) existing.amount += r.amount;
+    else totals.set(key, { month, category: r.category, currency: r.currency, amount: r.amount });
+  }
+  return Array.from(totals.values()).sort((a, b) => b.month.localeCompare(a.month));
 }

@@ -1,5 +1,6 @@
 import {
   boolean,
+  doublePrecision,
   integer,
   json,
   pgEnum,
@@ -7,6 +8,7 @@ import {
   serial,
   text,
   timestamp,
+  unique,
   varchar,
 } from "drizzle-orm/pg-core";
 
@@ -340,3 +342,50 @@ export const customEvents = pgTable("custom_events", {
 
 export type CustomEvent = typeof customEvents.$inferSelect;
 export type InsertCustomEvent = typeof customEvents.$inferInsert;
+
+// 카드사 이용내역 엑셀에서 사용자가 "광고비"/"AI비용" 등으로 분류해서 저장하기로 고른 지출만 저장
+// (엑셀 전체 내역이 아니라, 검토 후 카테고리를 지정한 항목만 들어옴)
+export const cardTransactions = pgTable(
+  "card_transactions",
+  {
+    id: serial("id").primaryKey(),
+    userId: integer("userId").notNull(),
+    date: varchar("date", { length: 10 }).notNull(), // "YYYY-MM-DD"
+    time: varchar("time", { length: 10 }).default("").notNull(), // "HH:MM:SS"
+    merchant: varchar("merchant", { length: 300 }).notNull(),
+    amount: doublePrecision("amount").notNull(), // 국내는 원(정수), 해외는 USD(소수 가능)
+    currency: varchar("currency", { length: 10 }).default("KRW").notNull(), // "KRW" | "USD"
+    installment: varchar("installment", { length: 20 }).default("").notNull(), // "일시불" / "할부"
+    approvalNo: varchar("approvalNo", { length: 50 }).notNull(),
+    category: varchar("category", { length: 30 }).notNull(), // "ad_spend" | "ai_cost"
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  (table) => ({
+    userApprovalUnique: unique().on(table.userId, table.approvalNo),
+  })
+);
+
+export type CardTransaction = typeof cardTransactions.$inferSelect;
+export type InsertCardTransaction = typeof cardTransactions.$inferInsert;
+
+// 가맹점명 → 카테고리 매핑을 기억해서, 다음 달 업로드 때 같은 가맹점이 나오면 자동으로 미리 체크해줌
+export const expenseMerchantRules = pgTable(
+  "expense_merchant_rules",
+  {
+    id: serial("id").primaryKey(),
+    userId: integer("userId").notNull(),
+    merchant: varchar("merchant", { length: 300 }).notNull(),
+    category: varchar("category", { length: 30 }).notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt")
+      .defaultNow()
+      .notNull()
+      .$onUpdateFn(() => new Date()),
+  },
+  (table) => ({
+    userMerchantUnique: unique().on(table.userId, table.merchant),
+  })
+);
+
+export type ExpenseMerchantRule = typeof expenseMerchantRules.$inferSelect;
+export type InsertExpenseMerchantRule = typeof expenseMerchantRules.$inferInsert;

@@ -7,6 +7,7 @@ import type { DocumentItemRow, OptionalItemRow } from "../drizzle/schema";
 import { generateEstimateDraft, generateSiteStructure } from "./ai";
 import { notifyUser } from "./push";
 import { ENV } from "./_core/env";
+import { parseCardStatementXlsx } from "./cardStatementParser";
 
 // Zod schema for document item validation
 const documentItemSchema = z.object({
@@ -926,6 +927,53 @@ export const appRouter = router({
           : undefined;
         return generateSiteStructure(input.consultationText, previous);
       }),
+  }),
+
+  expenses: router({
+    /**
+     * 카드사 이용내역 엑셀을 파싱만 해서 돌려준다 (저장하지 않음).
+     * 이전에 같은 가맹점을 어떤 카테고리로 저장했었는지도 함께 내려줘서
+     * 프론트에서 미리 체크된 상태로 검토할 수 있게 한다.
+     */
+    parse: protectedProcedure
+      .input(z.object({ data: z.string() })) // base64 xlsx
+      .mutation(async ({ ctx, input }) => {
+        const buffer = Buffer.from(input.data, "base64");
+        const parsed = parseCardStatementXlsx(buffer);
+        if (parsed.length === 0) {
+          throw new Error("엑셀에서 거래 내역을 찾지 못했습니다. 파일 형식을 확인해주세요.");
+        }
+        const rules = await db.getExpenseMerchantRules(ctx.user.id);
+        return parsed.map((row) => ({
+          ...row,
+          suggestedCategory: rules.get(row.merchant) ?? null,
+        }));
+      }),
+    /** 검토를 마치고 카테고리를 지정한 항목만 저장 (가맹점 카테고리 규칙도 함께 갱신) */
+    save: protectedProcedure
+      .input(
+        z.object({
+          entries: z.array(
+            z.object({
+              date: z.string(),
+              time: z.string().optional(),
+              merchant: z.string(),
+              amount: z.number(),
+              currency: z.enum(["KRW", "USD"]).optional(),
+              installment: z.string().optional(),
+              approvalNo: z.string(),
+              category: z.enum(["ad_spend", "ai_cost"]),
+            })
+          ),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        return db.saveExpenseEntries(ctx.user.id, input.entries);
+      }),
+    /** 월×카테고리별 합계 */
+    monthlySummary: protectedProcedure.query(async ({ ctx }) => {
+      return db.getExpenseMonthlySummary(ctx.user.id);
+    }),
   }),
 
   push: router({

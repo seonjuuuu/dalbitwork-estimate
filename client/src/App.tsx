@@ -17,6 +17,7 @@ import Clients from "./pages/Clients";
 import ClientDetail from "./pages/ClientDetail";
 import HKTBInvoice from "./pages/HKTBInvoice";
 import HKTBRetainerInvoice from "./pages/HKTBRetainerInvoice";
+import Expenses from "./pages/Expenses";
 import CalendarPage from "./pages/CalendarPage";
 import KanbanPage from "./pages/KanbanPage";
 import MyPdfFiles from "./pages/MyPdfFiles";
@@ -76,6 +77,7 @@ function Router() {
       <Route path="/sales" component={MonthlySales} />
       <Route path="/hktb-invoice" component={HKTBInvoice} />
       <Route path="/hktb-retainer" component={HKTBRetainerInvoice} />
+      <Route path="/expenses" component={Expenses} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>

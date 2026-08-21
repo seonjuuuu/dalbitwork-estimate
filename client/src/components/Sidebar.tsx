@@ -1,5 +1,5 @@
 import { useEstimate } from '@/contexts/EstimateContext';
-import { FilePlus, FileText, List, ChevronLeft, ChevronRight, FileCheck, LogOut, User, BookOpen, BarChart3, Boxes, Building2, LayoutDashboard, Globe, CalendarDays, KanbanSquare, FolderOpen, Search } from 'lucide-react';
+import { FilePlus, FileText, List, ChevronLeft, ChevronRight, FileCheck, LogOut, User, BookOpen, BarChart3, Boxes, Building2, LayoutDashboard, Globe, CalendarDays, KanbanSquare, FolderOpen, Search, Megaphone } from 'lucide-react';
 import { useState } from 'react';
 import { useLocation } from 'wouter';
 import { useAuth } from '@/_core/hooks/useAuth';
@@ -111,6 +111,13 @@ export default function Sidebar() {
       id: 'monthly-sales',
       active: location === '/sales',
       onClick: () => navigate('/sales'),
+    },
+    {
+      icon: Megaphone,
+      label: '지출 관리',
+      id: 'expenses',
+      active: location === '/expenses',
+      onClick: () => navigate('/expenses'),
     },
     {
       icon: Globe,
