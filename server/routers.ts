@@ -797,6 +797,21 @@ export const appRouter = router({
           payer: "고객사",
         });
 
+        // SEO 설정도 AI 판단에 맡기지 않고 항상 선택사항으로 추가 (10만원)
+        if (!optionalItems.some(oi => oi.name === "SEO 등록")) {
+          const seoCatalogItem = itemsByName.get("SEO 등록");
+          optionalItems.push({
+            id: nanoid(),
+            name: "SEO 등록",
+            description: seoCatalogItem?.description || "네이버·구글 검색엔진 등록 및 기본 SEO 설정",
+            quantity: "1",
+            price: seoCatalogItem?.unitPrice
+              ? Number(seoCatalogItem.unitPrice.replace(/[^0-9]/g, "")).toLocaleString("ko-KR")
+              : "100,000",
+            payer: "당사",
+          });
+        }
+
         return {
           projectName: draft.projectName,
           platform: draft.platform,

@@ -1342,8 +1342,8 @@ export default function EstimateForm() {
                   className="text-sm bg-background h-9 amount"
                 />
                 <Select value={item.payer || '당사'} onValueChange={(v) => updateOptionalItem(item.id, 'payer', v)}>
-                  <SelectTrigger className="h-9 text-sm">
-                    <SelectValue />
+                  <SelectTrigger className="h-9 text-sm w-full min-w-0">
+                    <SelectValue className="truncate" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="당사">당사 청구</SelectItem>
