@@ -717,6 +717,18 @@ export const appRouter = router({
   }),
 
   ai: router({
+    /** TEMP: Vercel 환경변수 진단용. 원인 파악 후 제거 예정 */
+    debugEnv: protectedProcedure.query(() => {
+      const anthropicKeys = Object.keys(process.env).filter(k => k.toUpperCase().includes("ANTHROPIC"));
+      return {
+        hasKey: Boolean(process.env.ANTHROPIC_API_KEY),
+        keyLength: process.env.ANTHROPIC_API_KEY?.length ?? 0,
+        matchingEnvVarNames: anthropicKeys.map(k => `[${k}]`),
+        totalEnvVarCount: Object.keys(process.env).length,
+        vercelEnv: process.env.VERCEL_ENV ?? null,
+      };
+    }),
+
     /** 문의 내용을 분석해 제안서/견적서 초안(프로젝트 정보·품목·참고사항)을 생성 */
     draftEstimate: protectedProcedure
       .input(
