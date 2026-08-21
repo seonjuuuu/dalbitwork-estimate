@@ -4,7 +4,7 @@ import { z } from "zod";
 import { nanoid } from "nanoid";
 import * as db from "./db";
 import type { DocumentItemRow, OptionalItemRow } from "../drizzle/schema";
-import { generateEstimateDraft } from "./ai";
+import { generateEstimateDraft, generateSiteStructure } from "./ai";
 
 // Zod schema for document item validation
 const documentItemSchema = z.object({
@@ -481,6 +481,41 @@ export const appRouter = router({
       .mutation(async ({ ctx, input }) => {
         return db.upsertClientFromDocument(ctx.user.id, input);
       }),
+
+    /** AI로 생성한 홈페이지 구성안을 고객사 전용 이력에 추가 (일반 메모와 분리, 기존 이력은 유지) */
+    addSiteStructure: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        entry: z.object({
+          menuStructure: z.array(z.object({
+            label: z.string(),
+            subItems: z.array(z.string()),
+          })),
+          questions: z.array(z.string()),
+          summary: z.string(),
+        }),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const client = await db.getClient(input.id, ctx.user.id);
+        if (!client) throw new Error("Client not found");
+        const newEntry = {
+          id: nanoid(),
+          ...input.entry,
+          generatedAt: new Date().toISOString(),
+        };
+        const updated = [...(client.siteStructures || []), newEntry];
+        return db.updateClient(input.id, ctx.user.id, { siteStructures: updated });
+      }),
+
+    /** AI 구성안 이력에서 특정 항목 삭제 */
+    deleteSiteStructure: protectedProcedure
+      .input(z.object({ id: z.number(), entryId: z.string() }))
+      .mutation(async ({ ctx, input }) => {
+        const client = await db.getClient(input.id, ctx.user.id);
+        if (!client) throw new Error("Client not found");
+        const updated = (client.siteStructures || []).filter(e => e.id !== input.entryId);
+        return db.updateClient(input.id, ctx.user.id, { siteStructures: updated });
+      }),
   }),
 
   consultations: router({
@@ -812,15 +847,37 @@ export const appRouter = router({
           });
         }
 
+        // 추가 페이지 비용이 포함된 경우, 페이지 내용/구성에 따라 금액이 달라질 수 있음을 항상 고지
+        const notes = items.some(i => i.name === "추가 페이지")
+          ? [...draft.notes, "추가 페이지 비용은 페이지당 15만원 기준으로 산정했으며, 실제 내용과 구성에 따라 금액은 변동될 수 있습니다."]
+          : draft.notes;
+
         return {
           projectName: draft.projectName,
           platform: draft.platform,
           businessType: draft.businessType,
           items,
           optionalItems,
-          notes: draft.notes,
+          notes,
           summary: draft.summary,
         };
+      }),
+
+    /** 상담 내용을 분석해 홈페이지 메뉴 구성안 + 고객에게 확인할 질문 목록을 생성 (기존 구성안이 있으면 그 위에 얹어서 업데이트) */
+    generateSiteStructure: protectedProcedure
+      .input(
+        z.object({
+          clientId: z.number(),
+          consultationText: z.string().min(1),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        const client = await db.getClient(input.clientId, ctx.user.id);
+        const previousEntry = client?.siteStructures?.[client.siteStructures.length - 1];
+        const previous = previousEntry
+          ? { menuStructure: previousEntry.menuStructure, questions: previousEntry.questions, summary: previousEntry.summary }
+          : undefined;
+        return generateSiteStructure(input.consultationText, previous);
       }),
   }),
 

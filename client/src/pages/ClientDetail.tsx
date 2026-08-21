@@ -13,13 +13,15 @@ import {
   ArrowLeft, Plus, Trash2, Save, X, Loader2,
   Phone, Mail, User, CalendarDays, CircleDollarSign,
   MessageSquare, ChevronDown, ChevronUp, Edit, LinkIcon, FileText, ExternalLink, Hash,
-  Upload, Download, Eye, Copy, FileDown, CreditCard, CheckCircle2, Image as ImageIcon, Sparkles,
+  Upload, Download, Eye, Copy, FileDown, CreditCard, CheckCircle2, Image as ImageIcon, Sparkles, ListTree,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import DepositConfirmDialog from '@/components/DepositConfirmDialog';
 import FinalPaymentConfirmDialog from '@/components/FinalPaymentConfirmDialog';
 import NotesEditPdfDialog from '@/components/NotesEditPdfDialog';
 import AIEstimateDraftDialog from '@/components/AIEstimateDraftDialog';
+import AISiteStructureDialog from '@/components/AISiteStructureDialog';
+import SiteStructureEntryCard from '@/components/SiteStructureEntryCard';
 import Linkify from '@/components/Linkify';
 import { formatPhone } from '@/lib/utils';
 import type { DocumentData } from '@/lib/types';
@@ -300,6 +302,7 @@ export default function ClientDetail({ id }: { id: string }) {
   const [finalPaymentDate, setFinalPaymentDate] = useState('');
   const [finalPaymentAmount, setFinalPaymentAmount] = useState('');
   const [aiDraftDialogOpen, setAiDraftDialogOpen] = useState(false);
+  const [aiStructureDialogOpen, setAiStructureDialogOpen] = useState(false);
   const [isSavingFinal, setIsSavingFinal] = useState(false);
   const [editingFinal, setEditingFinal] = useState(false);
 
@@ -1327,6 +1330,29 @@ export default function ClientDetail({ id }: { id: string }) {
         </div>
       )}
 
+      {/* AI 구성안 */}
+      {client.siteStructures.length > 0 && (
+        <div className="bg-card border border-border rounded-xl p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
+              <ListTree className="w-4 h-4 text-muted-foreground" />
+              AI 구성안
+              <span className="text-xs text-muted-foreground font-normal">({client.siteStructures.length}건)</span>
+            </h2>
+            <Button size="sm" variant="outline" onClick={() => setAiStructureDialogOpen(true)} className="gap-1 h-7 text-xs">
+              <Sparkles className="w-3.5 h-3.5" />
+              구성안 추가
+            </Button>
+          </div>
+
+          <div className="space-y-4">
+            {client.siteStructures.map((entry, entryIdx) => (
+              <SiteStructureEntryCard key={entry.id} clientId={clientId} entry={entry} index={entryIdx} />
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* 상담 이력 */}
       <div className="bg-card border border-border rounded-xl p-5">
         <div className="flex items-center justify-between mb-4">
@@ -1338,9 +1364,13 @@ export default function ClientDetail({ id }: { id: string }) {
             )}
           </h2>
           <div className="flex gap-1.5">
+            <Button size="sm" variant="outline" onClick={() => setAiStructureDialogOpen(true)} className="gap-1 h-7 text-xs">
+              <ListTree className="w-3.5 h-3.5" />
+              AI 구성안 생성
+            </Button>
             <Button size="sm" variant="outline" onClick={() => setAiDraftDialogOpen(true)} className="gap-1 h-7 text-xs">
               <Sparkles className="w-3.5 h-3.5" />
-              AI 초안 생성
+              AI 기반 제안서 생성
             </Button>
             <Button size="sm" onClick={handleNew} className="gap-1 h-7 text-xs">
               <Plus className="w-3.5 h-3.5" />
@@ -1515,6 +1545,12 @@ export default function ClientDetail({ id }: { id: string }) {
         contactName={client.contactName}
         contactPhone={client.contactPhone}
         contactEmail={client.contactEmail}
+        consultations={consultations}
+      />
+      <AISiteStructureDialog
+        isOpen={aiStructureDialogOpen}
+        onClose={() => setAiStructureDialogOpen(false)}
+        clientId={clientId}
         consultations={consultations}
       />
     </div>

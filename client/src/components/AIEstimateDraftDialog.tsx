@@ -73,7 +73,7 @@ export default function AIEstimateDraftDialog({
       onClose();
       navigate('/editor');
     } catch {
-      toast.error('AI 초안 생성에 실패했습니다.');
+      toast.error('AI 기반 제안서 생성에 실패했습니다.');
     }
   };
 
@@ -83,7 +83,7 @@ export default function AIEstimateDraftDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Sparkles className="w-4 h-4 text-primary" />
-            AI 초안 생성
+            AI 기반 제안서 생성
           </DialogTitle>
           <DialogDescription>
             고객 문의 내용을 붙여넣으면 AI가 등록된 서비스 품목표를 기반으로 초안을 만들어줍니다. 생성된 초안은 저장 전에 검토·수정할 수 있습니다.
@@ -138,7 +138,7 @@ export default function AIEstimateDraftDialog({
           <Button variant="outline" onClick={onClose} disabled={draftMutation.isPending}>취소</Button>
           <Button onClick={handleGenerate} disabled={draftMutation.isPending} className="gap-2">
             {draftMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-            AI 초안 생성
+            AI 기반 제안서 생성
           </Button>
         </DialogFooter>
       </DialogContent>

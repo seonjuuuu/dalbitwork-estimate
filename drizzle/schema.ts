@@ -92,6 +92,14 @@ export interface DocumentItemRow {
   discountAmount?: string;
 }
 
+export interface SiteStructureEntry {
+  id: string;
+  menuStructure: { label: string; subItems: string[] }[];
+  questions: string[];
+  summary: string;
+  generatedAt: string;
+}
+
 export type DocumentData = typeof documents.$inferSelect;
 export type InsertDocument = typeof documents.$inferInsert;
 
@@ -165,6 +173,7 @@ export const clients = pgTable("clients", {
   contractAmount: integer("contractAmount").default(0).notNull(),
   status: clientStatusEnum("status").default("상담").notNull(),
   memo: text("memo").default("").notNull(),
+  siteStructures: json("siteStructures").$type<SiteStructureEntry[]>().default([]).notNull(),
   isWorking: boolean("isWorking").default(false).notNull(),
   workStartDate: varchar("workStartDate", { length: 20 }).default("").notNull(),
   pcDraftDate: varchar("pcDraftDate", { length: 20 }).default("").notNull(),

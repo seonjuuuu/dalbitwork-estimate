@@ -234,11 +234,11 @@ export default function ServiceItems() {
                 {groupItems.map((item) => (
                   <div
                     key={item.id}
-                    className="group flex items-center justify-between p-3 border border-border rounded-lg hover:bg-accent/40 transition-colors"
+                    className="group flex items-center justify-between gap-3 p-3 border border-border rounded-lg hover:bg-accent/40 transition-colors"
                   >
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium text-sm text-foreground">{item.name}</span>
+                      <div className="flex items-center gap-1">
+                        <span className="font-medium text-sm text-foreground w-40 flex-shrink-0">{item.name}</span>
                         {item.description && (
                           <span className="text-xs text-muted-foreground truncate">{item.description}</span>
                         )}
