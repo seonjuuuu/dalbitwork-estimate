@@ -158,6 +158,11 @@ const plugins = [
   vitePluginManusRuntime(),
   vitePluginManusDebugCollector(),
   VitePWA({
+    // 푸시 알림 이벤트를 직접 다뤄야 해서 자동 생성 대신 커스텀 서비스워커(src/sw.ts)를 사용
+    strategies: "injectManifest",
+    srcDir: "src",
+    filename: "sw.ts",
+    injectRegister: "auto",
     registerType: "autoUpdate",
     includeAssets: ["favicon.png", "apple-touch-icon.png", "icons/*.png"],
     manifest: {
@@ -175,17 +180,9 @@ const plugins = [
         { src: "/icons/icon-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
       ],
     },
-    workbox: {
+    injectManifest: {
       // 번들 용량이 커서 기본 2MB 제한을 넘기므로 상향 (앱 셸 사전 캐싱용)
       maximumFileSizeToCacheInBytes: 8 * 1024 * 1024,
-      // API 요청은 캐시하지 않고 항상 네트워크로 보냄 (오래된 데이터로 오작동 방지)
-      navigateFallbackDenylist: [/^\/api\//],
-      runtimeCaching: [
-        {
-          urlPattern: /^\/api\//,
-          handler: "NetworkOnly",
-        },
-      ],
     },
   }),
 ];

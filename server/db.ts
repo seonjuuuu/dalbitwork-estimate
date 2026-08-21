@@ -1,7 +1,7 @@
 import { eq, and, or, ne, desc, asc, gte, lte, isNull, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
-import { InsertUser, users, documents, InsertDocument, noteTemplates, InsertNoteTemplate, payments, serviceItems, clients, consultations, hktbInvoices, pdfFiles, todos } from "../drizzle/schema";
+import { InsertUser, users, documents, InsertDocument, noteTemplates, InsertNoteTemplate, payments, serviceItems, clients, consultations, hktbInvoices, pdfFiles, todos, pushSubscriptions } from "../drizzle/schema";
 import type { InsertPayment, InsertServiceItem, InsertClient, InsertConsultation, InsertHktbInvoice, InsertPdfFile, InsertTodo } from "../drizzle/schema";
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -1042,4 +1042,49 @@ export async function deleteTodo(id: number, userId: number) {
   if (!db) throw new Error("Database not available");
   await db.delete(todos).where(and(eq(todos.id, id), eq(todos.userId, userId)));
   return { success: true };
+}
+
+// ─── Web Push 구독 ────────────────────────────────────────────────
+
+export async function savePushSubscription(
+  userId: number,
+  sub: { endpoint: string; p256dh: string; auth: string; userAgent?: string }
+) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db
+    .insert(pushSubscriptions)
+    .values({
+      userId,
+      endpoint: sub.endpoint,
+      p256dh: sub.p256dh,
+      auth: sub.auth,
+      userAgent: sub.userAgent || "",
+    })
+    .onConflictDoUpdate({
+      target: pushSubscriptions.endpoint,
+      set: { userId, p256dh: sub.p256dh, auth: sub.auth, userAgent: sub.userAgent || "" },
+    });
+  return { success: true };
+}
+
+export async function deletePushSubscription(userId: number, endpoint: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db
+    .delete(pushSubscriptions)
+    .where(and(eq(pushSubscriptions.userId, userId), eq(pushSubscriptions.endpoint, endpoint)));
+  return { success: true };
+}
+
+export async function listPushSubscriptions(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(pushSubscriptions).where(eq(pushSubscriptions.userId, userId));
+}
+
+export async function deletePushSubscriptionByEndpoint(endpoint: string) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(pushSubscriptions).where(eq(pushSubscriptions.endpoint, endpoint));
 }

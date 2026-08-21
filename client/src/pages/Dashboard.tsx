@@ -4,6 +4,7 @@ import { trpc } from '@/lib/trpc';
 import { FileText, FileCheck, Building2, TrendingUp, AlertCircle, Loader2, Edit, MessageSquare, Wallet } from 'lucide-react';
 import KanbanBoard from '@/components/KanbanBoard';
 import TodoList from '@/components/TodoList';
+import PushNotificationCard from '@/components/PushNotificationCard';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend,
@@ -279,6 +280,9 @@ export default function Dashboard() {
 
       {/* 할 일 */}
       <TodoList />
+
+      {/* 푸시 알림 설정 */}
+      <PushNotificationCard />
 
       {/* 중간: 최근 활동 + 도넛 차트 */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

@@ -5,6 +5,8 @@ import { nanoid } from "nanoid";
 import * as db from "./db";
 import type { DocumentItemRow, OptionalItemRow } from "../drizzle/schema";
 import { generateEstimateDraft, generateSiteStructure } from "./ai";
+import { sendPushToUser } from "./push";
+import { ENV } from "./_core/env";
 
 // Zod schema for document item validation
 const documentItemSchema = z.object({
@@ -879,6 +881,49 @@ export const appRouter = router({
           : undefined;
         return generateSiteStructure(input.consultationText, previous);
       }),
+  }),
+
+  push: router({
+    /** 프론트에서 알림 구독을 만들 때 필요한 VAPID 공개키 */
+    getPublicKey: publicProcedure.query(() => ({
+      publicKey: ENV.vapidPublicKey,
+    })),
+
+    /** 이 기기의 푸시 구독 정보를 저장 (알림 켜기) */
+    subscribe: protectedProcedure
+      .input(
+        z.object({
+          endpoint: z.string(),
+          p256dh: z.string(),
+          auth: z.string(),
+          userAgent: z.string().optional(),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        return db.savePushSubscription(ctx.user.id, input);
+      }),
+
+    /** 이 기기의 구독 해제 (알림 끄기) */
+    unsubscribe: protectedProcedure
+      .input(z.object({ endpoint: z.string() }))
+      .mutation(async ({ ctx, input }) => {
+        return db.deletePushSubscription(ctx.user.id, input.endpoint);
+      }),
+
+    /** 현재 로그인한 유저가 켜둔 구독 기기 수 */
+    listMine: protectedProcedure.query(async ({ ctx }) => {
+      const subs = await db.listPushSubscriptions(ctx.user.id);
+      return subs.map(s => ({ id: s.id, endpoint: s.endpoint, userAgent: s.userAgent, createdAt: s.createdAt }));
+    }),
+
+    /** 테스트 알림 발송 */
+    sendTest: protectedProcedure.mutation(async ({ ctx }) => {
+      return sendPushToUser(ctx.user.id, {
+        title: "달빛워크 어드민",
+        body: "테스트 알림이에요. 잘 도착했다면 정상 작동하는 거예요!",
+        url: "/",
+      });
+    }),
   }),
 
   todos: router({
