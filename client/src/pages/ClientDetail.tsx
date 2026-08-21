@@ -1409,7 +1409,7 @@ export default function ClientDetail({ id }: { id: string }) {
 
       {/* 상담 이력 */}
       <div className="bg-card border border-border rounded-xl p-5">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
           <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
             <MessageSquare className="w-4 h-4 text-muted-foreground" />
             상담 이력
@@ -1417,7 +1417,7 @@ export default function ClientDetail({ id }: { id: string }) {
               <span className="text-xs text-muted-foreground font-normal">({consultations.length}건)</span>
             )}
           </h2>
-          <div className="flex gap-1.5">
+          <div className="flex flex-wrap gap-1.5">
             <Button size="sm" variant="outline" onClick={() => setAiStructureDialogOpen(true)} className="gap-1 h-7 text-xs">
               <ListTree className="w-3.5 h-3.5" />
               AI 구성안 생성

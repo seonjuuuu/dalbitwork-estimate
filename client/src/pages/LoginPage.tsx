@@ -42,6 +42,25 @@ export default function LoginPage() {
 
   const handleGoogleLogin = async () => {
     setError(null);
+
+    // 홈 화면에 설치된 PWA(안드로이드 WebAPK 등)는 자기 scope 밖인 구글 로그인 페이지로
+    // 같은 창에서 이동하려고 하면 멈춰버리는 경우가 있어서, 이때는 새 브라우저 탭으로 열어준다.
+    // 로그인이 끝나면 supabase-js가 localStorage 변화를 감지해 원래 PWA 창에도 자동으로 로그인 상태가 반영됨.
+    const isStandalone = window.matchMedia("(display-mode: standalone)").matches;
+
+    if (isStandalone) {
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: { redirectTo: window.location.origin, skipBrowserRedirect: true },
+      });
+      if (error) {
+        setError(error.message);
+        return;
+      }
+      if (data?.url) window.open(data.url, "_blank");
+      return;
+    }
+
     await supabase.auth.signInWithOAuth({
       provider: "google",
       options: { redirectTo: window.location.origin },
