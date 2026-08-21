@@ -162,7 +162,7 @@ export default function Sidebar() {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 py-3 px-2 space-y-1">
+      <nav className="flex-1 min-h-0 overflow-y-auto py-3 px-2 space-y-1">
         {/* 대시보드 */}
         {navItems.slice(0, 1).map((item) => (
           <button
