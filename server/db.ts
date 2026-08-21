@@ -1104,6 +1104,12 @@ export async function insertNotificationEvent(
   return row;
 }
 
+export async function listUsers() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select({ id: users.id }).from(users);
+}
+
 export async function listNotificationEventsSince(userId: number, sinceId: number) {
   const db = await getDb();
   if (!db) return [];

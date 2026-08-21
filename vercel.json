@@ -9,6 +9,10 @@
   },
   "rewrites": [
     { "source": "/api/trpc/:path*", "destination": "/api/index" },
+    { "source": "/api/cron/:path*", "destination": "/api/index" },
     { "source": "/(.*)", "destination": "/index.html" }
+  ],
+  "crons": [
+    { "path": "/api/cron/daily-todo-summary", "schedule": "0 23 * * *" }
   ]
 }

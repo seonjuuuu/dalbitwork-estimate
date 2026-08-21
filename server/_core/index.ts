@@ -7,6 +7,8 @@ import { registerOAuthRoutes } from "./oauth";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
+import { ENV } from "./env";
+import { sendDailyTodoSummaries } from "../cron";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -43,6 +45,20 @@ async function startServer() {
       createContext,
     })
   );
+  // Vercel Cron이 매일 아침 8시(KST)에 호출 — 할 일 요약 알림 발송 (로컬 테스트용으로도 등록)
+  app.get("/api/cron/daily-todo-summary", async (req, res) => {
+    if (ENV.cronSecret && req.headers.authorization !== `Bearer ${ENV.cronSecret}`) {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
+    try {
+      const result = await sendDailyTodoSummaries();
+      res.json({ success: true, ...result });
+    } catch (err) {
+      console.error("[cron] daily-todo-summary failed", err);
+      res.status(500).json({ success: false, error: String(err) });
+    }
+  });
   // development mode uses Vite, production mode uses static files
   if (process.env.NODE_ENV === "development") {
     await setupVite(app, server);
