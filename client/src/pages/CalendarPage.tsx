@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { trpc } from '@/lib/trpc';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { useLocation } from 'wouter';
 
 type EventType = 'consultation' | 'proposal' | 'estimate' | 'contract' | 'pcDraft' | 'mobileDraft' | 'finalDelivery';
@@ -192,14 +192,24 @@ function MainCalendar({
 
 // ─── Day detail panel ─────────────────────────────────────────────
 
-function DayDetail({ date, events }: { date: string; events: CalEvent[] }) {
+function DayDetail({ date, events, onClose }: { date: string; events: CalEvent[]; onClose?: () => void }) {
   const [, navigate] = useLocation();
   const d = new Date(date + 'T00:00:00');
   const label = `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일 (${WEEKDAYS[d.getDay()]})`;
 
   return (
     <div className="p-4 flex flex-col gap-3">
-      <p className="text-sm font-semibold text-foreground">{label}</p>
+      <div className="flex items-center justify-between">
+        <p className="text-sm font-semibold text-foreground">{label}</p>
+        {onClose && (
+          <button
+            onClick={onClose}
+            className="w-6 h-6 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors flex-shrink-0"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        )}
+      </div>
       {events.length === 0 ? (
         <p className="text-xs text-muted-foreground">일정 없음</p>
       ) : (
@@ -230,6 +240,9 @@ export default function CalendarPage() {
   const [month, setMonth] = useState(today.getMonth());
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [rightOpen, setRightOpen] = useState(true);
+  const toggleSelectedDay = (date: string) => {
+    setSelectedDay((prev) => (prev === date ? null : date));
+  };
 
   const { data: rawEvents = [] } = trpc.calendar.getEvents.useQuery();
   const events = rawEvents as CalEvent[];
@@ -253,9 +266,9 @@ export default function CalendarPage() {
   const selectedEvents = selectedDay ? (eventMap.get(selectedDay) || []) : [];
 
   return (
-    <div className="flex flex-col h-full overflow-hidden">
+    <div className="flex flex-col h-full overflow-hidden lg:overflow-hidden overflow-y-auto">
       {/* Header */}
-      <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-card flex-shrink-0">
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 px-4 lg:px-6 py-4 border-b border-border bg-card flex-shrink-0">
         <div className="flex items-center gap-4">
           <h1 className="text-lg font-semibold text-foreground">{year}년 {month + 1}월</h1>
           <div className="flex items-center gap-1">
@@ -272,8 +285,8 @@ export default function CalendarPage() {
         </div>
 
         <div className="flex items-center gap-5">
-          {/* Legend */}
-          <div className="flex items-center gap-4">
+          {/* Legend - 데스크톱에서만, 모바일은 컬러 점만 있어도 날짜칸에서 구분 가능 */}
+          <div className="hidden lg:flex items-center gap-4">
             {(Object.entries(EVENT_STYLE) as [EventType, typeof EVENT_STYLE[EventType]][]).map(([type, style]) => (
               <div key={type} className="flex items-center gap-1.5">
                 <span className={`w-2 h-2 rounded-full ${style.dot}`} />
@@ -281,11 +294,20 @@ export default function CalendarPage() {
               </div>
             ))}
           </div>
+          {/* 모바일: 범례를 가로 스크롤로 */}
+          <div className="flex lg:hidden items-center gap-3 overflow-x-auto -mx-1 px-1">
+            {(Object.entries(EVENT_STYLE) as [EventType, typeof EVENT_STYLE[EventType]][]).map(([type, style]) => (
+              <div key={type} className="flex items-center gap-1 flex-shrink-0">
+                <span className={`w-2 h-2 rounded-full flex-shrink-0 ${style.dot}`} />
+                <span className="text-[11px] text-muted-foreground whitespace-nowrap">{style.label}</span>
+              </div>
+            ))}
+          </div>
 
-          {/* Right panel toggle */}
+          {/* Right panel toggle - 데스크톱 전용 (모바일은 패널이 아래로 표시됨) */}
           <button
             onClick={() => setRightOpen(o => !o)}
-            className="w-7 h-7 flex items-center justify-center rounded-md border border-border hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
+            className="hidden lg:flex w-7 h-7 items-center justify-center rounded-md border border-border hover:bg-accent text-muted-foreground hover:text-foreground transition-colors flex-shrink-0"
             title={rightOpen ? '사이드 패널 접기' : '사이드 패널 펼치기'}
           >
             {rightOpen ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
@@ -294,31 +316,38 @@ export default function CalendarPage() {
       </div>
 
       {/* Body */}
-      <div className="flex flex-1 min-h-0 overflow-hidden">
-        {/* Left: prev month mini */}
-        <div className="flex items-start pt-6 pl-4 flex-shrink-0">
+      <div className="flex flex-col lg:flex-row flex-1 min-h-0 lg:overflow-hidden">
+        {/* Left: prev month mini - 데스크톱 전용 */}
+        <div className="hidden lg:flex items-start pt-6 pl-4 flex-shrink-0">
           <MiniCalendar
             year={prevYear}
             month={prevMonth}
             eventMap={eventMap}
-            onSelectDay={setSelectedDay}
+            onSelectDay={toggleSelectedDay}
             selectedDay={selectedDay}
           />
         </div>
 
         {/* Center: main calendar */}
-        <div className="flex-1 flex flex-col min-h-0 border-l border-r border-border/60 mx-2 min-w-0">
+        <div className="flex-1 flex flex-col min-h-0 lg:border-l lg:border-r border-border/60 lg:mx-2 min-w-0">
           <MainCalendar
             year={year}
             month={month}
             eventMap={eventMap}
-            onSelectDay={setSelectedDay}
+            onSelectDay={toggleSelectedDay}
             selectedDay={selectedDay}
           />
         </div>
 
-        {/* Right panel: next month mini + day detail */}
-        <div className={`flex flex-col flex-shrink-0 border-l border-border bg-card overflow-hidden transition-all duration-300 ${rightOpen ? 'w-72' : 'w-0'}`}>
+        {/* 모바일: 선택한 날짜의 일정을 캘린더 아래에 바로 표시 */}
+        {selectedDay && (
+          <div className="lg:hidden border-t border-border bg-card">
+            <DayDetail date={selectedDay} events={selectedEvents} onClose={() => setSelectedDay(null)} />
+          </div>
+        )}
+
+        {/* Right panel: next month mini + day detail - 데스크톱 전용 */}
+        <div className={`hidden lg:flex flex-col flex-shrink-0 border-l border-border bg-card overflow-hidden transition-all duration-300 ${rightOpen ? 'w-72' : 'w-0'}`}>
           {rightOpen && (
             <>
               <div className="p-4 border-b border-border">
@@ -326,7 +355,7 @@ export default function CalendarPage() {
                   year={nextYear}
                   month={nextMonth}
                   eventMap={eventMap}
-                  onSelectDay={setSelectedDay}
+                  onSelectDay={toggleSelectedDay}
                   selectedDay={selectedDay}
                 />
               </div>

@@ -1051,7 +1051,7 @@ export default function EstimateForm() {
 
       {/* Items */}
       <div className="bg-card rounded-lg border border-border p-5">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
           <h3 className="text-sm font-semibold text-foreground section-title">{docLabel} 항목</h3>
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={() => setServicePickerOpen(true)} className="text-xs gap-1.5">
@@ -1065,8 +1065,10 @@ export default function EstimateForm() {
           </div>
         </div>
 
+        {/* 모바일에서 컬럼이 찌그러지지 않도록 표 전체를 가로 스크롤 컨테이너로 감쌈 */}
+        <div className="overflow-x-auto -mx-1 px-1">
         {/* Table Header */}
-        <div className="grid grid-cols-[16px_1.5fr_0.7fr_0.7fr_0.8fr_0.8fr_0.8fr_auto] gap-1.5 mb-2 mt-5 overflow-x-auto">
+        <div className="grid grid-cols-[16px_1.5fr_0.7fr_0.7fr_0.8fr_0.8fr_0.8fr_auto] gap-1.5 mb-2 mt-5 min-w-[760px]">
           <span />
           <span className="text-[11px] font-medium text-muted-foreground px-1">항목명</span>
           <span className="text-[11px] font-medium text-muted-foreground px-1">수량</span>
@@ -1085,7 +1087,7 @@ export default function EstimateForm() {
             <SortableItemRow key={item.id} id={item.id}>
               {(dragHandleProps) => (
             <div
-              className="grid grid-cols-[16px_1.5fr_0.7fr_0.7fr_0.8fr_0.8fr_0.8fr_auto] gap-1.5 items-center group"
+              className="grid grid-cols-[16px_1.5fr_0.7fr_0.7fr_0.8fr_0.8fr_0.8fr_auto] gap-1.5 items-center group min-w-[760px]"
             >
               <button
                 {...dragHandleProps}
@@ -1265,6 +1267,7 @@ export default function EstimateForm() {
         </div>
           </SortableContext>
         </DndContext>
+        </div>
 
         {/* 자동 계산 요약 - 할인색상 골드(#F7AE00) */}
         {showDiscount && (
@@ -1287,7 +1290,7 @@ export default function EstimateForm() {
 
       {/* Optional Items (선택사항) - 견적 합계에 포함되지 않음 */}
       <div className="bg-card rounded-lg border border-dashed border-muted-foreground/30 p-5">
-        <div className="flex items-center justify-between mb-1">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-1">
           <div className="flex items-center gap-2">
             <h3 className="text-sm font-semibold text-foreground section-title">선택사항</h3>
             <span className="text-[10px] font-medium text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full">합계 미포함</span>
@@ -1304,8 +1307,8 @@ export default function EstimateForm() {
         {(currentDoc.optionalItems || []).length === 0 ? (
           <p className="text-xs text-muted-foreground text-center py-4">등록된 선택사항이 없습니다.</p>
         ) : (
-          <div className="space-y-2">
-            <div className="grid grid-cols-[1.3fr_1fr_0.5fr_0.8fr_0.9fr_auto] gap-1.5 mb-1">
+          <div className="overflow-x-auto -mx-1 px-1 space-y-2">
+            <div className="grid grid-cols-[1.3fr_1fr_0.5fr_0.8fr_0.9fr_auto] gap-1.5 mb-1 min-w-[560px]">
               <span className="text-[11px] font-medium text-muted-foreground px-1">항목명</span>
               <span className="text-[11px] font-medium text-muted-foreground px-1">설명</span>
               <span className="text-[11px] font-medium text-muted-foreground px-1">수량</span>
@@ -1314,7 +1317,7 @@ export default function EstimateForm() {
               <span className="w-8" />
             </div>
             {(currentDoc.optionalItems || []).map((item) => (
-              <div key={item.id} className="grid grid-cols-[1.3fr_1fr_0.5fr_0.8fr_0.9fr_auto] gap-1.5 items-center group">
+              <div key={item.id} className="grid grid-cols-[1.3fr_1fr_0.5fr_0.8fr_0.9fr_auto] gap-1.5 items-center group min-w-[560px]">
                 <Input
                   value={item.name}
                   onChange={(e) => updateOptionalItem(item.id, 'name', e.target.value)}

@@ -91,7 +91,7 @@ function App() {
             <EstimateProvider>
               <div className="flex h-screen overflow-hidden">
                 <Sidebar />
-                <main className="flex-1 overflow-y-auto h-full">
+                <main className="flex-1 min-w-0 overflow-y-auto overflow-x-auto h-full">
                   <Router />
                 </main>
                 <GlobalSearch />

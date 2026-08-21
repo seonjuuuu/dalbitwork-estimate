@@ -243,17 +243,17 @@ export default function Clients() {
 
   return (
     <div className="max-w-6xl mx-auto p-6">
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
-          <Building2 className="w-6 h-6 text-primary" />
-          <div>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
+        <div className="flex items-center gap-3 min-w-0">
+          <Building2 className="w-6 h-6 text-primary flex-shrink-0" />
+          <div className="min-w-0">
             <h1 className="text-2xl font-bold text-foreground">고객사 관리</h1>
             <p className="text-sm text-muted-foreground mt-1">
               고객사를 등록해두면 견적서 작성 시 자동으로 불러옵니다.
             </p>
           </div>
         </div>
-        <Button onClick={handleNew} size="sm" className="gap-2">
+        <Button onClick={handleNew} size="sm" className="gap-2 self-start sm:self-auto">
           <Plus className="w-4 h-4" />
           고객사 추가
         </Button>
@@ -485,8 +485,8 @@ export default function Clients() {
           {!statusFilter && <p className="text-muted-foreground/60 text-xs mt-1">위 버튼으로 고객사를 추가해보세요.</p>}
         </div>
       ) : (
-        <div className="border border-border rounded-lg overflow-hidden">
-          <table className="w-full border-collapse text-sm">
+        <div className="border border-border rounded-lg overflow-x-auto">
+          <table className="w-full table-fixed border-collapse text-sm min-w-[1080px]">
             <colgroup>
               <col className="w-[5%]" />
               <col className="w-[18%]" />

@@ -1,11 +1,12 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { pdf } from '@react-pdf/renderer';
 import { nanoid } from 'nanoid';
-import { Plus, Trash2, Download, Eye, Loader2, Save, FolderOpen, ChevronDown, ChevronRight, TrendingUp, X } from 'lucide-react';
+import { Plus, Trash2, Download, Eye, Loader2, Save, FolderOpen, ChevronDown, ChevronRight, TrendingUp, X, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { trpc } from '@/lib/trpc';
+import { useIsMobile } from '@/hooks/useMobile';
 import HKTBInvoicePdf, { type HKTBInvoiceData, type HKTBInvoiceItem } from '@/components/HKTBInvoicePdf';
 
 function parseNum(s: string): number {
@@ -41,6 +42,7 @@ function makeDefaultData(): HKTBInvoiceData {
 }
 
 export default function HKTBInvoice() {
+  const isMobile = useIsMobile();
   const [data, setData] = useState<HKTBInvoiceData>(makeDefaultData);
   const [savedId, setSavedId] = useState<number | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -195,12 +197,12 @@ export default function HKTBInvoice() {
   return (
     <div className="px-6 py-6">
       {/* Header */}
-      <div className="mb-6 flex items-start justify-between">
+      <div className="mb-6 flex flex-col lg:flex-row lg:items-start lg:justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold text-foreground">홍콩관광청 Invoice</h1>
           <p className="text-sm text-muted-foreground mt-1">HKTB (Hong Kong Tourism Board) 전용 인보이스</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button variant="outline" size="sm" onClick={handleNew} className="gap-1.5">
             <Plus className="w-3.5 h-3.5" />
             새 인보이스
@@ -258,10 +260,10 @@ export default function HKTBInvoice() {
         </div>
       </div>
 
-      {/* 3단 레이아웃: 목록 | 폼 | 미리보기 */}
-      <div className="flex gap-5 items-start">
+      {/* 3단 레이아웃: 목록 | 폼 | 미리보기 (모바일은 세로로 쌓임) */}
+      <div className="flex flex-col lg:flex-row gap-5 items-start">
         {/* 왼쪽: 저장 목록 */}
-        <div className={`shrink-0 sticky top-6 bg-card border border-border rounded-lg overflow-hidden transition-all duration-200 ${sidebarOpen ? 'w-52' : 'w-9'}`}>
+        <div className={`shrink-0 w-full lg:sticky lg:top-6 bg-card border border-border rounded-lg overflow-hidden transition-all duration-200 ${sidebarOpen ? 'lg:w-52' : 'lg:w-9'}`}>
           <div className="flex items-center border-b border-border">
             <button
               className="p-2.5 hover:bg-muted/40 transition-colors"
@@ -318,13 +320,13 @@ export default function HKTBInvoice() {
         </div>
 
         {/* 가운데+오른쪽: 폼 + 미리보기 */}
-        <div className={`flex-1 min-w-0 ${showPreview ? 'grid grid-cols-2 gap-5' : ''}`}>
+        <div className={`flex-1 min-w-0 w-full ${showPreview ? 'grid grid-cols-1 xl:grid-cols-2 gap-5' : ''}`}>
         {/* Form */}
         <div className="space-y-6">
           {/* Invoice meta */}
           <div className="bg-card border border-border rounded-lg p-5 space-y-4">
             <h2 className="text-sm font-semibold text-foreground">인보이스 정보</h2>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Invoice No.</label>
                 <Input
@@ -347,7 +349,7 @@ export default function HKTBInvoice() {
           </div>
 
           {/* Fixed info display */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="bg-muted/40 border border-border rounded-lg p-4">
               <p className="text-xs font-semibold text-muted-foreground mb-2">FROM. (SELLER)</p>
               <p className="text-xs font-bold">DalBit Work</p>
@@ -375,6 +377,9 @@ export default function HKTBInvoice() {
               </Button>
             </div>
 
+            {/* 컬럼이 5개라 모바일에서 찌그러지므로 가로 스크롤 컨테이너로 감쌈 */}
+            <div className="overflow-x-auto -mx-1 px-1">
+            <div className="min-w-[520px]">
             {/* Table header */}
             <div className="grid grid-cols-[80px_1fr_100px_80px_20px] gap-2 mb-2 px-3">
               <span className="text-xs font-medium text-muted-foreground">Date</span>
@@ -431,6 +436,8 @@ export default function HKTBInvoice() {
                 );
               })}
             </div>
+            </div>
+            </div>
 
             {/* Grand total */}
             <div className="mt-4 pt-4 border-t border-border flex justify-end items-center gap-3">
@@ -464,7 +471,7 @@ export default function HKTBInvoice() {
 
         {/* Preview */}
         {showPreview && (
-          <div className="sticky top-6 self-start">
+          <div className="lg:sticky lg:top-6 self-start">
             <div className="bg-card border border-border rounded-lg overflow-hidden">
               <div className="flex items-center justify-between px-4 py-3 border-b border-border">
                 <span className="text-sm font-semibold">PDF 미리보기</span>
@@ -472,11 +479,23 @@ export default function HKTBInvoice() {
               </div>
               <div className="relative bg-muted/30" style={{ height: 700 }}>
                 {pdfBlobUrl ? (
-                  <iframe
-                    src={pdfBlobUrl}
-                    className="w-full h-full border-0"
-                    title="Invoice Preview"
-                  />
+                  isMobile ? (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 p-6 text-center">
+                      <span className="text-sm text-muted-foreground">
+                        모바일 브라우저는 미리보기를 화면 안에 바로 띄우지 못해서,<br />새 탭에서 열어서 확인해주세요.
+                      </span>
+                      <Button onClick={() => window.open(pdfBlobUrl, '_blank')} className="gap-2">
+                        <ExternalLink className="w-4 h-4" />
+                        새 탭에서 미리보기 열기
+                      </Button>
+                    </div>
+                  ) : (
+                    <iframe
+                      src={pdfBlobUrl}
+                      className="w-full h-full border-0"
+                      title="Invoice Preview"
+                    />
+                  )
                 ) : (
                   <div className="absolute inset-0 flex items-center justify-center">
                     <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />

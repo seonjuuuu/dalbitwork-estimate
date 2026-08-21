@@ -189,7 +189,7 @@ export default function TodoList() {
             <p className="text-xs text-muted-foreground/60 italic py-2">진행 중인 할 일이 없습니다.</p>
           ) : (
             activeTodos.map((t) => (
-              <div key={t.id} className="flex items-center gap-2 px-3 py-2 bg-muted/20 border border-border rounded-lg group">
+              <div key={t.id} className="flex flex-wrap items-center gap-2 px-3 py-2 bg-muted/20 border border-border rounded-lg group">
                 <button
                   onClick={() => handleToggle(t.id, t.completed)}
                   disabled={busyId === t.id}
@@ -198,7 +198,7 @@ export default function TodoList() {
                 <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full flex-shrink-0 ${PRIORITY_LABEL[t.priority].cls}`}>
                   {PRIORITY_LABEL[t.priority].label}
                 </span>
-                <span className="text-sm text-foreground flex-1 truncate">{t.content}</span>
+                <span className="text-sm text-foreground flex-1 min-w-[100px] truncate">{t.content}</span>
                 {t.clientName && (
                   <button
                     onClick={() => navigate(`/clients/${t.clientId}`)}
@@ -211,7 +211,7 @@ export default function TodoList() {
                 <button
                   onClick={() => handleDelete(t.id)}
                   disabled={busyId === t.id}
-                  className="text-muted-foreground hover:text-destructive flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                  className="text-muted-foreground hover:text-destructive flex-shrink-0 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
                 >
                   {busyId === t.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
                 </button>
@@ -230,7 +230,7 @@ export default function TodoList() {
               {showCompleted && (
                 <div className="space-y-1.5 mt-1.5">
                   {completedTodos.map((t) => (
-                    <div key={t.id} className="flex items-center gap-2 px-3 py-2 bg-muted/10 border border-border/60 rounded-lg group">
+                    <div key={t.id} className="flex flex-wrap items-center gap-2 px-3 py-2 bg-muted/10 border border-border/60 rounded-lg group">
                       <button
                         onClick={() => handleToggle(t.id, t.completed)}
                         disabled={busyId === t.id}
@@ -238,11 +238,11 @@ export default function TodoList() {
                       >
                         <Check className="w-3 h-3 text-primary-foreground" />
                       </button>
-                      <span className="text-sm text-muted-foreground line-through flex-1 truncate">{t.content}</span>
+                      <span className="text-sm text-muted-foreground line-through flex-1 min-w-[100px] truncate">{t.content}</span>
                       <button
                         onClick={() => handleDelete(t.id)}
                         disabled={busyId === t.id}
-                        className="text-muted-foreground hover:text-destructive flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                        className="text-muted-foreground hover:text-destructive flex-shrink-0 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
                       >
                         {busyId === t.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
                       </button>

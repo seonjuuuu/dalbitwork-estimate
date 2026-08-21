@@ -272,11 +272,11 @@ export default function NoteTemplates() {
 
   return (
     <div className="max-w-4xl mx-auto p-6">
-      <div className="flex items-center justify-between mb-8">
-        <div className="flex items-center gap-3">
-          <BookOpen className="w-6 h-6 text-primary" />
-          <h1 className="text-xl font-bold text-foreground">참고사항 템플릿</h1>
-          <span className="text-sm text-muted-foreground">({templates.length}건)</span>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-8">
+        <div className="flex items-center gap-3 min-w-0">
+          <BookOpen className="w-6 h-6 text-primary flex-shrink-0" />
+          <h1 className="text-xl font-bold text-foreground truncate">참고사항 템플릿</h1>
+          <span className="text-sm text-muted-foreground flex-shrink-0">({templates.length}건)</span>
         </div>
         {!isCreating && editingId === null && (
           <Button
@@ -383,10 +383,10 @@ export default function NoteTemplates() {
                 className="bg-card border border-border rounded-lg overflow-hidden hover:border-primary/30 transition-colors"
               >
                 {/* Header */}
-                <div className="flex items-center justify-between p-4">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4">
                   <button
                     onClick={() => toggleExpand(tmpl.id)}
-                    className="flex items-center gap-3 flex-1 text-left"
+                    className="flex items-center gap-3 flex-1 min-w-0 text-left"
                   >
                     <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
                       {tmplMode === 'freeform' ? (
@@ -395,19 +395,19 @@ export default function NoteTemplates() {
                         <List className="w-4 h-4 text-primary" />
                       )}
                     </div>
-                    <div>
-                      <h3 className="text-sm font-semibold text-foreground">{tmpl.name}</h3>
-                      <p className="text-xs text-muted-foreground mt-0.5">
+                    <div className="min-w-0 flex-1">
+                      <h3 className="text-sm font-semibold text-foreground truncate">{tmpl.name}</h3>
+                      <p className="text-xs text-muted-foreground mt-0.5 truncate">
                         {getTemplateDescription(tmpl)}
                       </p>
                     </div>
                     {isExpanded ? (
-                      <ChevronDown className="w-4 h-4 text-muted-foreground ml-2" />
+                      <ChevronDown className="w-4 h-4 text-muted-foreground ml-2 flex-shrink-0" />
                     ) : (
-                      <ChevronRight className="w-4 h-4 text-muted-foreground ml-2" />
+                      <ChevronRight className="w-4 h-4 text-muted-foreground ml-2 flex-shrink-0" />
                     )}
                   </button>
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1 flex-shrink-0 self-end sm:self-auto">
                     <Button
                       variant="outline"
                       size="sm"

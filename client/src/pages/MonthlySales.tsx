@@ -366,30 +366,30 @@ export default function MonthlySales() {
       ) : (
         <>
       {/* Summary Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
-        <Card className="p-5">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3 sm:gap-4 mb-6">
+        <Card className="p-3 sm:p-5 min-w-0">
           <div className="text-xs font-medium text-muted-foreground mb-1">총 매출</div>
-          <div className="text-2xl font-bold text-foreground">{fmt(grandTotal)}</div>
+          <div className="text-base sm:text-2xl font-bold text-foreground truncate">{fmt(grandTotal)}</div>
           <p className="text-xs text-muted-foreground mt-1">{payments.length + hktbInvoices.length + finalPayments.length}건</p>
         </Card>
-        <Card className="p-5">
+        <Card className="p-3 sm:p-5 min-w-0">
           <div className="text-xs font-medium text-muted-foreground mb-1">일반 결제</div>
-          <div className="text-2xl font-bold text-foreground">{fmt(paymentTotal)}</div>
+          <div className="text-base sm:text-2xl font-bold text-foreground truncate">{fmt(paymentTotal)}</div>
           <p className="text-xs text-muted-foreground mt-1">{payments.length}건</p>
         </Card>
-        <Card className="p-5">
+        <Card className="p-3 sm:p-5 min-w-0">
           <div className="text-xs font-medium text-muted-foreground mb-1">HKTB 인보이스</div>
-          <div className="text-2xl font-bold text-foreground">{fmt(hktbTotal)}</div>
+          <div className="text-base sm:text-2xl font-bold text-foreground truncate">{fmt(hktbTotal)}</div>
           <p className="text-xs text-muted-foreground mt-1">{hktbInvoices.length}건</p>
         </Card>
-        <Card className="p-5">
+        <Card className="p-3 sm:p-5 min-w-0">
           <div className="text-xs font-medium text-muted-foreground mb-1">잔금 수령</div>
-          <div className="text-2xl font-bold text-foreground">{fmt(finalPaymentTotal)}</div>
+          <div className="text-base sm:text-2xl font-bold text-foreground truncate">{fmt(finalPaymentTotal)}</div>
           <p className="text-xs text-muted-foreground mt-1">{finalPayments.length}건</p>
         </Card>
-        <Card className="p-5 border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-900/10">
+        <Card className="p-3 sm:p-5 min-w-0 border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-900/10">
           <div className="text-xs font-medium text-emerald-700 dark:text-emerald-400 mb-1">현금영수증 발급분</div>
-          <div className="text-2xl font-bold text-emerald-700 dark:text-emerald-400">{fmt(cashReceiptTotal)}</div>
+          <div className="text-base sm:text-2xl font-bold text-emerald-700 dark:text-emerald-400 truncate">{fmt(cashReceiptTotal)}</div>
           <p className="text-xs text-muted-foreground mt-1">{cashReceiptCount}건</p>
         </Card>
       </div>
@@ -398,7 +398,8 @@ export default function MonthlySales() {
       {hktbInvoices.length > 0 && (
         <Card className="p-5 mb-4">
           <h3 className="text-sm font-semibold text-foreground mb-3">HKTB 인보이스</h3>
-          <table className="w-full text-sm">
+          <div className="overflow-x-auto -mx-1 px-1">
+          <table className="w-full text-sm min-w-[720px]">
             <thead>
               <tr className="border-b border-border">
                 <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground">종류</th>
@@ -446,6 +447,7 @@ export default function MonthlySales() {
               ))}
             </tbody>
           </table>
+          </div>
         </Card>
       )}
 
@@ -453,7 +455,8 @@ export default function MonthlySales() {
       {finalPayments.length > 0 && (
         <Card className="p-5 mb-4">
           <h3 className="text-sm font-semibold text-foreground mb-3">잔금 수령</h3>
-          <table className="w-full text-sm">
+          <div className="overflow-x-auto -mx-1 px-1">
+          <table className="w-full text-sm min-w-[760px]">
             <thead>
               <tr className="border-b border-border">
                 <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground">수령일</th>
@@ -503,13 +506,15 @@ export default function MonthlySales() {
               ))}
             </tbody>
           </table>
+          </div>
         </Card>
       )}
 
       {/* General payments */}
       <Card className="p-5">
         <h3 className="text-sm font-semibold text-foreground mb-3">일반 매출 내역</h3>
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto -mx-1 px-1">
+        <table className="w-full text-sm min-w-[860px]">
           <thead>
             <tr className="border-b border-border">
               <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground">날짜</th>
@@ -617,6 +622,7 @@ export default function MonthlySales() {
             )}
           </tbody>
         </table>
+        </div>
       </Card>
         </>
       )}

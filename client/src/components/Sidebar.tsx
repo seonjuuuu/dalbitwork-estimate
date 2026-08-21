@@ -6,8 +6,12 @@ import { useAuth } from '@/_core/hooks/useAuth';
 
 const SYMBOL_LOGO_URL = 'https://d2xsxph8kpxj0f.cloudfront.net/310519663381204565/fPgwdiJ6bkDvqhYoiMKGTH/dalbitwork-symbol_6be6c49b.webp';
 
+const MOBILE_BREAKPOINT = 768;
+
 export default function Sidebar() {
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(() =>
+    typeof window !== 'undefined' && window.innerWidth < MOBILE_BREAKPOINT
+  );
   const [location, navigate] = useLocation();
   const { newDocument, currentDoc } = useEstimate();
   const { user, logout } = useAuth();

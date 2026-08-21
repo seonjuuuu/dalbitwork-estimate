@@ -110,17 +110,17 @@ export default function ServiceItems() {
 
   return (
     <div className="max-w-3xl mx-auto p-6">
-      <div className="flex items-center justify-between mb-8">
-        <div className="flex items-center gap-3">
-          <Boxes className="w-6 h-6 text-primary" />
-          <div>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-8">
+        <div className="flex items-center gap-3 min-w-0">
+          <Boxes className="w-6 h-6 text-primary flex-shrink-0" />
+          <div className="min-w-0">
             <h1 className="text-2xl font-bold text-foreground">서비스 항목</h1>
             <p className="text-sm text-muted-foreground mt-1">
               자주 사용하는 서비스를 등록해두고 견적서에 빠르게 추가하세요.
             </p>
           </div>
         </div>
-        <Button onClick={handleNew} className="gap-2" size="sm">
+        <Button onClick={handleNew} className="gap-2 self-start sm:self-auto" size="sm">
           <Plus className="w-4 h-4" />
           서비스 추가
         </Button>
@@ -234,23 +234,23 @@ export default function ServiceItems() {
                 {groupItems.map((item) => (
                   <div
                     key={item.id}
-                    className="group flex items-center justify-between gap-3 p-3 border border-border rounded-lg hover:bg-accent/40 transition-colors"
+                    className="group flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3 p-3 border border-border rounded-lg hover:bg-accent/40 transition-colors"
                   >
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-1">
-                        <span className="font-medium text-sm text-foreground w-40 flex-shrink-0">{item.name}</span>
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-0.5 sm:gap-1">
+                        <span className="font-medium text-sm text-foreground sm:w-40 sm:flex-shrink-0">{item.name}</span>
                         {item.description && (
                           <span className="text-xs text-muted-foreground truncate">{item.description}</span>
                         )}
                       </div>
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center justify-between sm:justify-end gap-3">
                       {item.unitPrice && (
                         <span className="text-sm font-semibold text-foreground">
                           {Number(item.unitPrice).toLocaleString('ko-KR')}원
                         </span>
                       )}
-                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="flex gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                         <Button
                           variant="ghost"
                           size="sm"

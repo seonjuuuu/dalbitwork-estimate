@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Upload, Download, Trash2, FileText, Loader2, Eye, ExternalLink } from 'lucide-react';
+import { useIsMobile } from '@/hooks/useMobile';
 
 const MAX_SIZE = 10 * 1024 * 1024; // 10MB
 
@@ -19,6 +20,7 @@ function formatDate(d: Date | string) {
 }
 
 export default function MyPdfFiles() {
+  const isMobile = useIsMobile();
   const { data: files = [], refetch, isLoading } = trpc.pdfFiles.list.useQuery();
   const uploadMutation = trpc.pdfFiles.upload.useMutation();
   const deleteMutation = trpc.pdfFiles.delete.useMutation();
@@ -187,18 +189,20 @@ export default function MyPdfFiles() {
           {files.map(file => (
             <div
               key={file.id}
-              className="flex items-center gap-3 p-4 bg-card border border-border rounded-xl hover:bg-accent/30 transition-colors"
+              className="flex flex-col sm:flex-row sm:items-center gap-3 p-4 bg-card border border-border rounded-xl hover:bg-accent/30 transition-colors"
             >
-              <div className="w-9 h-9 rounded-lg bg-red-50 dark:bg-red-900/20 flex items-center justify-center flex-shrink-0">
-                <FileText className="w-4.5 h-4.5 text-red-500" />
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-9 h-9 rounded-lg bg-red-50 dark:bg-red-900/20 flex items-center justify-center flex-shrink-0">
+                  <FileText className="w-4.5 h-4.5 text-red-500" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-foreground truncate">{file.name}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {formatBytes(file.fileSize)} · {formatDate(file.createdAt)}
+                  </p>
+                </div>
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-foreground truncate">{file.name}</p>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  {formatBytes(file.fileSize)} · {formatDate(file.createdAt)}
-                </p>
-              </div>
-              <div className="flex items-center gap-1.5 flex-shrink-0">
+              <div className="flex items-center gap-1.5 flex-shrink-0 sm:ml-auto">
                 <Button
                   variant="outline"
                   size="sm"
@@ -255,11 +259,23 @@ export default function MyPdfFiles() {
             </a>
           </div>
           {previewBlobUrl && (
-            <iframe
-              src={previewBlobUrl}
-              className="flex-1 w-full border-0"
-              title={previewName}
-            />
+            isMobile ? (
+              <div className="flex-1 w-full flex flex-col items-center justify-center gap-3 p-6 text-center">
+                <span className="text-sm text-muted-foreground">
+                  모바일 브라우저는 미리보기를 화면 안에 바로 띄우지 못해서,<br />새 탭에서 열어서 확인해주세요.
+                </span>
+                <Button onClick={() => window.open(previewBlobUrl, '_blank')} className="gap-2">
+                  <ExternalLink className="w-4 h-4" />
+                  새 탭에서 미리보기 열기
+                </Button>
+              </div>
+            ) : (
+              <iframe
+                src={previewBlobUrl}
+                className="flex-1 w-full border-0"
+                title={previewName}
+              />
+            )
           )}
         </DialogContent>
       </Dialog>

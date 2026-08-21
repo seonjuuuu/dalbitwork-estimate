@@ -1,14 +1,16 @@
-import { Download, Eye, Loader2, Save } from 'lucide-react';
+import { Download, Eye, ExternalLink, Loader2, Save } from 'lucide-react';
 import { useCallback, useState, useRef, useEffect } from 'react';
 import { pdf } from '@react-pdf/renderer';
 import PdfDocument from './PdfDocument';
 import { getDocTypeLabel } from '@/lib/types';
 import { useEstimate } from '@/contexts/EstimateContext';
+import { useIsMobile } from '@/hooks/useMobile';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 
 export default function EstimatePreview() {
   const { currentDoc, saveDocument, isSaving } = useEstimate();
+  const isMobile = useIsMobile();
   const [isRendering, setIsRendering] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const [pdfBlobUrl, setPdfBlobUrl] = useState<string | null>(null);
@@ -178,8 +180,35 @@ export default function EstimatePreview() {
           </div>
         )}
 
-        {/* PDF iframe */}
-        {pdfBlobUrl && (
+        {/* 모바일: iframe 안에서 PDF가 안 뜨는 브라우저(특히 iOS 사파리)가 많아서, 새 탭으로 열도록 안내 */}
+        {pdfBlobUrl && isMobile && (
+          <div
+            style={{
+              width: '100%',
+              height: '100%',
+              background: '#ffffff',
+              borderRadius: '4px',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '12px',
+              padding: '24px',
+              textAlign: 'center',
+            }}
+          >
+            <span style={{ fontSize: '13px', color: '#888' }}>
+              모바일 브라우저는 미리보기를 화면 안에 바로 띄우지 못해서,<br />새 탭에서 열어서 확인해주세요.
+            </span>
+            <Button onClick={() => window.open(pdfBlobUrl, '_blank')} className="gap-2">
+              <ExternalLink className="w-4 h-4" />
+              새 탭에서 미리보기 열기
+            </Button>
+          </div>
+        )}
+
+        {/* PDF iframe (데스크톱) */}
+        {pdfBlobUrl && !isMobile && (
           <iframe
             key={pdfBlobUrl}
             src={pdfBlobUrl}

@@ -177,7 +177,7 @@ export default function Dashboard() {
       />
 
       {/* 요약 카드 */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <SummaryCard
           icon={FileCheck}
           label="진행중 계약 건수"
@@ -262,10 +262,10 @@ export default function Dashboard() {
                   <button
                     key={c.id}
                     onClick={() => navigate(`/clients/${c.id}`)}
-                    className="w-full flex items-center justify-between text-sm text-foreground hover:text-primary hover:bg-accent rounded px-2 py-1.5 transition-colors"
+                    className="w-full flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-0 text-sm text-foreground hover:text-primary hover:bg-accent rounded px-2 py-1.5 transition-colors"
                   >
-                    <span className="truncate">{c.name}</span>
-                    <span className="flex items-center gap-2 flex-shrink-0 ml-3 text-xs">
+                    <span className="truncate text-left">{c.name}</span>
+                    <span className="flex items-center gap-2 flex-wrap sm:flex-nowrap sm:flex-shrink-0 sm:ml-3 text-xs">
                       <span className="text-muted-foreground">{c.paidAmount.toLocaleString('ko-KR')} / {c.contractAmount.toLocaleString('ko-KR')}원</span>
                       <span className="font-semibold text-red-600">−{c.unpaidAmount.toLocaleString('ko-KR')}원</span>
                     </span>

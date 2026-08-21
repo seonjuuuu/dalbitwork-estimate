@@ -177,18 +177,18 @@ export default function DocumentList({ type }: DocumentListProps) {
         </div>
       ) : (
         <>
-          {/* Table */}
-          <div className="border border-border rounded-lg overflow-hidden">
-            <table className="w-full table-fixed border-collapse text-sm">
+          {/* Table - 컬럼이 많아 모바일에서 찌그러지므로 가로 스크롤 컨테이너로 감쌈 */}
+          <div className="border border-border rounded-lg overflow-x-auto">
+            <table className={`w-full table-fixed border-collapse text-sm ${type === 'estimate' ? 'min-w-[960px]' : 'min-w-[760px]'}`}>
               <colgroup>
                 <col className="w-[4%]" />
-                <col className={type === 'estimate' ? 'w-[18%]' : 'w-[22%]'} />
-                <col className={type === 'estimate' ? 'w-[12%]' : 'w-[15%]'} />
-                <col className={type === 'estimate' ? 'w-[9%]' : 'w-[11%]'} />
-                <col className={type === 'estimate' ? 'w-[12%]' : 'w-[14%]'} />
+                <col className={type === 'estimate' ? 'w-[16%]' : 'w-[20%]'} />
+                <col className={type === 'estimate' ? 'w-[11%]' : 'w-[13%]'} />
+                <col className={type === 'estimate' ? 'w-[11%]' : 'w-[13%]'} />
+                <col className={type === 'estimate' ? 'w-[14%]' : 'w-[17%]'} />
                 {type === 'estimate' && <col className="w-[11%]" />}
                 {type === 'estimate' && <col className="w-[11%]" />}
-                <col className={type === 'estimate' ? 'w-[23%]' : 'w-[33%]'} />
+                <col className={type === 'estimate' ? 'w-[22%]' : 'w-[33%]'} />
               </colgroup>
               <thead>
                 <tr className="bg-muted/50 border-b border-border">
