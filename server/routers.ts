@@ -718,7 +718,7 @@ export const appRouter = router({
 
   ai: router({
     /** TEMP: Vercel 환경변수 진단용. 원인 파악 후 제거 예정 */
-    debugEnv: protectedProcedure.query(() => {
+    debugEnv: publicProcedure.query(() => {
       const anthropicKeys = Object.keys(process.env).filter(k => k.toUpperCase().includes("ANTHROPIC"));
       return {
         hasKey: Boolean(process.env.ANTHROPIC_API_KEY),
