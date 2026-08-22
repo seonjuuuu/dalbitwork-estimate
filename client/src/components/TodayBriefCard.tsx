@@ -42,6 +42,7 @@ export default function TodayBriefCard() {
 
   const events = rawEvents as CalEvent[];
   const todayStr = toDateStr(new Date());
+  // 마감일이 오늘인 할 일도 "오늘 일정"에 함께 표시 (아래 "오늘 할 일" 목록에는 항상 전부 뜸)
   const todayEvents = events.filter((e) => e.date === todayStr);
   const incompleteTodos = todos.filter((t) => !t.completed);
 

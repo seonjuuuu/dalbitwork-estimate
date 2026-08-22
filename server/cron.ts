@@ -51,6 +51,7 @@ export async function sendDailyTodoSummaries() {
       db.getCalendarEvents(user.id),
     ]);
     const incomplete = todos.filter((t) => !t.completed);
+    // 마감일이 오늘인 할 일도 [오늘 일정]에 함께 표시 ([할 일] 섹션에는 항상 전체가 뜸)
     const todayEvents = events.filter((e) => e.date === today);
     const tomorrowReminders = events.filter(
       (e) => e.date === tomorrow && REMINDER_AHEAD_TYPES.has(e.type)

@@ -10,7 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 
-type EventType = 'consultation' | 'proposal' | 'estimate' | 'contract' | 'pcDraft' | 'mobileDraft' | 'finalDelivery' | 'custom';
+type EventType = 'consultation' | 'proposal' | 'estimate' | 'contract' | 'pcDraft' | 'mobileDraft' | 'finalDelivery' | 'custom' | 'todo';
 
 const EVENT_STYLE: Record<EventType, { bg: string; text: string; dot: string; label: string }> = {
   consultation:  { bg: 'bg-blue-100 dark:bg-blue-900/40',    text: 'text-blue-700 dark:text-blue-300',    dot: 'bg-blue-500',    label: '상담' },
@@ -21,6 +21,7 @@ const EVENT_STYLE: Record<EventType, { bg: string; text: string; dot: string; la
   mobileDraft:   { bg: 'bg-indigo-100 dark:bg-indigo-900/40', text: 'text-indigo-700 dark:text-indigo-300', dot: 'bg-indigo-400',  label: '모바일시안' },
   finalDelivery: { bg: 'bg-rose-100 dark:bg-rose-900/40',     text: 'text-rose-700 dark:text-rose-300',     dot: 'bg-rose-500',    label: '완성전달' },
   custom:        { bg: 'bg-teal-100 dark:bg-teal-900/40',     text: 'text-teal-700 dark:text-teal-300',     dot: 'bg-teal-500',    label: '일정' },
+  todo:          { bg: 'bg-orange-100 dark:bg-orange-900/40', text: 'text-orange-700 dark:text-orange-300', dot: 'bg-orange-500',  label: '할 일' },
 };
 
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];

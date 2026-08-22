@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from '@/components/ui/command';
-import { Plus, Trash2, Loader2, ListTodo, Building2, Check, ChevronsUpDown } from 'lucide-react';
+import { Plus, Trash2, Loader2, ListTodo, Building2, Check, ChevronsUpDown, CalendarDays, X } from 'lucide-react';
 import { toast } from 'sonner';
 
 const PRIORITY_LABEL: Record<string, { label: string; cls: string }> = {
@@ -28,11 +28,13 @@ export default function TodoList() {
   const [content, setContent] = useState('');
   const [priority, setPriority] = useState<'low' | 'medium' | 'high'>('medium');
   const [clientId, setClientId] = useState<string>('none');
+  const [dueDate, setDueDate] = useState('');
   const [adding, setAdding] = useState(false);
   const [busyId, setBusyId] = useState<number | null>(null);
   const [showCompleted, setShowCompleted] = useState(false);
   const [clientPickerOpen, setClientPickerOpen] = useState(false);
   const [clientSearch, setClientSearch] = useState('');
+  const [editingDateId, setEditingDateId] = useState<number | null>(null);
 
   const selectedClientName = clientId === 'none' ? null : clients.find((c) => String(c.id) === clientId)?.name ?? null;
   const q = clientSearch.trim().toLowerCase();
@@ -55,11 +57,13 @@ export default function TodoList() {
         content: content.trim(),
         priority,
         clientId: clientId === 'none' ? null : Number(clientId),
+        dueDate: dueDate || null,
       });
       setContent('');
       setPriority('medium');
       setClientId('none');
       setClientSearch('');
+      setDueDate('');
       await invalidate();
     } catch {
       toast.error('추가에 실패했습니다.');
@@ -77,6 +81,31 @@ export default function TodoList() {
       toast.error('변경에 실패했습니다.');
     } finally {
       setBusyId(null);
+    }
+  };
+
+  const handleClearDueDate = async (id: number) => {
+    setBusyId(id);
+    try {
+      await updateMutation.mutateAsync({ id, dueDate: null });
+      await invalidate();
+    } catch {
+      toast.error('변경에 실패했습니다.');
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const handleSetDueDate = async (id: number, value: string) => {
+    setBusyId(id);
+    try {
+      await updateMutation.mutateAsync({ id, dueDate: value || null });
+      await invalidate();
+    } catch {
+      toast.error('변경에 실패했습니다.');
+    } finally {
+      setBusyId(null);
+      setEditingDateId(null);
     }
   };
 
@@ -130,6 +159,12 @@ export default function TodoList() {
             <SelectItem value="low">낮음</SelectItem>
           </SelectContent>
         </Select>
+        <Input
+          type="date"
+          value={dueDate}
+          onChange={(e) => setDueDate(e.target.value)}
+          className="w-full sm:w-[150px] h-9 text-sm"
+        />
         <Popover open={clientPickerOpen} onOpenChange={(open) => { setClientPickerOpen(open); if (!open) setClientSearch(''); }}>
           <PopoverTrigger asChild>
             <Button
@@ -199,6 +234,43 @@ export default function TodoList() {
                   {PRIORITY_LABEL[t.priority].label}
                 </span>
                 <span className="text-sm text-foreground flex-1 min-w-[100px] truncate">{t.content}</span>
+                {editingDateId === t.id ? (
+                  <input
+                    type="date"
+                    autoFocus
+                    defaultValue={t.dueDate || ''}
+                    onChange={(e) => handleSetDueDate(t.id, e.target.value)}
+                    onBlur={() => setEditingDateId(null)}
+                    className="h-6 text-[10px] border border-input rounded px-1 bg-background flex-shrink-0"
+                  />
+                ) : t.dueDate ? (
+                  <span className="flex items-center gap-1 text-[10px] text-muted-foreground flex-shrink-0">
+                    <button
+                      onClick={() => setEditingDateId(t.id)}
+                      className="flex items-center gap-1 hover:text-foreground"
+                      title="날짜 수정"
+                    >
+                      <CalendarDays className="w-3 h-3" />
+                      {t.dueDate}
+                    </button>
+                    <button
+                      onClick={() => handleClearDueDate(t.id)}
+                      disabled={busyId === t.id}
+                      className="hover:text-destructive"
+                      title="날짜 제거"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </span>
+                ) : (
+                  <button
+                    onClick={() => setEditingDateId(t.id)}
+                    className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground flex-shrink-0 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
+                    title="날짜 추가"
+                  >
+                    <CalendarDays className="w-3 h-3" />
+                  </button>
+                )}
                 {t.clientName && (
                   <button
                     onClick={() => navigate(`/clients/${t.clientId}`)}

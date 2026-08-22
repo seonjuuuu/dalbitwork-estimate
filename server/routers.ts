@@ -1051,14 +1051,21 @@ export const appRouter = router({
     list: protectedProcedure.query(async ({ ctx }) => {
       return db.listTodos(ctx.user.id);
     }),
+    /** 날짜가 있고 특정 고객에 연결된 할 일만 (고객 상세페이지 노출용) */
+    listByClient: protectedProcedure
+      .input(z.object({ clientId: z.number() }))
+      .query(async ({ ctx, input }) => {
+        return db.listTodosByClient(ctx.user.id, input.clientId);
+      }),
     create: protectedProcedure
       .input(z.object({
         content: z.string().min(1),
         priority: z.enum(["low", "medium", "high"]).default("medium"),
         clientId: z.number().nullable().optional(),
+        dueDate: z.string().nullable().optional(),
       }))
       .mutation(async ({ ctx, input }) => {
-        return db.createTodo(ctx.user.id, input.content, input.priority, input.clientId ?? null);
+        return db.createTodo(ctx.user.id, input.content, input.priority, input.clientId ?? null, input.dueDate);
       }),
     update: protectedProcedure
       .input(z.object({
@@ -1067,6 +1074,7 @@ export const appRouter = router({
         priority: z.enum(["low", "medium", "high"]).optional(),
         clientId: z.number().nullable().optional(),
         completed: z.boolean().optional(),
+        dueDate: z.string().nullable().optional(),
       }))
       .mutation(async ({ ctx, input }) => {
         const { id, ...data } = input;

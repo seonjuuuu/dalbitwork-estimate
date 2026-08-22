@@ -65,7 +65,7 @@ export default function GlobalSearch() {
         <DialogTitle>통합 검색</DialogTitle>
         <DialogDescription>고객사, 제안서, 견적서를 검색하세요</DialogDescription>
       </DialogHeader>
-      <DialogContent className="overflow-hidden p-0 max-w-lg top-[20%] translate-y-0">
+      <DialogContent className="overflow-hidden p-0 w-[calc(100%-2rem)] max-w-lg top-[20%] translate-y-0">
         <Command shouldFilter={false}>
           <CommandInput
             placeholder="고객사명, 문서 제목으로 검색..."

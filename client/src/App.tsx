@@ -26,6 +26,7 @@ import GlobalSearch from "./components/GlobalSearch";
 import { useAuth } from "@/_core/hooks/useAuth";
 import LoginPage from "./pages/LoginPage";
 import { Loader2 } from "lucide-react";
+import { useEffect } from "react";
 
 function AuthGate({ children }: { children: React.ReactNode }) {
   const { user, loading, isAuthenticated } = useAuth();
@@ -84,7 +85,26 @@ function Router() {
   );
 }
 
+// 알림을 눌러 앱을 열거나(또는 다시 포그라운드로 돌아오면) 기기 아이콘의 알림 숫자 뱃지를 지워준다
+function useClearAppBadge() {
+  useEffect(() => {
+    const clear = () => {
+      if ("clearAppBadge" in navigator) {
+        (navigator as Navigator & { clearAppBadge: () => Promise<void> }).clearAppBadge().catch(() => {});
+      }
+    };
+    clear();
+    const onVisible = () => {
+      if (document.visibilityState === "visible") clear();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, []);
+}
+
 function App() {
+  useClearAppBadge();
+
   return (
     <ErrorBoundary>
       <ThemeProvider defaultTheme="light">

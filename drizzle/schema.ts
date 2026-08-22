@@ -289,6 +289,7 @@ export const todos = pgTable("todos", {
   content: text("content").notNull(),
   priority: todoPriorityEnum("priority").default("medium").notNull(),
   clientId: integer("clientId"),
+  dueDate: varchar("dueDate", { length: 10 }), // "YYYY-MM-DD", 선택 입력 — 있으면 캘린더에도 표시됨
   completed: boolean("completed").default(false).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt")

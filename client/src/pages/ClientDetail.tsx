@@ -14,7 +14,7 @@ import {
   Phone, Mail, User, CalendarDays, CircleDollarSign,
   MessageSquare, ChevronDown, ChevronUp, Edit, LinkIcon, FileText, ExternalLink, Hash,
   Upload, Download, Eye, Copy, FileDown, CreditCard, CheckCircle2, Image as ImageIcon, Sparkles, ListTree,
-  Clock,
+  Clock, ListTodo, Check,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import DepositConfirmDialog from '@/components/DepositConfirmDialog';
@@ -47,6 +47,12 @@ const STATUS_STYLE: Record<Status, string> = {
 };
 
 const MAX_ATTACHMENT_SIZE = 10 * 1024 * 1024; // 10MB
+
+const TODO_PRIORITY_LABEL: Record<string, { label: string; cls: string }> = {
+  high: { label: '높음', cls: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' },
+  medium: { label: '보통', cls: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' },
+  low: { label: '낮음', cls: 'bg-slate-100 text-slate-600 dark:bg-slate-800/50 dark:text-slate-400' },
+};
 
 function formatBytes(bytes: number) {
   if (bytes < 1024) return `${bytes} B`;
@@ -268,6 +274,9 @@ export default function ClientDetail({ id }: { id: string }) {
   );
   const { data: linkedEvents = [], refetch: refetchLinkedEvents } = trpc.calendar.listCustomEventsByClient.useQuery({ clientId });
   const deleteLinkedEventMutation = trpc.calendar.deleteCustomEvent.useMutation();
+  const { data: linkedTodos = [], refetch: refetchLinkedTodos } = trpc.todos.listByClient.useQuery({ clientId });
+  const updateTodoMutation = trpc.todos.update.useMutation();
+  const deleteTodoMutation = trpc.todos.delete.useMutation();
   const updateClientMutation = trpc.clients.update.useMutation();
   const updateDocumentMutation = trpc.documents.update.useMutation();
   const createMutation = trpc.consultations.create.useMutation();
@@ -385,6 +394,25 @@ export default function ClientDetail({ id }: { id: string }) {
       toast.success('일정을 삭제했습니다.');
     } catch {
       toast.error('일정 삭제에 실패했습니다.');
+    }
+  };
+
+  const handleToggleLinkedTodo = async (id: number, completed: boolean) => {
+    try {
+      await updateTodoMutation.mutateAsync({ id, completed: !completed });
+      await refetchLinkedTodos();
+    } catch {
+      toast.error('변경에 실패했습니다.');
+    }
+  };
+
+  const handleDeleteLinkedTodo = async (id: number) => {
+    try {
+      await deleteTodoMutation.mutateAsync({ id });
+      await refetchLinkedTodos();
+      toast.success('할 일을 삭제했습니다.');
+    } catch {
+      toast.error('삭제에 실패했습니다.');
     }
   };
 
@@ -919,6 +947,48 @@ export default function ClientDetail({ id }: { id: string }) {
                   onClick={() => handleDeleteLinkedEvent(ev.id)}
                   className="w-6 h-6 flex items-center justify-center rounded-md text-muted-foreground hover:text-destructive hover:bg-accent transition-colors flex-shrink-0"
                   title="일정 삭제"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* 할 일 (날짜 있는 것만) */}
+      {linkedTodos.length > 0 && (
+        <div className="bg-card border border-border rounded-xl p-5">
+          <h2 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+            <ListTodo className="w-4 h-4 text-muted-foreground" />
+            할 일
+            <span className="text-xs text-muted-foreground font-normal">({linkedTodos.length}건)</span>
+          </h2>
+          <div className="space-y-2">
+            {linkedTodos.map((t) => (
+              <div key={t.id} className="flex items-center gap-2 border border-border rounded-lg p-3">
+                <button
+                  onClick={() => handleToggleLinkedTodo(t.id, t.completed)}
+                  className={`w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 transition-colors ${
+                    t.completed ? 'border-primary bg-primary' : 'border-input hover:border-primary'
+                  }`}
+                >
+                  {t.completed && <Check className="w-3 h-3 text-primary-foreground" />}
+                </button>
+                <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full flex-shrink-0 ${TODO_PRIORITY_LABEL[t.priority].cls}`}>
+                  {TODO_PRIORITY_LABEL[t.priority].label}
+                </span>
+                <span className={`text-sm flex-1 min-w-0 truncate ${t.completed ? 'text-muted-foreground line-through' : 'text-foreground'}`}>
+                  {t.content}
+                </span>
+                <span className="flex items-center gap-1 text-xs text-muted-foreground flex-shrink-0">
+                  <CalendarDays className="w-3 h-3" />
+                  {t.dueDate}
+                </span>
+                <button
+                  onClick={() => handleDeleteLinkedTodo(t.id)}
+                  className="w-6 h-6 flex items-center justify-center rounded-md text-muted-foreground hover:text-destructive hover:bg-accent transition-colors flex-shrink-0"
+                  title="할 일 삭제"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>

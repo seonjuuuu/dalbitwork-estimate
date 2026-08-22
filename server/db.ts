@@ -1,4 +1,4 @@
-import { eq, and, or, ne, desc, asc, gte, lte, gt, isNull, sql } from "drizzle-orm";
+import { eq, and, or, ne, desc, asc, gte, lte, gt, isNull, isNotNull, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import { InsertUser, users, documents, InsertDocument, noteTemplates, InsertNoteTemplate, payments, serviceItems, clients, consultations, hktbInvoices, pdfFiles, todos, pushSubscriptions, notificationEvents, customEvents, cardTransactions, expenseMerchantRules } from "../drizzle/schema";
@@ -562,7 +562,7 @@ export async function getCalendarEvents(userId: number) {
   const db = await getDb();
   if (!db) return [];
 
-  const [allConsultations, allClients, allDocuments, allCustomEvents] = await Promise.all([
+  const [allConsultations, allClients, allDocuments, allCustomEvents, allDueTodos] = await Promise.all([
     db.select({
       id: consultations.id,
       date: consultations.date,
@@ -585,6 +585,13 @@ export async function getCalendarEvents(userId: number) {
       projectName: documents.projectName,
     }).from(documents).where(eq(documents.userId, userId)),
     db.select().from(customEvents).where(eq(customEvents.userId, userId)),
+    db.select({
+      id: todos.id,
+      content: todos.content,
+      dueDate: todos.dueDate,
+      clientId: todos.clientId,
+      completed: todos.completed,
+    }).from(todos).where(and(eq(todos.userId, userId), isNotNull(todos.dueDate))),
   ]);
 
   const clientMap = new Map(allClients.map((c) => [c.id, c.name]));
@@ -643,6 +650,12 @@ export async function getCalendarEvents(userId: number) {
       timeUnknown: ev.timeUnknown,
       memo: ev.memo,
     });
+  }
+
+  for (const t of allDueTodos) {
+    if (t.dueDate && !t.completed) {
+      events.push({ date: normDate(t.dueDate), type: 'todo', label: t.content, id: `todo-${t.id}`, clientId: t.clientId ?? undefined });
+    }
   }
 
   return events;
@@ -1120,6 +1133,7 @@ export async function listTodos(userId: number) {
     completed: todos.completed,
     clientId: todos.clientId,
     clientName: clients.name,
+    dueDate: todos.dueDate,
     createdAt: todos.createdAt,
   })
     .from(todos)
@@ -1128,14 +1142,36 @@ export async function listTodos(userId: number) {
     .orderBy(asc(todos.completed), desc(todos.createdAt));
 }
 
-export async function createTodo(userId: number, content: string, priority: "low" | "medium" | "high", clientId: number | null) {
+/** 특정 고객에 연결됐고 날짜가 있는 할 일만 (고객 상세페이지 노출용) */
+export async function listTodosByClient(userId: number, clientId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select({
+    id: todos.id,
+    content: todos.content,
+    priority: todos.priority,
+    completed: todos.completed,
+    dueDate: todos.dueDate,
+  })
+    .from(todos)
+    .where(and(eq(todos.userId, userId), eq(todos.clientId, clientId), isNotNull(todos.dueDate)))
+    .orderBy(asc(todos.dueDate));
+}
+
+export async function createTodo(
+  userId: number,
+  content: string,
+  priority: "low" | "medium" | "high",
+  clientId: number | null,
+  dueDate?: string | null
+) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  const [inserted] = await db.insert(todos).values({ userId, content, priority, clientId }).returning({ id: todos.id });
+  const [inserted] = await db.insert(todos).values({ userId, content, priority, clientId, dueDate: dueDate || null }).returning({ id: todos.id });
   return inserted;
 }
 
-export async function updateTodo(id: number, userId: number, data: Partial<Pick<InsertTodo, "content" | "priority" | "clientId" | "completed">>) {
+export async function updateTodo(id: number, userId: number, data: Partial<Pick<InsertTodo, "content" | "priority" | "clientId" | "completed" | "dueDate">>) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   await db.update(todos).set(data).where(and(eq(todos.id, id), eq(todos.userId, userId)));
