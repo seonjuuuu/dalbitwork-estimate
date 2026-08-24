@@ -664,6 +664,13 @@ export const appRouter = router({
           emailSentTo: input.to,
         });
       }),
+
+    /** 관리비 인보이스 2개월 주기 자동 준비/알림 on-off (재계약 안 된 해에는 꺼서 알림을 멈출 수 있음) */
+    setAutoReminderEnabled: protectedProcedure
+      .input(z.object({ enabled: z.boolean() }))
+      .mutation(async ({ ctx, input }) => {
+        return db.setHktbRetainerAutoEnabled(ctx.user.id, input.enabled);
+      }),
   }),
 
   dashboard: router({

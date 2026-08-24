@@ -151,10 +151,16 @@ export async function checkHktbRetainerReminder(now: Date = new Date()) {
   const vat = Math.round(price * 0.1);
   const totalAmount = (price + vat) * 2;
 
+  // 4월 1일(2-3월분)은 계약연도의 마지막 청구 주기 — 이 주기가 지나면 다음 주기는
+  // 새 계약연도(6월 1일, 4-5월분)이므로, 재계약 여부를 확인하고 자동 알림을 끌 수 있게 안내한다.
+  const isLastCycleOfContractYear = dueMonth === 4;
+
   const users = await db.listUsers();
   let created = 0;
 
   for (const user of users) {
+    if (!user.hktbRetainerAutoEnabled) continue;
+
     const existing = await db.listHktbInvoices(user.id, "retainer");
     const alreadyExists = existing.some((inv) => {
       const items = inv.items as { dateFrom?: string }[] | null;
@@ -177,7 +183,9 @@ export async function checkHktbRetainerReminder(now: Date = new Date()) {
 
     await notifyUser(user.id, {
       title: "HKTB 관리비 인보이스 준비됐어요",
-      body: `${m1}-${m2}월분 인보이스 초안을 만들어뒀어요. 확인 후 이메일로 보내주세요.`,
+      body: isLastCycleOfContractYear
+        ? `${m1}-${m2}월분 인보이스 초안을 만들어뒀어요. 이번이 이번 계약연도의 마지막 주기예요 — 재계약이 안 됐다면 "홍콩관광청 관리용 Invoice" 페이지에서 자동 알림을 꺼주세요.`
+        : `${m1}-${m2}월분 인보이스 초안을 만들어뒀어요. 확인 후 이메일로 보내주세요.`,
       url: "/hktb-retainer",
     });
     created++;

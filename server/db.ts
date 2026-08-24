@@ -1249,7 +1249,14 @@ export async function insertNotificationEvent(
 export async function listUsers() {
   const db = await getDb();
   if (!db) return [];
-  return db.select({ id: users.id }).from(users);
+  return db.select({ id: users.id, hktbRetainerAutoEnabled: users.hktbRetainerAutoEnabled }).from(users);
+}
+
+export async function setHktbRetainerAutoEnabled(userId: number, enabled: boolean) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(users).set({ hktbRetainerAutoEnabled: enabled }).where(eq(users.id, userId));
+  return { success: true };
 }
 
 export async function listNotificationEventsSince(userId: number, sinceId: number) {

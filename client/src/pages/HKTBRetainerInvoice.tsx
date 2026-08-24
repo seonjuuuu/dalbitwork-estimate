@@ -6,9 +6,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
 import { trpc } from '@/lib/trpc';
 import { useIsMobile } from '@/hooks/useMobile';
+import { useAuth } from '@/_core/hooks/useAuth';
 import HKTBRetainerPdf, { type HKTBRetainerData, type HKTBRetainerItem } from '@/components/HKTBRetainerPdf';
 
 function autoFormatNumber(input: string): string {
@@ -74,6 +76,9 @@ function makeDefaultData(): HKTBRetainerData {
 
 export default function HKTBRetainerInvoice() {
   const isMobile = useIsMobile();
+  const { user, refresh: refreshAuth } = useAuth();
+  const setAutoReminderMutation = trpc.hktbInvoices.setAutoReminderEnabled.useMutation();
+  const [isTogglingAutoReminder, setIsTogglingAutoReminder] = useState(false);
   const [data, setData] = useState<HKTBRetainerData>(makeDefaultData);
   const [savedId, setSavedId] = useState<number | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -93,7 +98,7 @@ export default function HKTBRetainerInvoice() {
   const prevBlobUrlRef = useRef<string | null>(null);
   const renderTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const { data: savedList, refetch: refetchList } = trpc.hktbInvoices.list.useQuery({ type: 'retainer' });
+  const { data: savedList, isLoading: isLoadingList, refetch: refetchList } = trpc.hktbInvoices.list.useQuery({ type: 'retainer' });
   const createMutation = trpc.hktbInvoices.create.useMutation();
   const updateMutation = trpc.hktbInvoices.update.useMutation();
   const deleteMutation = trpc.hktbInvoices.delete.useMutation();
@@ -226,6 +231,19 @@ export default function HKTBRetainerInvoice() {
     return [m1, m2];
   };
 
+  const handleToggleAutoReminder = async (checked: boolean) => {
+    setIsTogglingAutoReminder(true);
+    try {
+      await setAutoReminderMutation.mutateAsync({ enabled: checked });
+      await refreshAuth();
+      toast.success(checked ? '자동 알림을 켰어요.' : '자동 알림을 껐어요.');
+    } catch {
+      toast.error('설정 변경에 실패했습니다.');
+    } finally {
+      setIsTogglingAutoReminder(false);
+    }
+  };
+
   const handleOpenEmailDialog = () => {
     if (!savedId) {
       toast.error('먼저 저장해주세요.');
@@ -311,6 +329,15 @@ export default function HKTBRetainerInvoice() {
         <div>
           <h1 className="text-xl font-bold text-foreground">홍콩관광청 관리용 Invoice</h1>
           <p className="text-sm text-muted-foreground mt-1">HKTB Retainer Fee 전용 인보이스</p>
+          <label className="flex items-center gap-2 mt-2 text-xs text-muted-foreground cursor-pointer w-fit">
+            <Switch
+              checked={user?.hktbRetainerAutoEnabled ?? true}
+              onCheckedChange={handleToggleAutoReminder}
+              disabled={isTogglingAutoReminder}
+            />
+            2개월 주기 자동 준비·알림 {user?.hktbRetainerAutoEnabled === false ? '꺼짐' : '켜짐'}
+            <span className="text-muted-foreground/70">(재계약 안 됐으면 꺼두세요)</span>
+          </label>
         </div>
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" size="sm" onClick={handleNew} className="gap-1.5">
@@ -397,7 +424,11 @@ export default function HKTBRetainerInvoice() {
           </div>
           {sidebarOpen && listOpen && (
             <div className="max-h-[600px] overflow-y-auto">
-              {savedList && savedList.length > 0 ? (
+              {isLoadingList ? (
+                <div className="p-6 flex items-center justify-center">
+                  <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+                </div>
+              ) : savedList && savedList.length > 0 ? (
                 <div className="p-2 space-y-1">
                   {savedList.map(inv => {
                     const items = inv.items as { dateFrom?: string; dateTo?: string }[];
