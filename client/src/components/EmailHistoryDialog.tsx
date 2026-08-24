@@ -17,6 +17,7 @@ function formatSentAt(dateStr: string) {
 
 export default function EmailHistoryDialog({ isOpen, onClose, clientId }: EmailHistoryDialogProps) {
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [expandedId, setExpandedId] = useState<number | null>(null);
   const { data: history = [], refetch } = trpc.clientEmails.listByClient.useQuery(
     { clientId },
     { enabled: isOpen }
@@ -78,7 +79,21 @@ export default function EmailHistoryDialog({ isOpen, onClose, clientId }: EmailH
                 </div>
                 {h.toAddress && <p className="text-xs text-foreground">받는사람: {h.toAddress}</p>}
                 {h.subject && <p className="text-sm font-medium text-foreground">{h.subject}</p>}
-                <p className="text-xs text-muted-foreground whitespace-pre-wrap line-clamp-3">{h.body}</p>
+                <button
+                  onClick={() => setExpandedId((prev) => (prev === h.id ? null : h.id))}
+                  className="w-full text-left"
+                >
+                  <p
+                    className={`text-xs text-muted-foreground whitespace-pre-wrap ${
+                      expandedId === h.id ? '' : 'line-clamp-3'
+                    }`}
+                  >
+                    {h.body}
+                  </p>
+                  {expandedId !== h.id && (
+                    <span className="text-[11px] text-primary hover:underline">더보기</span>
+                  )}
+                </button>
               </li>
             ))}
           </ul>

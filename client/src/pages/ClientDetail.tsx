@@ -14,7 +14,7 @@ import { ko } from 'date-fns/locale';
 import {
   ArrowLeft, Plus, Trash2, Save, X, Loader2,
   Phone, Mail, User, CalendarDays, CircleDollarSign,
-  MessageSquare, ChevronDown, ChevronUp, Edit, LinkIcon, FileText, ExternalLink, Hash,
+  MessageSquare, MessageCircle, ChevronDown, ChevronUp, Edit, LinkIcon, FileText, ExternalLink, Hash,
   Upload, Download, Eye, Copy, FileDown, CreditCard, CheckCircle2, Image as ImageIcon, Sparkles, ListTree,
   Clock, ListTodo, Check, ClipboardList, ClipboardCheck, History,
 } from 'lucide-react';
@@ -26,6 +26,7 @@ import AIEstimateDraftDialog from '@/components/AIEstimateDraftDialog';
 import AISiteStructureDialog from '@/components/AISiteStructureDialog';
 import ClientRequestChecklistDialog from '@/components/ClientRequestChecklistDialog';
 import AIEmailDialog from '@/components/AIEmailDialog';
+import AISmsDialog from '@/components/AISmsDialog';
 import EmailHistoryDialog from '@/components/EmailHistoryDialog';
 import SiteStructureEntryCard from '@/components/SiteStructureEntryCard';
 import Linkify from '@/components/Linkify';
@@ -385,6 +386,7 @@ export default function ClientDetail({ id }: { id: string }) {
   const [isSuggestingQuestions, setIsSuggestingQuestions] = useState(false);
   const [requestChecklistDialogOpen, setRequestChecklistDialogOpen] = useState(false);
   const [aiEmailDialogOpen, setAiEmailDialogOpen] = useState(false);
+  const [aiSmsDialogOpen, setAiSmsDialogOpen] = useState(false);
   const [emailHistoryDialogOpen, setEmailHistoryDialogOpen] = useState(false);
   const [viewingAnswersForm, setViewingAnswersForm] = useState<(typeof intakeForms)[number] | null>(null);
   const [deletingFormId, setDeletingFormId] = useState<number | null>(null);
@@ -1208,6 +1210,10 @@ export default function ClientDetail({ id }: { id: string }) {
             <Button size="sm" variant="outline" onClick={() => setAiEmailDialogOpen(true)} className="gap-1 h-7 text-xs">
               <Mail className="w-3.5 h-3.5" />
               메일 작성
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => setAiSmsDialogOpen(true)} className="gap-1 h-7 text-xs">
+              <MessageCircle className="w-3.5 h-3.5" />
+              문자 작성
             </Button>
             <Button size="sm" variant="outline" onClick={() => setRequestChecklistDialogOpen(true)} className="gap-1 h-7 text-xs">
               <ClipboardCheck className="w-3.5 h-3.5" />
@@ -2158,6 +2164,12 @@ export default function ClientDetail({ id }: { id: string }) {
         onClose={() => setAiEmailDialogOpen(false)}
         clientId={clientId}
         clientEmail={client.contactEmail}
+        clientPhone={client.contactPhone}
+      />
+      <AISmsDialog
+        isOpen={aiSmsDialogOpen}
+        onClose={() => setAiSmsDialogOpen(false)}
+        clientId={clientId}
         clientPhone={client.contactPhone}
       />
       <EmailHistoryDialog

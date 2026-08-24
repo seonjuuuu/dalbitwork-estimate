@@ -461,3 +461,57 @@ ${input.purpose}`,
   }
   return response.parsed_output;
 }
+
+const smsDraftSchema = z.object({
+  message: z
+    .string()
+    .describe(
+      "고객에게 그대로 보낼 문자 메시지. 존댓말이지만 친근하고 편안한 말투로, 이메일보다 훨씬 짧고 간결하게. 딱딱한 격식체·서명 없이 용건만 자연스럽게 전달."
+    ),
+});
+
+export interface SmsDraftContext {
+  clientName: string;
+  memo: string;
+  purpose: string;
+}
+
+/** 담당자가 입력한 "문자 보내는 목적"을 바탕으로, 이메일보다 짧고 친근한 말투의 문자 초안을 AI로 생성 */
+export async function generateSmsDraft(input: SmsDraftContext): Promise<{ message: string }> {
+  const fallback = {
+    message: `안녕하세요 ${input.clientName || "고객"}님! ${input.purpose}`,
+  };
+
+  const response = await getClient().messages.parse({
+    model: "claude-opus-4-8",
+    max_tokens: 512,
+    output_config: {
+      format: zodOutputFormat(smsDraftSchema),
+    },
+    messages: [
+      {
+        role: "user",
+        content: `당신은 웹 에이전시 "달빛워크" 담당자가 고객에게 보낼 문자(SMS/카카오톡) 메시지를 작성하는 보조입니다.
+담당자가 입력한 "문자를 보내는 목적"을 바탕으로, 고객에게 그대로 보낼 수 있는 메시지를 작성하세요.
+
+# 지침
+- 이메일과 달리 문자는 짧고 편하게 읽히는 게 중요해요. 3~5문장 이내로 간결하게 작성하세요.
+- 존댓말은 유지하되, 딱딱한 격식체(공문서 같은 말투) 대신 친근하고 편안한 말투로 쓰세요. 이모지는 과하지 않게 최대 1개 정도만 필요하면 사용하세요.
+- 인사말도 "안녕하세요! ~님" 정도로 가볍게, 용건을 자연스럽게 전달하고, 짧게 마무리하세요.
+- 서명(이름·직함·연락처)은 쓰지 마세요.
+
+# 고객사 정보
+고객사명: ${input.clientName || "(미기재)"}
+메모: ${input.memo.trim() || "(없음)"}
+
+# 문자를 보내는 목적
+${input.purpose}`,
+      },
+    ],
+  });
+
+  if (response.stop_reason === "refusal" || !response.parsed_output) {
+    return fallback;
+  }
+  return response.parsed_output;
+}

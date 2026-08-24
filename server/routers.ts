@@ -4,7 +4,7 @@ import { z } from "zod";
 import { nanoid } from "nanoid";
 import * as db from "./db";
 import type { DocumentItemRow, OptionalItemRow } from "../drizzle/schema";
-import { generateEstimateDraft, generateSiteStructure, classifyIntakeFormFields, suggestAdditionalIntakeQuestions, generateClientRequestChecklist, generateEmailDraft } from "./ai";
+import { generateEstimateDraft, generateSiteStructure, classifyIntakeFormFields, suggestAdditionalIntakeQuestions, generateClientRequestChecklist, generateEmailDraft, generateSmsDraft } from "./ai";
 import { notifyUser } from "./push";
 import { sendMail, buildEmailHtml, APP_BASE_URL, PUBLIC_FORM_BASE_URL } from "./mailer";
 import { ENV } from "./_core/env";
@@ -954,6 +954,19 @@ export const appRouter = router({
         const client = await db.getClient(input.clientId, ctx.user.id);
         if (!client) throw new Error("고객사를 찾을 수 없습니다.");
         return generateEmailDraft({
+          clientName: client.name,
+          memo: client.memo,
+          purpose: input.purpose,
+        });
+      }),
+
+    /** 담당자가 입력한 목적을 바탕으로 문자용 초안(짧고 친근한 말투) 생성 */
+    generateSmsDraft: protectedProcedure
+      .input(z.object({ clientId: z.number(), purpose: z.string().min(1) }))
+      .mutation(async ({ ctx, input }) => {
+        const client = await db.getClient(input.clientId, ctx.user.id);
+        if (!client) throw new Error("고객사를 찾을 수 없습니다.");
+        return generateSmsDraft({
           clientName: client.name,
           memo: client.memo,
           purpose: input.purpose,
