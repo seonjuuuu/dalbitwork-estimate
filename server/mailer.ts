@@ -52,12 +52,19 @@ export function buildEmailHtml(bodyText: string): string {
   return `<div style="font-family: Arial, sans-serif; font-size: 14px; color: #1a1a1a; white-space: pre-line; line-height: 1.6;">${escapeHtml(bodyText)}</div>${SIGNATURE_HTML}`;
 }
 
-export async function sendMail(to: string, subject: string, bodyText: string) {
+export interface MailAttachment {
+  filename: string;
+  content: Buffer;
+  contentType?: string;
+}
+
+export async function sendMail(to: string, subject: string, bodyText: string, attachments?: MailAttachment[]) {
   await getTransporter().sendMail({
     from: `"달빛워크" <${ENV.gmailUser}>`,
     to,
     subject,
     text: `${bodyText}\n\n${SIGNATURE_TEXT}`,
     html: buildEmailHtml(bodyText),
+    attachments,
   });
 }

@@ -1,3 +1,4 @@
+import { nanoid } from "nanoid";
 import * as db from "./db";
 import { notifyUser } from "./push";
 
@@ -97,4 +98,91 @@ export async function sendDailyTodoSummaries() {
   }
 
   return { usersNotified };
+}
+
+// HKTB 관리비(Retainer) 청구 주기: 4-5, 6-7, 8-9, 10-11, 12-1, 2-3월 2개월 단위로,
+// 해당 구간이 끝난 다음 달 1일에 인보이스를 보내는 형식(예: 4-5월분 → 6월 1일 발송)
+const HKTB_RETAINER_DUE_MONTHS = new Set([2, 4, 6, 8, 10, 12]);
+const HKTB_RETAINER_MONTHLY_PRICE = "850,000";
+
+function lastDayOfMonth(year: number, month: number): number {
+  return new Date(year, month, 0).getDate();
+}
+
+function hktbMonthRange(year: number, month: number) {
+  const mm = String(month).padStart(2, "0");
+  const last = String(lastDayOfMonth(year, month)).padStart(2, "0");
+  return { dateFrom: `${year}.${mm}.01`, dateTo: `${year}.${mm}.${last}` };
+}
+
+/**
+ * 오늘이 HKTB 관리비 인보이스 발송 예정일(짝수월 1일)이면, 해당 2개월치 인보이스 초안을
+ * 미리 만들어두고 알림을 보낸다. 실제 이메일 발송은 담당자가 직접 확인 후 버튼으로 진행.
+ * 이미 같은 구간의 인보이스가 있으면(수동으로 미리 만들어둔 경우 등) 건너뛴다.
+ */
+export async function checkHktbRetainerReminder() {
+  const now = new Date();
+  const kst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+  const day = kst.getUTCDate();
+  const dueMonth = kst.getUTCMonth() + 1;
+  const dueYear = kst.getUTCFullYear();
+
+  if (day !== 1 || !HKTB_RETAINER_DUE_MONTHS.has(dueMonth)) {
+    return { created: 0 };
+  }
+
+  // 청구 대상 2개월 구간 계산 (예: 6월 1일 발송 → 4~5월분, 2월 1일 발송 → 전년 12월~올해 1월분)
+  let m2 = dueMonth - 1;
+  let y2 = dueYear;
+  if (m2 === 0) {
+    m2 = 12;
+    y2 -= 1;
+  }
+  let m1 = m2 - 1;
+  let y1 = y2;
+  if (m1 === 0) {
+    m1 = 12;
+    y1 -= 1;
+  }
+
+  const range1 = hktbMonthRange(y1, m1);
+  const range2 = hktbMonthRange(y2, m2);
+  const todayStr = kst.toISOString().slice(0, 10);
+  const price = 850000;
+  const vat = Math.round(price * 0.1);
+  const totalAmount = (price + vat) * 2;
+
+  const users = await db.listUsers();
+  let created = 0;
+
+  for (const user of users) {
+    const existing = await db.listHktbInvoices(user.id, "retainer");
+    const alreadyExists = existing.some((inv) => {
+      const items = inv.items as { dateFrom?: string }[] | null;
+      return items?.[0]?.dateFrom === range1.dateFrom;
+    });
+    if (alreadyExists) continue;
+
+    await db.createHktbInvoice({
+      userId: user.id,
+      type: "retainer",
+      invoiceNo: `${todayStr.replace(/-/g, "")}001A`,
+      invoiceDate: todayStr,
+      items: [
+        { id: nanoid(), dateFrom: range1.dateFrom, dateTo: range1.dateTo, jobDescription: "Retainer Fee", price: HKTB_RETAINER_MONTHLY_PRICE },
+        { id: nanoid(), dateFrom: range2.dateFrom, dateTo: range2.dateTo, jobDescription: "Retainer Fee", price: HKTB_RETAINER_MONTHLY_PRICE },
+      ],
+      totalAmount,
+      revenueMonth: `${dueYear}-${String(dueMonth).padStart(2, "0")}`,
+    });
+
+    await notifyUser(user.id, {
+      title: "HKTB 관리비 인보이스 준비됐어요",
+      body: `${m1}-${m2}월분 인보이스 초안을 만들어뒀어요. 확인 후 이메일로 보내주세요.`,
+      url: "/hktb-retainer",
+    });
+    created++;
+  }
+
+  return { created };
 }

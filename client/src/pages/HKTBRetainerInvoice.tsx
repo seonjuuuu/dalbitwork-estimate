@@ -1,9 +1,11 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { pdf } from '@react-pdf/renderer';
 import { nanoid } from 'nanoid';
-import { Plus, Trash2, Download, Eye, Loader2, Save, FolderOpen, ChevronDown, ChevronRight, TrendingUp, X, ExternalLink } from 'lucide-react';
+import { Plus, Trash2, Download, Eye, Loader2, Save, FolderOpen, ChevronDown, ChevronRight, TrendingUp, X, ExternalLink, Mail, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import { trpc } from '@/lib/trpc';
 import { useIsMobile } from '@/hooks/useMobile';
@@ -83,6 +85,11 @@ export default function HKTBRetainerInvoice() {
   const [listOpen, setListOpen] = useState(true);
   const [revenueMonth, setRevenueMonth] = useState<string>('');
   const [showRevenueInput, setShowRevenueInput] = useState(false);
+  const [emailDialogOpen, setEmailDialogOpen] = useState(false);
+  const [emailTo, setEmailTo] = useState(() => localStorage.getItem('hktb-retainer-email-to') || '');
+  const [emailSubject, setEmailSubject] = useState('');
+  const [emailBody, setEmailBody] = useState('');
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
   const prevBlobUrlRef = useRef<string | null>(null);
   const renderTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -90,6 +97,7 @@ export default function HKTBRetainerInvoice() {
   const createMutation = trpc.hktbInvoices.create.useMutation();
   const updateMutation = trpc.hktbInvoices.update.useMutation();
   const deleteMutation = trpc.hktbInvoices.delete.useMutation();
+  const sendEmailMutation = trpc.hktbInvoices.sendEmail.useMutation();
 
   const renderPreview = useCallback(async () => {
     setIsRendering(true);
@@ -210,6 +218,62 @@ export default function HKTBRetainerInvoice() {
     }
   };
 
+  const MONTH_NAMES_EN = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+  const getPeriodLabel = (items: HKTBRetainerItem[]): string => {
+    if (items.length < 2 || !items[0]?.dateFrom || !items[1]?.dateFrom) return '';
+    const [y1, m1] = items[0].dateFrom.split('.').map(Number);
+    const [y2, m2] = items[1].dateFrom.split('.').map(Number);
+    if (!m1 || !m2) return '';
+    const p1 = `${MONTH_NAMES_EN[m1]}${y1 !== y2 ? ' ' + y1 : ''}`;
+    const p2 = `${MONTH_NAMES_EN[m2]} ${y2}`;
+    return `${p1}–${p2}`;
+  };
+
+  const handleOpenEmailDialog = () => {
+    if (!savedId) {
+      toast.error('먼저 저장해주세요.');
+      return;
+    }
+    const period = getPeriodLabel(data.items);
+    const total = data.items.reduce((sum, item) => sum + calcItem(item).total, 0);
+    setEmailSubject(`DalBit Work - Retainer Fee Invoice${period ? ` (${period})` : ''} [${data.invoiceNo}]`);
+    setEmailBody(
+      `Dear HKTB,\n\nPlease find attached the retainer fee invoice${period ? ` for ${period}` : ''} (Invoice No. ${data.invoiceNo}).\n\nTotal amount: KRW ${fmt(total)}\n\nPlease let us know if you have any questions.\n\nThank you.`
+    );
+    setEmailDialogOpen(true);
+  };
+
+  const handleSendEmail = async () => {
+    if (!savedId) return;
+    if (!emailTo.trim()) {
+      toast.error('받는 사람 이메일을 입력해주세요.');
+      return;
+    }
+    setIsSendingEmail(true);
+    try {
+      const blob = await pdf(<HKTBRetainerPdf data={data} />).toBlob();
+      const buf = await blob.arrayBuffer();
+      const base64 = Buffer.from(buf).toString('base64');
+      await sendEmailMutation.mutateAsync({
+        id: savedId,
+        to: emailTo.trim(),
+        subject: emailSubject.trim(),
+        body: emailBody,
+        pdfBase64: base64,
+        filename: `HKTB-RETAINER-${data.invoiceNo || 'draft'}.pdf`,
+      });
+      localStorage.setItem('hktb-retainer-email-to', emailTo.trim());
+      toast.success('이메일을 보냈어요.');
+      setEmailDialogOpen(false);
+      refetchList();
+    } catch {
+      toast.error('발송에 실패했습니다.');
+    } finally {
+      setIsSendingEmail(false);
+    }
+  };
+
   const updateItem = (id: string, field: keyof HKTBRetainerItem, value: string) => {
     setData(prev => ({
       ...prev,
@@ -307,6 +371,10 @@ export default function HKTBRetainerInvoice() {
             {isDownloading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
             PDF 다운로드
           </Button>
+          <Button variant="outline" size="sm" onClick={handleOpenEmailDialog} className="gap-1.5">
+            <Mail className="w-3.5 h-3.5" />
+            PDF 첨부해서 이메일 보내기
+          </Button>
         </div>
       </div>
 
@@ -350,7 +418,14 @@ export default function HKTBRetainerInvoice() {
                         }`}
                       >
                         <button className="w-full text-left p-2" onClick={() => handleLoad(inv)}>
-                          <div className="text-[10px] font-semibold text-primary mb-0.5">{periodLabel}</div>
+                          <div className="flex items-center gap-1.5 mb-0.5">
+                            <span className="text-[10px] font-semibold text-primary">{periodLabel}</span>
+                            {inv.emailSentAt && (
+                              <span className="text-[9px] px-1 py-0.5 rounded bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400 font-medium">
+                                발송됨
+                              </span>
+                            )}
+                          </div>
                           <div className="text-xs font-mono font-medium text-foreground truncate">{inv.invoiceNo}</div>
                           <div className="text-[10px] text-muted-foreground">{inv.totalAmount.toLocaleString('en-US')}</div>
                         </button>
@@ -577,6 +652,43 @@ export default function HKTBRetainerInvoice() {
         )}
       </div>
       </div>
+
+      <Dialog open={emailDialogOpen} onOpenChange={setEmailDialogOpen}>
+        <DialogContent className="sm:max-w-[520px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Mail className="w-4 h-4 text-primary" />
+              PDF 첨부해서 이메일 보내기
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <Input
+              value={emailTo}
+              onChange={(e) => setEmailTo(e.target.value)}
+              placeholder="받는 사람 이메일"
+              type="email"
+            />
+            <Input
+              value={emailSubject}
+              onChange={(e) => setEmailSubject(e.target.value)}
+              placeholder="제목"
+            />
+            <Textarea
+              value={emailBody}
+              onChange={(e) => setEmailBody(e.target.value)}
+              rows={8}
+              className="resize-y min-h-[160px] text-sm"
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEmailDialogOpen(false)} disabled={isSendingEmail}>취소</Button>
+            <Button onClick={handleSendEmail} disabled={isSendingEmail} className="gap-2">
+              {isSendingEmail ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+              발송
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

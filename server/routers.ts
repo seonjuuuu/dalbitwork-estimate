@@ -642,6 +642,28 @@ export const appRouter = router({
       .mutation(async ({ ctx, input }) => {
         return db.deleteHktbInvoice(input.id, ctx.user.id);
       }),
+
+    /** 인보이스 PDF를 첨부해서 이메일 발송 (PDF는 클라이언트에서 base64로 만들어서 전달) */
+    sendEmail: protectedProcedure
+      .input(
+        z.object({
+          id: z.number(),
+          to: z.string().email(),
+          subject: z.string().min(1),
+          body: z.string().min(1),
+          pdfBase64: z.string().min(1),
+          filename: z.string().min(1),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        await sendMail(input.to, input.subject, input.body, [
+          { filename: input.filename, content: Buffer.from(input.pdfBase64, "base64"), contentType: "application/pdf" },
+        ]);
+        return db.updateHktbInvoice(input.id, ctx.user.id, {
+          emailSentAt: new Date(),
+          emailSentTo: input.to,
+        });
+      }),
   }),
 
   dashboard: router({

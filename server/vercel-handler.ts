@@ -4,7 +4,7 @@ import express from "express";
 import { appRouter } from "./routers";
 import { createContext } from "./_core/context";
 import { ENV } from "./_core/env";
-import { sendDailyTodoSummaries } from "./cron";
+import { sendDailyTodoSummaries, checkHktbRetainerReminder } from "./cron";
 import * as db from "./db";
 
 function escapeHtml(s: string) {
@@ -34,7 +34,14 @@ app.get("/api/cron/daily-todo-summary", async (req, res) => {
   }
   try {
     const result = await sendDailyTodoSummaries();
-    res.json({ success: true, ...result });
+    let hktbResult: { created: number } | { error: string } = { created: 0 };
+    try {
+      hktbResult = await checkHktbRetainerReminder();
+    } catch (err) {
+      console.error("[cron] hktb-retainer-reminder failed", err);
+      hktbResult = { error: String(err) };
+    }
+    res.json({ success: true, ...result, hktbRetainer: hktbResult });
   } catch (err) {
     console.error("[cron] daily-todo-summary failed", err);
     res.status(500).json({ success: false, error: String(err) });

@@ -257,6 +257,8 @@ export const hktbInvoices = pgTable("hktb_invoices", {
   cashReceiptIssued: boolean("cashReceiptIssued").default(false).notNull(),
   cashReceiptDate: varchar("cashReceiptDate", { length: 20 }),
   memo: text("memo"),
+  emailSentAt: timestamp("emailSentAt"),
+  emailSentTo: varchar("emailSentTo", { length: 320 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt")
     .defaultNow()
