@@ -1,7 +1,8 @@
 import { eq, and, or, ne, desc, asc, gte, lte, gt, isNull, isNotNull, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
-import { InsertUser, users, documents, InsertDocument, noteTemplates, InsertNoteTemplate, payments, serviceItems, clients, consultations, hktbInvoices, pdfFiles, todos, pushSubscriptions, notificationEvents, customEvents, cardTransactions, expenseMerchantRules } from "../drizzle/schema";
+import { InsertUser, users, documents, InsertDocument, noteTemplates, InsertNoteTemplate, payments, serviceItems, clients, consultations, hktbInvoices, pdfFiles, todos, pushSubscriptions, notificationEvents, customEvents, cardTransactions, expenseMerchantRules, intakeForms, clientEmails } from "../drizzle/schema";
+import type { IntakeFormQuestion } from "../drizzle/schema";
 import type { InsertPayment, InsertServiceItem, InsertClient, InsertConsultation, InsertHktbInvoice, InsertPdfFile, InsertTodo } from "../drizzle/schema";
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -1382,4 +1383,99 @@ export async function deleteExpensesForMonth(userId: number, month: string) {
     .delete(cardTransactions)
     .where(and(eq(cardTransactions.userId, userId), sql`${cardTransactions.date} LIKE ${month + "%"}`));
   return { success: true };
+}
+
+// ─── 홈페이지 제작 질문폼 (고객이 로그인 없이 링크로 접속해서 답변) ────
+
+export async function createIntakeForm(
+  userId: number,
+  clientId: number,
+  token: string,
+  questions: IntakeFormQuestion[]
+) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const [row] = await db
+    .insert(intakeForms)
+    .values({ userId, clientId, token, questions, answers: questions.map(() => "") })
+    .returning();
+  return row;
+}
+
+export async function listIntakeFormsByClient(userId: number, clientId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select()
+    .from(intakeForms)
+    .where(and(eq(intakeForms.userId, userId), eq(intakeForms.clientId, clientId)))
+    .orderBy(desc(intakeForms.createdAt));
+}
+
+/** 공개 폼 페이지용 — 토큰만으로 조회 (로그인 불필요) */
+export async function getIntakeFormByToken(token: string) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const rows = await db
+    .select({
+      id: intakeForms.id,
+      userId: intakeForms.userId,
+      clientId: intakeForms.clientId,
+      questions: intakeForms.questions,
+      answers: intakeForms.answers,
+      status: intakeForms.status,
+      clientName: clients.name,
+    })
+    .from(intakeForms)
+    .leftJoin(clients, eq(intakeForms.clientId, clients.id))
+    .where(eq(intakeForms.token, token))
+    .limit(1);
+  return rows[0];
+}
+
+/** 공개 폼 제출 — 토큰만으로 처리 (로그인 불필요) */
+export async function submitIntakeForm(token: string, answers: string[]) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const [row] = await db
+    .update(intakeForms)
+    .set({ answers, status: "submitted", submittedAt: new Date() })
+    .where(and(eq(intakeForms.token, token), eq(intakeForms.status, "pending")))
+    .returning();
+  return row;
+}
+
+export async function deleteIntakeForm(userId: number, id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(intakeForms).where(and(eq(intakeForms.id, id), eq(intakeForms.userId, userId)));
+  return { success: true };
+}
+
+// ─── 고객 발송 이메일 이력 ────
+
+export async function createClientEmail(
+  userId: number,
+  clientId: number,
+  toAddress: string,
+  subject: string,
+  body: string
+) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const [row] = await db
+    .insert(clientEmails)
+    .values({ userId, clientId, toAddress, subject, body })
+    .returning();
+  return row;
+}
+
+export async function listClientEmailsByClient(userId: number, clientId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select()
+    .from(clientEmails)
+    .where(and(eq(clientEmails.userId, userId), eq(clientEmails.clientId, clientId)))
+    .orderBy(desc(clientEmails.sentAt));
 }

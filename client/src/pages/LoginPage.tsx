@@ -5,7 +5,7 @@ import { supabase } from "@/lib/supabase";
 import { Loader2 } from "lucide-react";
 import { useState } from "react";
 
-const SYMBOL_LOGO_URL = 'https://d2xsxph8kpxj0f.cloudfront.net/310519663381204565/fPgwdiJ6bkDvqhYoiMKGTH/dalbitwork-symbol_6be6c49b.webp';
+const WORDMARK_LOGO_URL = '/logo-full.png';
 
 type Mode = "login" | "signup";
 
@@ -72,8 +72,7 @@ export default function LoginPage() {
       <div className="w-full max-w-sm mx-auto px-6">
         <div className="flex flex-col items-center gap-6">
           <div className="flex flex-col items-center gap-3">
-            <img src={SYMBOL_LOGO_URL} alt="달빛워크" className="w-16 h-16 object-contain" />
-            <h1 className="text-xl font-bold text-foreground">달빛워크</h1>
+            <img src={WORDMARK_LOGO_URL} alt="달빛워크" className="h-12 w-auto object-contain" />
             <p className="text-sm text-muted-foreground text-center">
               견적서 / 제안서 관리 시스템
             </p>

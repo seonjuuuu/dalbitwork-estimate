@@ -4,7 +4,8 @@ import { useState } from 'react';
 import { useLocation } from 'wouter';
 import { useAuth } from '@/_core/hooks/useAuth';
 
-const SYMBOL_LOGO_URL = 'https://d2xsxph8kpxj0f.cloudfront.net/310519663381204565/fPgwdiJ6bkDvqhYoiMKGTH/dalbitwork-symbol_6be6c49b.webp';
+const SYMBOL_LOGO_URL = '/logo-symbol.png'; // 접힌 사이드바 등 공간이 좁을 때 쓰는 심볼 (PWA 아이콘인 icon-512.png는 그대로 유지)
+const WORDMARK_LOGO_URL = '/logo-full.png'; // 펼친 사이드바용 워드마크 로고
 
 const MOBILE_BREAKPOINT = 768;
 
@@ -147,12 +148,11 @@ export default function Sidebar() {
       }`}
     >
       {/* Logo */}
-      <div className="flex items-center gap-3 px-4 py-5 border-b border-border">
-        <img src={SYMBOL_LOGO_URL} alt="달빛워크" className="w-8 h-8 object-contain flex-shrink-0" />
-        {!collapsed && (
-          <span className="text-sm font-semibold text-foreground whitespace-nowrap">
-            달빛워크
-          </span>
+      <div className="flex items-center px-4 py-5 border-b border-border">
+        {collapsed ? (
+          <img src={SYMBOL_LOGO_URL} alt="달빛워크" className="w-10 h-10 object-contain flex-shrink-0" />
+        ) : (
+          <img src={WORDMARK_LOGO_URL} alt="달빛워크" className="h-11 w-auto object-contain" />
         )}
       </div>
 

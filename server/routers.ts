@@ -4,8 +4,9 @@ import { z } from "zod";
 import { nanoid } from "nanoid";
 import * as db from "./db";
 import type { DocumentItemRow, OptionalItemRow } from "../drizzle/schema";
-import { generateEstimateDraft, generateSiteStructure } from "./ai";
+import { generateEstimateDraft, generateSiteStructure, classifyIntakeFormFields, suggestAdditionalIntakeQuestions, generateClientRequestChecklist } from "./ai";
 import { notifyUser } from "./push";
+import { sendMail } from "./mailer";
 import { ENV } from "./_core/env";
 import { parseCardStatementXlsx } from "./cardStatementParser";
 
@@ -927,6 +928,21 @@ export const appRouter = router({
           : undefined;
         return generateSiteStructure(input.consultationText, previous);
       }),
+
+    /** 고객사 정보·상담 이력을 참고해 제작 전 고객에게 요청할 준비자료 체크리스트 + 발송용 안내 메시지를 생성 */
+    generateClientRequestChecklist: protectedProcedure
+      .input(z.object({ clientId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        const client = await db.getClient(input.clientId, ctx.user.id);
+        if (!client) throw new Error("고객사를 찾을 수 없습니다.");
+        const consultations = await db.listConsultations(input.clientId, ctx.user.id);
+        return generateClientRequestChecklist({
+          clientName: client.name,
+          memo: client.memo,
+          consultations: consultations.map((c) => c.content).filter(Boolean),
+          existingQuestions: [],
+        });
+      }),
   }),
 
   expenses: router({
@@ -983,6 +999,115 @@ export const appRouter = router({
       .input(z.object({ month: z.string() }))
       .mutation(async ({ ctx, input }) => {
         return db.deleteExpensesForMonth(ctx.user.id, input.month);
+      }),
+  }),
+
+  forms: router({
+    /** 질문 목록을 AI로 분석해서 입력 형태(단답/장문/객관식)를 자동 분류 */
+    classifyFields: protectedProcedure
+      .input(z.object({ questions: z.array(z.object({ text: z.string().min(1), required: z.boolean() })) }))
+      .mutation(async ({ input }) => {
+        return classifyIntakeFormFields(input.questions);
+      }),
+    /** 고객사 메모·상담 이력을 참고해 기본 질문 외 추가 질문을 AI로 제안 */
+    suggestQuestions: protectedProcedure
+      .input(z.object({ clientId: z.number(), existingQuestions: z.array(z.string()) }))
+      .mutation(async ({ ctx, input }) => {
+        const client = await db.getClient(input.clientId, ctx.user.id);
+        if (!client) return [];
+        const consultations = await db.listConsultations(input.clientId, ctx.user.id);
+        return suggestAdditionalIntakeQuestions({
+          clientName: client.name,
+          memo: client.memo,
+          consultations: consultations.map((c) => c.content).filter(Boolean),
+          existingQuestions: input.existingQuestions,
+        });
+      }),
+    /** 고객에게 보낼 질문폼 링크 생성 */
+    create: protectedProcedure
+      .input(
+        z.object({
+          clientId: z.number(),
+          questions: z
+            .array(
+              z.object({
+                text: z.string().min(1),
+                required: z.boolean(),
+                type: z.enum(["text", "textarea", "select"]),
+                options: z.array(z.string()).optional(),
+              })
+            )
+            .min(1),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        const token = nanoid(8);
+        return db.createIntakeForm(ctx.user.id, input.clientId, token, input.questions);
+      }),
+    listByClient: protectedProcedure
+      .input(z.object({ clientId: z.number() }))
+      .query(async ({ ctx, input }) => {
+        return db.listIntakeFormsByClient(ctx.user.id, input.clientId);
+      }),
+    deleteForm: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        return db.deleteIntakeForm(ctx.user.id, input.id);
+      }),
+    /** 공개 폼 페이지 — 로그인 불필요, 토큰만으로 접근 */
+    getByToken: publicProcedure
+      .input(z.object({ token: z.string() }))
+      .query(async ({ input }) => {
+        const form = await db.getIntakeFormByToken(input.token);
+        if (!form) return null;
+        // userId는 서버 내부용이라 공개 응답에서는 제외
+        const { userId: _userId, ...publicForm } = form;
+        return publicForm;
+      }),
+    /** 공개 폼 제출 — 로그인 불필요, 토큰만으로 처리 */
+    submit: publicProcedure
+      .input(z.object({ token: z.string(), answers: z.array(z.string()) }))
+      .mutation(async ({ input }) => {
+        const before = await db.getIntakeFormByToken(input.token);
+        if (!before) throw new Error("유효하지 않은 링크입니다.");
+        if (before.status === "submitted") throw new Error("이미 제출된 폼입니다.");
+        const missingRequired = before.questions.some(
+          (q, i) => q.required && !(input.answers[i] || "").trim()
+        );
+        if (missingRequired) throw new Error("필수 항목(*)을 모두 입력해주세요.");
+
+        const updated = await db.submitIntakeForm(input.token, input.answers);
+        if (!updated) throw new Error("제출에 실패했습니다.");
+
+        await notifyUser(before.userId, {
+          title: "질문폼 답변 도착",
+          body: `${before.clientName || "고객"}님이 홈페이지 제작 질문폼에 답변을 제출했어요.`,
+          url: `/clients/${before.clientId}`,
+        }).catch(() => {});
+
+        return { success: true };
+      }),
+  }),
+
+  clientEmails: router({
+    /** 고객에게 이메일 발송 (Gmail) + 발송 이력 기록 */
+    send: protectedProcedure
+      .input(
+        z.object({
+          clientId: z.number(),
+          to: z.string().email(),
+          subject: z.string().min(1),
+          body: z.string().min(1),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        await sendMail(input.to, input.subject, input.body);
+        return db.createClientEmail(ctx.user.id, input.clientId, input.to, input.subject, input.body);
+      }),
+    listByClient: protectedProcedure
+      .input(z.object({ clientId: z.number() }))
+      .query(async ({ ctx, input }) => {
+        return db.listClientEmailsByClient(ctx.user.id, input.clientId);
       }),
   }),
 

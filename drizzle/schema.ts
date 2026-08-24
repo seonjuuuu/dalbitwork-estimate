@@ -390,3 +390,39 @@ export const expenseMerchantRules = pgTable(
 
 export type ExpenseMerchantRule = typeof expenseMerchantRules.$inferSelect;
 export type InsertExpenseMerchantRule = typeof expenseMerchantRules.$inferInsert;
+
+// 홈페이지 제작 관련, 고객에게 로그인 없이 링크로 보내서 답변받는 질문폼
+export interface IntakeFormQuestion {
+  text: string;
+  required: boolean;
+  type: "text" | "textarea" | "select";
+  options?: string[]; // type이 "select"일 때만 사용
+}
+
+export const intakeForms = pgTable("intake_forms", {
+  id: serial("id").primaryKey(),
+  userId: integer("userId").notNull(),
+  clientId: integer("clientId").notNull(),
+  token: varchar("token", { length: 40 }).notNull().unique(),
+  questions: json("questions").$type<IntakeFormQuestion[]>().default([]).notNull(),
+  answers: json("answers").$type<string[]>().default([]).notNull(),
+  status: varchar("status", { length: 20 }).default("pending").notNull(), // "pending" | "submitted"
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  submittedAt: timestamp("submittedAt"),
+});
+
+export type IntakeForm = typeof intakeForms.$inferSelect;
+export type InsertIntakeForm = typeof intakeForms.$inferInsert;
+
+export const clientEmails = pgTable("client_emails", {
+  id: serial("id").primaryKey(),
+  userId: integer("userId").notNull(),
+  clientId: integer("clientId").notNull(),
+  toAddress: varchar("toAddress", { length: 320 }).notNull(),
+  subject: varchar("subject", { length: 500 }).notNull(),
+  body: text("body").notNull(),
+  sentAt: timestamp("sentAt").defaultNow().notNull(),
+});
+
+export type ClientEmail = typeof clientEmails.$inferSelect;
+export type InsertClientEmail = typeof clientEmails.$inferInsert;

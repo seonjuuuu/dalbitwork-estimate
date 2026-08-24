@@ -9,9 +9,11 @@ import {
   StyleSheet,
 } from '@react-pdf/renderer';
 
-const FONT_REGULAR_URL = 'https://d2xsxph8kpxj0f.cloudfront.net/310519663381204565/fPgwdiJ6bkDvqhYoiMKGTH/NotoSansKR-Regular_84451f6a.ttf';
-const FONT_BOLD_URL = 'https://d2xsxph8kpxj0f.cloudfront.net/310519663381204565/fPgwdiJ6bkDvqhYoiMKGTH/NotoSansKR-Bold_41a848f1.ttf';
-const PDF_LOGO_URL = 'https://d2xsxph8kpxj0f.cloudfront.net/310519663381204565/fPgwdiJ6bkDvqhYoiMKGTH/dalbitwork-logo-full_89e7c0c1.png';
+// 폰트/로고 - 자체 호스팅 (예전 외부 CDN 만료됨)
+const ASSET_BASE = typeof window !== 'undefined' ? window.location.origin : '';
+const FONT_REGULAR_URL = `${ASSET_BASE}/fonts/NotoSansKR-Regular.ttf`;
+const FONT_BOLD_URL = `${ASSET_BASE}/fonts/NotoSansKR-Bold.ttf`;
+const PDF_LOGO_URL = `${ASSET_BASE}/logo-full.png`;
 
 Font.register({
   family: 'NotoSansKR',

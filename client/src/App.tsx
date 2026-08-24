@@ -25,6 +25,7 @@ import Sidebar from "./components/Sidebar";
 import GlobalSearch from "./components/GlobalSearch";
 import { useAuth } from "@/_core/hooks/useAuth";
 import LoginPage from "./pages/LoginPage";
+import PublicIntakeForm from "./pages/PublicIntakeForm";
 import { Loader2 } from "lucide-react";
 import { useEffect } from "react";
 
@@ -110,19 +111,27 @@ function App() {
       <ThemeProvider defaultTheme="light">
         <TooltipProvider>
           <Toaster />
-          <AuthGate>
-            <DesktopNotificationProvider>
-              <EstimateProvider>
-                <div className="flex h-screen overflow-hidden">
-                  <Sidebar />
-                  <main className="flex-1 min-w-0 overflow-y-auto overflow-x-auto h-full">
-                    <Router />
-                  </main>
-                  <GlobalSearch />
-                </div>
-              </EstimateProvider>
-            </DesktopNotificationProvider>
-          </AuthGate>
+          <Switch>
+            {/* 고객이 로그인 없이 접속하는 공개 질문폼 — AuthGate보다 먼저 매칭돼야 함 */}
+            <Route path="/f/:token">
+              {(params) => <PublicIntakeForm token={params.token} />}
+            </Route>
+            <Route>
+              <AuthGate>
+                <DesktopNotificationProvider>
+                  <EstimateProvider>
+                    <div className="flex h-screen overflow-hidden">
+                      <Sidebar />
+                      <main className="flex-1 min-w-0 overflow-y-auto overflow-x-auto h-full">
+                        <Router />
+                      </main>
+                      <GlobalSearch />
+                    </div>
+                  </EstimateProvider>
+                </DesktopNotificationProvider>
+              </AuthGate>
+            </Route>
+          </Switch>
         </TooltipProvider>
       </ThemeProvider>
     </ErrorBoundary>

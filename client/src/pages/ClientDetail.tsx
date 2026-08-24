@@ -6,15 +6,17 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar } from '@/components/ui/calendar';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { ko } from 'date-fns/locale';
 import {
   ArrowLeft, Plus, Trash2, Save, X, Loader2,
   Phone, Mail, User, CalendarDays, CircleDollarSign,
   MessageSquare, ChevronDown, ChevronUp, Edit, LinkIcon, FileText, ExternalLink, Hash,
   Upload, Download, Eye, Copy, FileDown, CreditCard, CheckCircle2, Image as ImageIcon, Sparkles, ListTree,
-  Clock, ListTodo, Check,
+  Clock, ListTodo, Check, ClipboardList, ClipboardCheck,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import DepositConfirmDialog from '@/components/DepositConfirmDialog';
@@ -22,6 +24,7 @@ import FinalPaymentConfirmDialog from '@/components/FinalPaymentConfirmDialog';
 import NotesEditPdfDialog from '@/components/NotesEditPdfDialog';
 import AIEstimateDraftDialog from '@/components/AIEstimateDraftDialog';
 import AISiteStructureDialog from '@/components/AISiteStructureDialog';
+import ClientRequestChecklistDialog from '@/components/ClientRequestChecklistDialog';
 import SiteStructureEntryCard from '@/components/SiteStructureEntryCard';
 import Linkify from '@/components/Linkify';
 import { formatPhone } from '@/lib/utils';
@@ -47,6 +50,59 @@ const STATUS_STYLE: Record<Status, string> = {
 };
 
 const MAX_ATTACHMENT_SIZE = 10 * 1024 * 1024; // 10MB
+
+// 모든 질문폼에 기본으로 들어가는 질문 (홈페이지 제작 시 항상 필요한 정보) — 회사별로 필요하면 직접 더 추가/수정
+// 앞에 "*"를 붙이면 필수 질문 (질문폼 생성 다이얼로그의 텍스트 파싱 규칙과 동일)
+const DEFAULT_INTAKE_QUESTIONS = [
+  '* (지역/업체명/대표자)를 적어주세요 (예: 서울 / 달빛워크 / 김철수)',
+  '* 로고 준비가 되어있으신가요? (PSD·PNG·JPG 파일이 있다면 함께 전달 부탁드려요. 없다면 없다고 적어주세요)',
+  '* 메인페이지에서 강조하고 싶은 제품 및 원하는 메인 문구를 적어주세요',
+  '* 회사의 장점을 마음껏 적어주세요 (제일 중요! 많이 적어주실수록 좋아요)',
+  '회사의 단점을 적어주세요',
+  '회사 소개 문구를 적어주세요',
+  '지역에 있는 경쟁업체 이름을 적어주세요 (그 업체를 분석해 우위에 서도록 하겠습니다)',
+  '회사 총 면적을 적어주세요',
+  '(방문이 가능하다면) 대중교통으로 오는 방법을 안내해주세요',
+  '이메일을 적어주세요',
+  '업체 주소를 적어주세요',
+  '사업자등록번호를 적어주세요',
+  '전화번호를 적어주세요',
+  '계좌번호를 적어주세요',
+  'SNS 주소를 적어주세요 (블로그, 인스타그램 등)',
+  '벤치마킹하고 싶은 사이트를 적어주세요',
+  '추가 요청사항을 적어주세요',
+  '회사 운영시간을 적어주세요',
+  '홈페이지에 꼭 들어갔으면 하는 기능이 있다면 적어주세요',
+];
+
+/** "* 질문내용" 줄은 필수로 처리하고 앞의 "*"는 제거 */
+function parseIntakeQuestionLines(text: string): { text: string; required: boolean }[] {
+  return text
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      if (line.startsWith('*')) {
+        return { text: line.slice(1).trim(), required: true };
+      }
+      return { text: line, required: false };
+    });
+}
+
+type IntakeFieldType = 'text' | 'textarea' | 'select';
+const FIELD_TYPE_LABEL: Record<IntakeFieldType, string> = {
+  text: '단답형',
+  textarea: '장문형',
+  select: '객관식',
+};
+interface EditableIntakeField {
+  text: string;
+  required: boolean;
+  type: IntakeFieldType;
+  options: string[];
+  suggested?: boolean;
+  reason?: string;
+}
 
 const TODO_PRIORITY_LABEL: Record<string, { label: string; cls: string }> = {
   high: { label: '높음', cls: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' },
@@ -277,6 +333,11 @@ export default function ClientDetail({ id }: { id: string }) {
   const { data: linkedTodos = [], refetch: refetchLinkedTodos } = trpc.todos.listByClient.useQuery({ clientId });
   const updateTodoMutation = trpc.todos.update.useMutation();
   const deleteTodoMutation = trpc.todos.delete.useMutation();
+  const { data: intakeForms = [], refetch: refetchIntakeForms } = trpc.forms.listByClient.useQuery({ clientId });
+  const createFormMutation = trpc.forms.create.useMutation();
+  const deleteFormMutation = trpc.forms.deleteForm.useMutation();
+  const classifyFieldsMutation = trpc.forms.classifyFields.useMutation();
+  const suggestQuestionsMutation = trpc.forms.suggestQuestions.useMutation();
   const updateClientMutation = trpc.clients.update.useMutation();
   const updateDocumentMutation = trpc.documents.update.useMutation();
   const createMutation = trpc.consultations.create.useMutation();
@@ -315,6 +376,13 @@ export default function ClientDetail({ id }: { id: string }) {
   const [finalPaymentAmount, setFinalPaymentAmount] = useState('');
   const [aiDraftDialogOpen, setAiDraftDialogOpen] = useState(false);
   const [aiStructureDialogOpen, setAiStructureDialogOpen] = useState(false);
+  const [formDialogOpen, setFormDialogOpen] = useState(false);
+  const [formFields, setFormFields] = useState<EditableIntakeField[]>([]);
+  const [isCreatingForm, setIsCreatingForm] = useState(false);
+  const [isClassifyingFields, setIsClassifyingFields] = useState(false);
+  const [isSuggestingQuestions, setIsSuggestingQuestions] = useState(false);
+  const [requestChecklistDialogOpen, setRequestChecklistDialogOpen] = useState(false);
+  const [showFormPreview, setShowFormPreview] = useState(false);
   const [isSavingFinal, setIsSavingFinal] = useState(false);
   const [editingFinal, setEditingFinal] = useState(false);
 
@@ -413,6 +481,121 @@ export default function ClientDetail({ id }: { id: string }) {
       toast.success('할 일을 삭제했습니다.');
     } catch {
       toast.error('삭제에 실패했습니다.');
+    }
+  };
+
+  const handleOpenFormDialog = async () => {
+    setShowFormPreview(false);
+    setFormDialogOpen(true);
+    setIsClassifyingFields(true);
+    const base = parseIntakeQuestionLines(DEFAULT_INTAKE_QUESTIONS.join('\n'));
+    try {
+      const classified = await classifyFieldsMutation.mutateAsync({ questions: base });
+      setFormFields(classified.map((f) => ({ text: f.text, required: f.required, type: f.type, options: f.options || [] })));
+    } catch {
+      toast.error('AI 분류에 실패해서 기본 형태로 불러왔어요.');
+      setFormFields(base.map((q) => ({ ...q, type: 'textarea' as const, options: [] })));
+    } finally {
+      setIsClassifyingFields(false);
+    }
+  };
+
+  const handleSuggestQuestions = async () => {
+    setIsSuggestingQuestions(true);
+    try {
+      const suggestions = await suggestQuestionsMutation.mutateAsync({
+        clientId,
+        existingQuestions: formFields.map((f) => f.text).filter(Boolean),
+      });
+      if (suggestions.length === 0) {
+        toast.info('상담 이력·메모를 참고했지만 추가로 제안할 질문을 찾지 못했어요.');
+        return;
+      }
+      setFormFields((prev) => [
+        ...prev,
+        ...suggestions.map((s) => ({
+          text: s.text,
+          required: s.required,
+          type: s.type,
+          options: s.options || [],
+          suggested: true,
+          reason: s.reason,
+        })),
+      ]);
+      toast.success(`AI가 질문 ${suggestions.length}개를 추천했어요. 필요 없는 건 지워주세요.`);
+    } catch {
+      toast.error('추천에 실패했습니다.');
+    } finally {
+      setIsSuggestingQuestions(false);
+    }
+  };
+
+  const updateFormField = (index: number, patch: Partial<EditableIntakeField>) => {
+    setFormFields((prev) => prev.map((f, i) => (i === index ? { ...f, ...patch } : f)));
+  };
+  const removeFormField = (index: number) => {
+    setFormFields((prev) => prev.filter((_, i) => i !== index));
+  };
+  const addFormField = () => {
+    setFormFields((prev) => [...prev, { text: '', required: false, type: 'text', options: [] }]);
+  };
+  const addFieldOption = (index: number) => {
+    updateFormField(index, { options: [...formFields[index].options, ''] });
+  };
+  const updateFieldOption = (index: number, optIndex: number, value: string) => {
+    const options = [...formFields[index].options];
+    options[optIndex] = value;
+    updateFormField(index, { options });
+  };
+  const removeFieldOption = (index: number, optIndex: number) => {
+    updateFormField(index, { options: formFields[index].options.filter((_, i) => i !== optIndex) });
+  };
+
+  const handleCreateForm = async () => {
+    const questions = formFields
+      .map((f) => ({ ...f, text: f.text.trim() }))
+      .filter((f) => f.text)
+      .map((f) => ({
+        text: f.text,
+        required: f.required,
+        type: f.type,
+        options: f.type === 'select' ? f.options.map((o) => o.trim()).filter(Boolean) : undefined,
+      }));
+    if (questions.length === 0) {
+      toast.error('질문을 하나 이상 입력해주세요.');
+      return;
+    }
+    setIsCreatingForm(true);
+    try {
+      await createFormMutation.mutateAsync({ clientId, questions });
+      await refetchIntakeForms();
+      toast.success('질문폼 링크를 만들었어요.');
+      setFormDialogOpen(false);
+    } catch {
+      toast.error('생성에 실패했습니다.');
+    } finally {
+      setIsCreatingForm(false);
+    }
+  };
+
+  const handleDeleteIntakeForm = async (id: number) => {
+    if (!window.confirm('이 질문폼을 삭제하시겠습니까?')) return;
+    try {
+      await deleteFormMutation.mutateAsync({ id });
+      await refetchIntakeForms();
+      toast.success('삭제했습니다.');
+    } catch {
+      toast.error('삭제에 실패했습니다.');
+    }
+  };
+
+  const handleCopyFormLink = async (token: string) => {
+    const url = `${window.location.origin}/f/${token}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success('링크를 복사했어요.');
+    } catch {
+      toast.error('복사에 실패했습니다. 직접 선택해서 복사해주세요.');
     }
   };
 
@@ -997,6 +1180,256 @@ export default function ClientDetail({ id }: { id: string }) {
           </div>
         </div>
       )}
+
+      {/* 홈페이지 제작 질문폼 */}
+      <div className="bg-card border border-border rounded-xl p-5">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
+            <ClipboardList className="w-4 h-4 text-muted-foreground" />
+            질문폼
+            {intakeForms.length > 0 && (
+              <span className="text-xs text-muted-foreground font-normal">({intakeForms.length}건)</span>
+            )}
+          </h2>
+          <div className="flex items-center gap-1.5">
+            <Button size="sm" variant="outline" onClick={() => setRequestChecklistDialogOpen(true)} className="gap-1 h-7 text-xs">
+              <ClipboardCheck className="w-3.5 h-3.5" />
+              전달받을 자료 안내
+            </Button>
+            <Button size="sm" onClick={handleOpenFormDialog} className="gap-1 h-7 text-xs">
+              <Plus className="w-3.5 h-3.5" />
+              링크 생성
+            </Button>
+          </div>
+        </div>
+        {intakeForms.length === 0 ? (
+          <p className="text-sm text-muted-foreground">아직 만든 질문폼이 없어요. 고객에게 보낼 링크를 만들어보세요.</p>
+        ) : (
+          <div className="space-y-2">
+            {intakeForms.map((f) => (
+              <div key={f.id} className="border border-border rounded-lg p-3">
+                <div className="flex items-center justify-between gap-2 mb-1.5">
+                  <span
+                    className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${
+                      f.status === 'submitted'
+                        ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400'
+                        : 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400'
+                    }`}
+                  >
+                    {f.status === 'submitted' ? '제출완료' : '답변 대기중'}
+                  </span>
+                  <div className="flex items-center gap-1">
+                    {f.status === 'pending' && (
+                      <>
+                        <button
+                          onClick={() => window.open(`${window.location.origin}/f/${f.token}`, '_blank', 'noreferrer')}
+                          className="w-6 h-6 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                          title="링크 바로가기"
+                        >
+                          <ExternalLink className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => handleCopyFormLink(f.token)}
+                          className="w-6 h-6 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                          title="링크 복사"
+                        >
+                          <Copy className="w-3.5 h-3.5" />
+                        </button>
+                      </>
+                    )}
+                    <button
+                      onClick={() => handleDeleteIntakeForm(f.id)}
+                      className="w-6 h-6 flex items-center justify-center rounded-md text-muted-foreground hover:text-destructive hover:bg-accent transition-colors"
+                      title="삭제"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+                {f.status === 'submitted' ? (
+                  <div className="space-y-2">
+                    {f.questions.map((q, i) => (
+                      <div key={i}>
+                        <p className="text-xs text-muted-foreground">{i + 1}. {q.text}{q.required && <span className="text-destructive"> *</span>}</p>
+                        <p className="text-sm text-foreground whitespace-pre-wrap">{f.answers[i] || '—'}</p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground">질문 {f.questions.length}개 · 아직 답변 전이에요</p>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <Dialog open={formDialogOpen} onOpenChange={setFormDialogOpen}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>질문폼 링크 생성</DialogTitle>
+          </DialogHeader>
+
+          {isClassifyingFields ? (
+            <div className="flex flex-col items-center justify-center gap-2 py-12">
+              <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+              <p className="text-xs text-muted-foreground">AI가 질문 형태를 정리하고 있어요...</p>
+            </div>
+          ) : (
+            <>
+              <div className="flex items-center justify-between gap-2 border-b border-border -mt-2">
+                <div className="flex gap-1">
+                  <button
+                    onClick={() => setShowFormPreview(false)}
+                    className={`px-3 py-1.5 text-xs font-medium border-b-2 -mb-px transition-colors ${
+                      !showFormPreview ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    편집
+                  </button>
+                  <button
+                    onClick={() => setShowFormPreview(true)}
+                    className={`px-3 py-1.5 text-xs font-medium border-b-2 -mb-px transition-colors ${
+                      showFormPreview ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    미리보기 ({formFields.length}개)
+                  </button>
+                </div>
+              </div>
+
+              {!showFormPreview ? (
+                <div className="max-h-[440px] overflow-y-auto space-y-3 -mx-1 px-1">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleSuggestQuestions}
+                    disabled={isSuggestingQuestions}
+                    className="w-full gap-1.5"
+                  >
+                    {isSuggestingQuestions ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+                    {isSuggestingQuestions ? 'AI가 상담 이력·메모를 분석 중이에요...' : 'AI 추가 질문 추천받기'}
+                  </Button>
+                  {formFields.map((f, i) => (
+                    <div
+                      key={i}
+                      className={`border rounded-lg p-3 space-y-2 ${f.suggested ? 'border-primary/40 bg-primary/5' : 'border-border'}`}
+                    >
+                      {f.suggested && (
+                        <div className="flex items-start gap-1.5 text-[11px] text-primary">
+                          <Sparkles className="w-3 h-3 flex-shrink-0 mt-0.5" />
+                          <span>AI 추천 {f.reason ? `· ${f.reason}` : ''}</span>
+                        </div>
+                      )}
+                      <div className="flex items-start gap-2">
+                        <Input
+                          value={f.text}
+                          onChange={(e) => updateFormField(i, { text: e.target.value })}
+                          placeholder="질문 내용"
+                          className="flex-1 h-8 text-sm"
+                        />
+                        <button
+                          onClick={() => removeFormField(i)}
+                          className="w-8 h-8 flex-shrink-0 flex items-center justify-center rounded-md text-muted-foreground hover:text-destructive hover:bg-accent transition-colors"
+                          title="질문 삭제"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <Select value={f.type} onValueChange={(v) => updateFormField(i, { type: v as IntakeFieldType })}>
+                          <SelectTrigger size="sm" className="w-[100px] h-7 text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {(['text', 'textarea', 'select'] as const).map((t) => (
+                              <SelectItem key={t} value={t}>{FIELD_TYPE_LABEL[t]}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer">
+                          <Checkbox checked={f.required} onCheckedChange={(c) => updateFormField(i, { required: c === true })} />
+                          필수
+                        </label>
+                      </div>
+                      {f.type === 'select' && (
+                        <div className="space-y-1.5 pl-1">
+                          {f.options.map((opt, optIdx) => (
+                            <div key={optIdx} className="flex items-center gap-1.5">
+                              <Input
+                                value={opt}
+                                onChange={(e) => updateFieldOption(i, optIdx, e.target.value)}
+                                placeholder={`선택지 ${optIdx + 1}`}
+                                className="h-7 text-xs flex-1"
+                              />
+                              <button
+                                onClick={() => removeFieldOption(i, optIdx)}
+                                className="w-6 h-6 flex-shrink-0 flex items-center justify-center rounded-md text-muted-foreground hover:text-destructive"
+                              >
+                                <X className="w-3 h-3" />
+                              </button>
+                            </div>
+                          ))}
+                          <button
+                            onClick={() => addFieldOption(i)}
+                            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+                          >
+                            <Plus className="w-3 h-3" />
+                            선택지 추가
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                  <Button variant="outline" size="sm" onClick={addFormField} className="w-full gap-1">
+                    <Plus className="w-3.5 h-3.5" />
+                    질문 추가
+                  </Button>
+                </div>
+              ) : (
+                <div className="max-h-[440px] overflow-y-auto border border-border rounded-lg p-4 bg-muted/20 space-y-4">
+                  {formFields.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">아직 입력된 질문이 없어요.</p>
+                  ) : (
+                    formFields.map((f, i) => (
+                      <div key={i}>
+                        <p className="text-sm font-medium text-foreground mb-1.5">
+                          {i + 1}. {f.text || '(질문 내용 없음)'}
+                          {f.required && <span className="text-destructive"> *</span>}
+                        </p>
+                        {f.type === 'select' ? (
+                          <div className="space-y-1">
+                            {f.options.length === 0 ? (
+                              <p className="text-xs text-muted-foreground">(선택지 없음)</p>
+                            ) : (
+                              f.options.map((opt, optIdx) => (
+                                <div key={optIdx} className="flex items-center gap-2 text-xs text-muted-foreground">
+                                  <span className="w-3 h-3 rounded-full border border-input flex-shrink-0" />
+                                  {opt || '(빈 선택지)'}
+                                </div>
+                              ))
+                            )}
+                          </div>
+                        ) : (
+                          <div className={`rounded-md border border-dashed border-border bg-background ${f.type === 'textarea' ? 'h-16' : 'h-8'}`} />
+                        )}
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+            </>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" size="sm" onClick={() => setFormDialogOpen(false)}>취소</Button>
+            <Button size="sm" onClick={handleCreateForm} disabled={isCreatingForm || isClassifyingFields} className="gap-1">
+              {isCreatingForm ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
+              링크 생성
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* 제안서 연결 */}
       {isLoadingMatchedProposals ? (
@@ -1676,6 +2109,12 @@ export default function ClientDetail({ id }: { id: string }) {
         onClose={() => setAiStructureDialogOpen(false)}
         clientId={clientId}
         consultations={consultations}
+      />
+      <ClientRequestChecklistDialog
+        isOpen={requestChecklistDialogOpen}
+        onClose={() => setRequestChecklistDialogOpen(false)}
+        clientId={clientId}
+        clientEmail={client.contactEmail}
       />
     </div>
   );

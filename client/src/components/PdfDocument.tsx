@@ -25,9 +25,10 @@ import {
   hasAnyDiscount,
 } from '@/lib/types';
 
-// 폰트 등록 - Noto Sans KR (variable weight TTF)
-const FONT_REGULAR_URL = 'https://d2xsxph8kpxj0f.cloudfront.net/310519663381204565/fPgwdiJ6bkDvqhYoiMKGTH/NotoSansKR-Regular_84451f6a.ttf';
-const FONT_BOLD_URL = 'https://d2xsxph8kpxj0f.cloudfront.net/310519663381204565/fPgwdiJ6bkDvqhYoiMKGTH/NotoSansKR-Bold_41a848f1.ttf';
+// 폰트 등록 - Noto Sans KR (자체 호스팅: 예전 외부 CDN이 만료돼서 /public/fonts로 옮김)
+const ASSET_BASE = typeof window !== 'undefined' ? window.location.origin : '';
+const FONT_REGULAR_URL = `${ASSET_BASE}/fonts/NotoSansKR-Regular.ttf`;
+const FONT_BOLD_URL = `${ASSET_BASE}/fonts/NotoSansKR-Bold.ttf`;
 
 Font.register({
   family: 'NotoSansKR',
@@ -40,8 +41,9 @@ Font.register({
 // 하이픈 비활성화 (한글에 불필요)
 Font.registerHyphenationCallback((word) => [word]);
 
-const PDF_LOGO_URL = 'https://d2xsxph8kpxj0f.cloudfront.net/310519663381204565/fPgwdiJ6bkDvqhYoiMKGTH/dalbitwork-logo-full_89e7c0c1.png';
-const SIGNATURE_URL = 'https://d2xsxph8kpxj0f.cloudfront.net/310519663381204565/fPgwdiJ6bkDvqhYoiMKGTH/signature-new_03d3b216.png';
+const PDF_LOGO_URL = `${ASSET_BASE}/logo-full.png`;
+// 서명 이미지는 대체할 파일이 없어서 일단 비워둠 (원본 파일 받으면 /public에 추가 필요)
+const SIGNATURE_URL = '';
 
 const GOLD = '#F7AE00';
 const GOLD_DARK = '#C78B00';
@@ -984,7 +986,7 @@ export default function PdfDocument({ doc }: PdfDocumentProps) {
                 </View>
                 <View style={s.signatureSealWrap}>
                   <Text style={s.signatureSealText}>(인)</Text>
-                  <Image src={SIGNATURE_URL} style={s.signatureImage} />
+                  {SIGNATURE_URL && <Image src={SIGNATURE_URL} style={s.signatureImage} />}
                 </View>
               </View>
             </View>
