@@ -120,8 +120,7 @@ function hktbMonthRange(year: number, month: number) {
  * 미리 만들어두고 알림을 보낸다. 실제 이메일 발송은 담당자가 직접 확인 후 버튼으로 진행.
  * 이미 같은 구간의 인보이스가 있으면(수동으로 미리 만들어둔 경우 등) 건너뛴다.
  */
-export async function checkHktbRetainerReminder() {
-  const now = new Date();
+export async function checkHktbRetainerReminder(now: Date = new Date()) {
   const kst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
   const day = kst.getUTCDate();
   const dueMonth = kst.getUTCMonth() + 1;
