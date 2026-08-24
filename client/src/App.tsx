@@ -106,32 +106,42 @@ function useClearAppBadge() {
 function App() {
   useClearAppBadge();
 
+  // 고객이 로그인 없이 접속하는 공개 질문폼 — wouter의 패턴 매칭에 기대지 않고,
+  // 주소가 /f/로 시작하면 라우터 진입 전에 무조건 이 화면만 렌더링해서
+  // 어떤 경우에도 로그인 화면/내부 대시보드가 노출되지 않도록 강제로 분기한다.
+  const pathname = typeof window !== "undefined" ? window.location.pathname : "";
+  if (pathname.startsWith("/f/")) {
+    const token = pathname.split("/")[2] || "";
+    return (
+      <ErrorBoundary>
+        <ThemeProvider defaultTheme="light">
+          <TooltipProvider>
+            <Toaster />
+            <PublicIntakeForm token={token} />
+          </TooltipProvider>
+        </ThemeProvider>
+      </ErrorBoundary>
+    );
+  }
+
   return (
     <ErrorBoundary>
       <ThemeProvider defaultTheme="light">
         <TooltipProvider>
           <Toaster />
-          <Switch>
-            {/* 고객이 로그인 없이 접속하는 공개 질문폼 — AuthGate보다 먼저 매칭돼야 함 */}
-            <Route path="/f/:token">
-              {(params) => <PublicIntakeForm token={params.token} />}
-            </Route>
-            <Route>
-              <AuthGate>
-                <DesktopNotificationProvider>
-                  <EstimateProvider>
-                    <div className="flex h-screen overflow-hidden">
-                      <Sidebar />
-                      <main className="flex-1 min-w-0 overflow-y-auto overflow-x-auto h-full">
-                        <Router />
-                      </main>
-                      <GlobalSearch />
-                    </div>
-                  </EstimateProvider>
-                </DesktopNotificationProvider>
-              </AuthGate>
-            </Route>
-          </Switch>
+          <AuthGate>
+            <DesktopNotificationProvider>
+              <EstimateProvider>
+                <div className="flex h-screen overflow-hidden">
+                  <Sidebar />
+                  <main className="flex-1 min-w-0 overflow-y-auto overflow-x-auto h-full">
+                    <Router />
+                  </main>
+                  <GlobalSearch />
+                </div>
+              </EstimateProvider>
+            </DesktopNotificationProvider>
+          </AuthGate>
         </TooltipProvider>
       </ThemeProvider>
     </ErrorBoundary>
