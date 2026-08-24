@@ -421,6 +421,7 @@ export const clientEmails = pgTable("client_emails", {
   toAddress: varchar("toAddress", { length: 320 }).notNull(),
   subject: varchar("subject", { length: 500 }).notNull(),
   body: text("body").notNull(),
+  channel: varchar("channel", { length: 10 }).default("email").notNull(), // "email" | "sms"
   sentAt: timestamp("sentAt").defaultNow().notNull(),
 });
 

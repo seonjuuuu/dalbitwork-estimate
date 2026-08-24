@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Sparkles, Loader2, Copy, ClipboardCheck, Send, History, Eye } from 'lucide-react';
+import { Sparkles, Loader2, Copy, ClipboardCheck, Send, History, Eye, MessageSquareText } from 'lucide-react';
 import { toast } from 'sonner';
 import { trpc } from '@/lib/trpc';
 
@@ -18,6 +18,7 @@ interface ClientRequestChecklistDialogProps {
   onClose: () => void;
   clientId: number;
   clientEmail?: string;
+  clientPhone?: string;
 }
 
 const DEFAULT_SUBJECT = '[달빛워크] 홈페이지 제작 준비자료 안내';
@@ -27,11 +28,41 @@ function formatSentAt(dateStr: string) {
   return d.toLocaleString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
+function HistoryItem({ h }: { h: { id: number; sentAt: unknown; channel: string; toAddress: string; subject: string } }) {
+  return (
+    <li className="text-xs">
+      <span
+        className={`inline-block px-1 py-0.5 rounded text-[10px] font-medium mr-1 ${
+          h.channel === 'sms'
+            ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400'
+            : 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400'
+        }`}
+      >
+        {h.channel === 'sms' ? '문자' : '이메일'}
+      </span>
+      <span className="text-muted-foreground">{formatSentAt(String(h.sentAt))}</span>
+      {h.toAddress && (
+        <>
+          {' · '}
+          <span className="text-foreground">{h.toAddress}</span>
+        </>
+      )}
+      {h.subject && (
+        <>
+          {' — '}
+          <span className="text-muted-foreground">{h.subject}</span>
+        </>
+      )}
+    </li>
+  );
+}
+
 export default function ClientRequestChecklistDialog({
   isOpen,
   onClose,
   clientId,
   clientEmail,
+  clientPhone,
 }: ClientRequestChecklistDialogProps) {
   const [result, setResult] = useState<ClientRequestChecklistResult | null>(null);
   const [message, setMessage] = useState('');
@@ -41,6 +72,7 @@ export default function ClientRequestChecklistDialog({
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
   const generateMutation = trpc.ai.generateClientRequestChecklist.useMutation();
   const sendMutation = trpc.clientEmails.send.useMutation();
+  const logManualMutation = trpc.clientEmails.logManualSend.useMutation();
   const utils = trpc.useUtils();
   const { data: history = [], refetch: refetchHistory } = trpc.clientEmails.listByClient.useQuery(
     { clientId },
@@ -99,6 +131,16 @@ export default function ClientRequestChecklistDialog({
     }
   };
 
+  const handleMarkSmsSent = async () => {
+    try {
+      await logManualMutation.mutateAsync({ clientId, to: clientPhone, subject: subject.trim(), body: message });
+      toast.success('문자 발송완료로 기록했어요.');
+      await refetchHistory();
+    } catch {
+      toast.error('기록에 실패했습니다.');
+    }
+  };
+
   const handleClose = () => {
     setResult(null);
     setMessage('');
@@ -137,13 +179,7 @@ export default function ClientRequestChecklistDialog({
                 </p>
                 <ul className="space-y-1.5 border border-border rounded-lg p-3 max-h-32 overflow-y-auto">
                   {history.map((h) => (
-                    <li key={h.id} className="text-xs">
-                      <span className="text-muted-foreground">{formatSentAt(String(h.sentAt))}</span>
-                      {' · '}
-                      <span className="text-foreground">{h.toAddress}</span>
-                      {' — '}
-                      <span className="text-muted-foreground">{h.subject}</span>
-                    </li>
+                    <HistoryItem key={h.id} h={h} />
                   ))}
                 </ul>
               </div>
@@ -234,6 +270,10 @@ export default function ClientRequestChecklistDialog({
               <Button variant="outline" onClick={handleCopy} className="gap-2">
                 <Copy className="w-4 h-4" />
                 메시지 복사
+              </Button>
+              <Button variant="outline" onClick={handleMarkSmsSent} disabled={logManualMutation.isPending} className="gap-2">
+                {logManualMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <MessageSquareText className="w-4 h-4" />}
+                문자 발송완료 기록
               </Button>
               <Button onClick={handleSend} disabled={sendMutation.isPending} className="gap-2">
                 {sendMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}

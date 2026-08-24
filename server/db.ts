@@ -1459,13 +1459,14 @@ export async function createClientEmail(
   clientId: number,
   toAddress: string,
   subject: string,
-  body: string
+  body: string,
+  channel: "email" | "sms" = "email"
 ) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   const [row] = await db
     .insert(clientEmails)
-    .values({ userId, clientId, toAddress, subject, body })
+    .values({ userId, clientId, toAddress, subject, body, channel })
     .returning();
   return row;
 }

@@ -1105,7 +1105,20 @@ export const appRouter = router({
       )
       .mutation(async ({ ctx, input }) => {
         await sendMail(input.to, input.subject, input.body);
-        return db.createClientEmail(ctx.user.id, input.clientId, input.to, input.subject, input.body);
+        return db.createClientEmail(ctx.user.id, input.clientId, input.to, input.subject, input.body, "email");
+      }),
+    /** 문자 등으로 수동 발송한 경우 — 실제 전송은 하지 않고 발송완료만 이력에 기록 */
+    logManualSend: protectedProcedure
+      .input(
+        z.object({
+          clientId: z.number(),
+          to: z.string().optional(),
+          subject: z.string().optional(),
+          body: z.string().min(1),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        return db.createClientEmail(ctx.user.id, input.clientId, input.to || "", input.subject || "", input.body, "sms");
       }),
     listByClient: protectedProcedure
       .input(z.object({ clientId: z.number() }))

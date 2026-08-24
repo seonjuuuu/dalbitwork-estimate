@@ -2139,6 +2139,7 @@ export default function ClientDetail({ id }: { id: string }) {
         onClose={() => setRequestChecklistDialogOpen(false)}
         clientId={clientId}
         clientEmail={client.contactEmail}
+        clientPhone={client.contactPhone}
       />
     </div>
   );
