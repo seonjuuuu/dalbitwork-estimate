@@ -403,3 +403,61 @@ ${input.consultations.length > 0 ? input.consultations.map((c, i) => `[${i + 1}]
     options: q.type === "select" ? q.options.filter(Boolean) : undefined,
   }));
 }
+
+const emailDraftSchema = z.object({
+  subject: z.string().describe("이메일 제목. 용건이 한눈에 보이게 간결히."),
+  message: z
+    .string()
+    .describe(
+      "고객(대표님)에게 그대로 보낼 정중한 이메일 본문. 정중한 인사말로 시작해서 용건을 명확히 전달하고, 짧은 마무리 인사로 끝맺음. 서명(이름·직함·연락처)은 쓰지 마세요 — 발송 시 시스템이 자동으로 붙입니다."
+    ),
+});
+
+export interface EmailDraftContext {
+  clientName: string;
+  memo: string;
+  purpose: string;
+}
+
+/** 담당자가 입력한 "메일 보내는 목적"을 바탕으로 이메일 제목+본문 초안을 AI로 생성 (자료 요청 외 임의의 목적) */
+export async function generateEmailDraft(
+  input: EmailDraftContext
+): Promise<{ subject: string; message: string }> {
+  const fallback = {
+    subject: `[달빛워크] ${input.clientName ? input.clientName + " " : ""}안내드립니다`,
+    message: `안녕하세요, ${input.clientName || "고객"}님.\n\n${input.purpose}\n\n감사합니다.`,
+  };
+
+  const response = await getClient().messages.parse({
+    model: "claude-opus-4-8",
+    max_tokens: 1536,
+    output_config: {
+      format: zodOutputFormat(emailDraftSchema),
+    },
+    messages: [
+      {
+        role: "user",
+        content: `당신은 웹 에이전시 "달빛워크" 담당자가 고객에게 보낼 이메일 초안을 작성하는 보조입니다.
+담당자가 입력한 "메일을 보내는 목적"을 바탕으로, 고객(대표님)에게 그대로 보낼 수 있는 정중한 이메일 제목과 본문을 작성하세요.
+
+# 지침
+- 목적에 딱 맞는 용건만 명확하고 간결하게 전달하세요. 불필요하게 길게 쓰지 마세요.
+- 정중한 인사말로 시작해서, 용건을 전달하고, 짧은 마무리 인사로 끝내세요.
+- 서명(이름·직함·연락처)은 절대 쓰지 마세요 — 발송 시 시스템이 자동으로 붙입니다.
+- subject는 "[달빛워크]"로 시작하고 용건이 한눈에 보이게 작성하세요.
+
+# 고객사 정보
+고객사명: ${input.clientName || "(미기재)"}
+메모: ${input.memo.trim() || "(없음)"}
+
+# 메일을 보내는 목적
+${input.purpose}`,
+      },
+    ],
+  });
+
+  if (response.stop_reason === "refusal" || !response.parsed_output) {
+    return fallback;
+  }
+  return response.parsed_output;
+}

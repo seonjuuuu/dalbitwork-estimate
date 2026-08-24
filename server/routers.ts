@@ -4,7 +4,7 @@ import { z } from "zod";
 import { nanoid } from "nanoid";
 import * as db from "./db";
 import type { DocumentItemRow, OptionalItemRow } from "../drizzle/schema";
-import { generateEstimateDraft, generateSiteStructure, classifyIntakeFormFields, suggestAdditionalIntakeQuestions, generateClientRequestChecklist } from "./ai";
+import { generateEstimateDraft, generateSiteStructure, classifyIntakeFormFields, suggestAdditionalIntakeQuestions, generateClientRequestChecklist, generateEmailDraft } from "./ai";
 import { notifyUser } from "./push";
 import { sendMail, buildEmailHtml, APP_BASE_URL, PUBLIC_FORM_BASE_URL } from "./mailer";
 import { ENV } from "./_core/env";
@@ -946,6 +946,19 @@ export const appRouter = router({
           input.formLink
         );
       }),
+
+    /** 담당자가 입력한 목적을 바탕으로 이메일 초안(제목+본문) 생성 — 자료 요청 외 임의의 목적 */
+    generateEmailDraft: protectedProcedure
+      .input(z.object({ clientId: z.number(), purpose: z.string().min(1) }))
+      .mutation(async ({ ctx, input }) => {
+        const client = await db.getClient(input.clientId, ctx.user.id);
+        if (!client) throw new Error("고객사를 찾을 수 없습니다.");
+        return generateEmailDraft({
+          clientName: client.name,
+          memo: client.memo,
+          purpose: input.purpose,
+        });
+      }),
   }),
 
   expenses: router({
@@ -1125,6 +1138,12 @@ export const appRouter = router({
       .input(z.object({ clientId: z.number() }))
       .query(async ({ ctx, input }) => {
         return db.listClientEmailsByClient(ctx.user.id, input.clientId);
+      }),
+    /** 발송 이력 삭제 (테스트로 보낸 경우 등) */
+    delete: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        return db.deleteClientEmail(ctx.user.id, input.id);
       }),
     /** 실제 발송될 이메일 HTML(본문+서명)을 그대로 미리보기용으로 반환 */
     preview: protectedProcedure

@@ -16,7 +16,7 @@ import {
   Phone, Mail, User, CalendarDays, CircleDollarSign,
   MessageSquare, ChevronDown, ChevronUp, Edit, LinkIcon, FileText, ExternalLink, Hash,
   Upload, Download, Eye, Copy, FileDown, CreditCard, CheckCircle2, Image as ImageIcon, Sparkles, ListTree,
-  Clock, ListTodo, Check, ClipboardList, ClipboardCheck,
+  Clock, ListTodo, Check, ClipboardList, ClipboardCheck, History,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import DepositConfirmDialog from '@/components/DepositConfirmDialog';
@@ -25,6 +25,8 @@ import NotesEditPdfDialog from '@/components/NotesEditPdfDialog';
 import AIEstimateDraftDialog from '@/components/AIEstimateDraftDialog';
 import AISiteStructureDialog from '@/components/AISiteStructureDialog';
 import ClientRequestChecklistDialog from '@/components/ClientRequestChecklistDialog';
+import AIEmailDialog from '@/components/AIEmailDialog';
+import EmailHistoryDialog from '@/components/EmailHistoryDialog';
 import SiteStructureEntryCard from '@/components/SiteStructureEntryCard';
 import Linkify from '@/components/Linkify';
 import { formatPhone } from '@/lib/utils';
@@ -382,6 +384,8 @@ export default function ClientDetail({ id }: { id: string }) {
   const [isClassifyingFields, setIsClassifyingFields] = useState(false);
   const [isSuggestingQuestions, setIsSuggestingQuestions] = useState(false);
   const [requestChecklistDialogOpen, setRequestChecklistDialogOpen] = useState(false);
+  const [aiEmailDialogOpen, setAiEmailDialogOpen] = useState(false);
+  const [emailHistoryDialogOpen, setEmailHistoryDialogOpen] = useState(false);
   const [viewingAnswersForm, setViewingAnswersForm] = useState<(typeof intakeForms)[number] | null>(null);
   const [deletingFormId, setDeletingFormId] = useState<number | null>(null);
   const [showFormPreview, setShowFormPreview] = useState(false);
@@ -1196,7 +1200,15 @@ export default function ClientDetail({ id }: { id: string }) {
               <span className="text-xs text-muted-foreground font-normal">({intakeForms.length}건)</span>
             )}
           </h2>
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <Button size="sm" variant="outline" onClick={() => setEmailHistoryDialogOpen(true)} className="gap-1 h-7 text-xs">
+              <History className="w-3.5 h-3.5" />
+              발송 이력
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => setAiEmailDialogOpen(true)} className="gap-1 h-7 text-xs">
+              <Mail className="w-3.5 h-3.5" />
+              메일 작성
+            </Button>
             <Button size="sm" variant="outline" onClick={() => setRequestChecklistDialogOpen(true)} className="gap-1 h-7 text-xs">
               <ClipboardCheck className="w-3.5 h-3.5" />
               전달받을 자료 안내
@@ -2140,6 +2152,18 @@ export default function ClientDetail({ id }: { id: string }) {
         clientId={clientId}
         clientEmail={client.contactEmail}
         clientPhone={client.contactPhone}
+      />
+      <AIEmailDialog
+        isOpen={aiEmailDialogOpen}
+        onClose={() => setAiEmailDialogOpen(false)}
+        clientId={clientId}
+        clientEmail={client.contactEmail}
+        clientPhone={client.contactPhone}
+      />
+      <EmailHistoryDialog
+        isOpen={emailHistoryDialogOpen}
+        onClose={() => setEmailHistoryDialogOpen(false)}
+        clientId={clientId}
       />
     </div>
   );

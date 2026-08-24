@@ -1481,3 +1481,10 @@ export async function listClientEmailsByClient(userId: number, clientId: number)
     .where(and(eq(clientEmails.userId, userId), eq(clientEmails.clientId, clientId)))
     .orderBy(desc(clientEmails.sentAt));
 }
+
+export async function deleteClientEmail(userId: number, id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(clientEmails).where(and(eq(clientEmails.id, id), eq(clientEmails.userId, userId)));
+  return { success: true };
+}
