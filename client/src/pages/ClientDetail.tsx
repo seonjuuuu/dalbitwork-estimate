@@ -382,6 +382,7 @@ export default function ClientDetail({ id }: { id: string }) {
   const [isClassifyingFields, setIsClassifyingFields] = useState(false);
   const [isSuggestingQuestions, setIsSuggestingQuestions] = useState(false);
   const [requestChecklistDialogOpen, setRequestChecklistDialogOpen] = useState(false);
+  const [viewingAnswersForm, setViewingAnswersForm] = useState<(typeof intakeForms)[number] | null>(null);
   const [showFormPreview, setShowFormPreview] = useState(false);
   const [isSavingFinal, setIsSavingFinal] = useState(false);
   const [editingFinal, setEditingFinal] = useState(false);
@@ -1247,13 +1248,11 @@ export default function ClientDetail({ id }: { id: string }) {
                   </div>
                 </div>
                 {f.status === 'submitted' ? (
-                  <div className="space-y-2">
-                    {f.questions.map((q, i) => (
-                      <div key={i}>
-                        <p className="text-xs text-muted-foreground">{i + 1}. {q.text}{q.required && <span className="text-destructive"> *</span>}</p>
-                        <p className="text-sm text-foreground whitespace-pre-wrap">{f.answers[i] || '—'}</p>
-                      </div>
-                    ))}
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-xs text-muted-foreground">질문 {f.questions.length}개 · 답변 제출됨</p>
+                    <Button size="sm" variant="outline" onClick={() => setViewingAnswersForm(f)} className="h-6 text-xs px-2">
+                      답변 보기
+                    </Button>
                   </div>
                 ) : (
                   <p className="text-xs text-muted-foreground">질문 {f.questions.length}개 · 아직 답변 전이에요</p>
@@ -1263,6 +1262,22 @@ export default function ClientDetail({ id }: { id: string }) {
           </div>
         )}
       </div>
+
+      <Dialog open={!!viewingAnswersForm} onOpenChange={(open) => !open && setViewingAnswersForm(null)}>
+        <DialogContent className="sm:max-w-[560px] max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>질문폼 답변</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {viewingAnswersForm?.questions.map((q, i) => (
+              <div key={i}>
+                <p className="text-xs text-muted-foreground">{i + 1}. {q.text}{q.required && <span className="text-destructive"> *</span>}</p>
+                <p className="text-sm text-foreground whitespace-pre-wrap">{viewingAnswersForm.answers[i] || '—'}</p>
+              </div>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={formDialogOpen} onOpenChange={setFormDialogOpen}>
         <DialogContent className="sm:max-w-[600px]">
