@@ -6,7 +6,7 @@ import * as db from "./db";
 import type { DocumentItemRow, OptionalItemRow } from "../drizzle/schema";
 import { generateEstimateDraft, generateSiteStructure, classifyIntakeFormFields, suggestAdditionalIntakeQuestions, generateClientRequestChecklist, generateEmailDraft, generateSmsDraft } from "./ai";
 import { notifyUser } from "./push";
-import { sendMail, buildEmailHtml, APP_BASE_URL, PUBLIC_FORM_BASE_URL } from "./mailer";
+import { sendMail, sendHktbMail, buildEmailHtml, APP_BASE_URL, PUBLIC_FORM_BASE_URL } from "./mailer";
 import { ENV } from "./_core/env";
 import { parseCardStatementXlsx } from "./cardStatementParser";
 
@@ -656,7 +656,7 @@ export const appRouter = router({
         })
       )
       .mutation(async ({ ctx, input }) => {
-        await sendMail(input.to, input.subject, input.body, [
+        await sendHktbMail(input.to, input.subject, input.body, [
           { filename: input.filename, content: Buffer.from(input.pdfBase64, "base64"), contentType: "application/pdf" },
         ]);
         return db.updateHktbInvoice(input.id, ctx.user.id, {

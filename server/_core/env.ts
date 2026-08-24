@@ -12,4 +12,6 @@ export const ENV = {
   cronSecret: process.env.CRON_SECRET ?? "",
   gmailUser: process.env.GMAIL_USER ?? "",
   gmailAppPassword: process.env.GMAIL_APP_PASSWORD ?? "",
+  hktbGmailUser: process.env.HKTB_GMAIL_USER ?? "",
+  hktbGmailAppPassword: process.env.HKTB_GMAIL_APP_PASSWORD ?? "",
 };

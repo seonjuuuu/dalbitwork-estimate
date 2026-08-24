@@ -1,19 +1,21 @@
 import nodemailer from "nodemailer";
 import { ENV } from "./_core/env";
 
-let transporter: ReturnType<typeof nodemailer.createTransport> | null = null;
+const transporters = new Map<string, ReturnType<typeof nodemailer.createTransport>>();
 
-function getTransporter() {
-  if (!transporter) {
-    if (!ENV.gmailUser || !ENV.gmailAppPassword) {
-      throw new Error("GMAIL_USER / GMAIL_APP_PASSWORD가 설정되지 않았습니다. .env를 확인해주세요.");
-    }
-    transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: { user: ENV.gmailUser, pass: ENV.gmailAppPassword },
-    });
+function getTransporterFor(user: string, appPassword: string) {
+  if (!user || !appPassword) {
+    throw new Error(`${user || "Gmail"} 계정의 앱 비밀번호가 설정되지 않았습니다. .env를 확인해주세요.`);
   }
-  return transporter;
+  let t = transporters.get(user);
+  if (!t) {
+    t = nodemailer.createTransport({
+      service: "gmail",
+      auth: { user, pass: appPassword },
+    });
+    transporters.set(user, t);
+  }
+  return t;
 }
 
 export const APP_BASE_URL = "https://dalbitwork-estimate-5zcu.vercel.app";
@@ -59,12 +61,29 @@ export interface MailAttachment {
 }
 
 export async function sendMail(to: string, subject: string, bodyText: string, attachments?: MailAttachment[]) {
-  await getTransporter().sendMail({
+  await getTransporterFor(ENV.gmailUser, ENV.gmailAppPassword).sendMail({
     from: `"달빛워크" <${ENV.gmailUser}>`,
     to,
     subject,
     text: `${bodyText}\n\n${SIGNATURE_TEXT}`,
     html: buildEmailHtml(bodyText),
+    attachments,
+  });
+}
+
+// HKTB(홍콩관광청) 앞으로 보내는 메일은 인보이스 PDF에 적힌 연락처(m.seonjuuu@gmail.com)와
+// 계정을 맞추기 위해 별도 Gmail 계정으로 발송한다.
+const HKTB_SIGNATURE_TEXT = `DalBit Work
+Tel: +82 10-8985-3954
+E-mail: m.seonjuuu@gmail.com`;
+
+export async function sendHktbMail(to: string, subject: string, bodyText: string, attachments?: MailAttachment[]) {
+  await getTransporterFor(ENV.hktbGmailUser, ENV.hktbGmailAppPassword).sendMail({
+    from: `"DalBit Work" <${ENV.hktbGmailUser}>`,
+    to,
+    subject,
+    text: `${bodyText}\n\n${HKTB_SIGNATURE_TEXT}`,
+    html: `<div style="font-family: Arial, sans-serif; font-size: 14px; color: #1a1a1a; white-space: pre-line; line-height: 1.6;">${escapeHtml(bodyText)}</div><p style="margin-top: 24px; font-family: Arial, sans-serif; font-size: 13px; color: #333;">${escapeHtml(HKTB_SIGNATURE_TEXT).replace(/\n/g, "<br/>")}</p>`,
     attachments,
   });
 }
