@@ -173,6 +173,9 @@ ${consultationText}`,
 }
 
 const clientRequestChecklistSchema = z.object({
+  subject: z
+    .string()
+    .describe("이 안내 메시지를 이메일로 보낼 때 쓸 제목. 간결하고 용건이 바로 보이게 (예: \"[달빛워크] OO 홈페이지 제작 준비자료 요청드립니다\")"),
   items: z
     .array(
       z.object({
@@ -184,18 +187,20 @@ const clientRequestChecklistSchema = z.object({
   message: z
     .string()
     .describe(
-      "고객(대표님)에게 그대로 복사해서 보낼 수 있는 정중한 안내 메시지 전문. 인사말로 시작해 요청 자료를 불릿(•)으로 나열하고 마무리 인사로 끝맺음. 카카오톡/이메일에 그대로 붙여넣을 수 있게 자연스럽게 줄바꿈된 형태."
+      "고객(대표님)에게 그대로 복사해서 보낼 수 있는 정중한 안내 메시지 본문. 인사말로 시작해 요청 자료를 불릿(•)으로 나열하고, 마지막 줄에 \"질문폼 링크: {{FORM_LINK}}\"를 별도 줄로 한 번 더 넣은 뒤, 짧은 마무리 인사로 끝맺음. 서명·이름·연락처 등 발신자 정보는 절대 넣지 마세요(시스템이 별도로 붙임). 질문폼 링크를 언급하는 모든 자리에는 실제 URL 대신 플레이스홀더 문자열 {{FORM_LINK}}를 정확히 그대로 넣으세요 (수정·변형 금지, 시스템이 나중에 실제 링크로 치환함)."
     ),
 });
 
 export type ClientRequestChecklistResult = z.infer<typeof clientRequestChecklistSchema>;
 
 const BASE_CLIENT_REQUEST_ITEMS = `- 로고 파일: 원본 파일(AI, PSD 등) 또는 배경이 투명한 고해상도 PNG
-- 홈페이지 기획 질문폼 작성: 안내해드린 질문폼 링크에 접속해서 답변 작성`;
+- 홈페이지 기획 질문폼 작성: {{FORM_LINK}} 링크에 접속해서 답변 작성`;
 
-/** 고객사 정보·상담 이력을 바탕으로 홈페이지 제작 전 고객에게 요청해야 할 준비자료 체크리스트 + 발송용 안내 메시지를 AI로 생성 */
+/** 고객사 정보·상담 이력을 바탕으로 홈페이지 제작 전 고객에게 요청해야 할 준비자료 체크리스트 + 발송용 안내 메시지를 AI로 생성
+ *  formLink가 있으면 메시지의 {{FORM_LINK}} 플레이스홀더를 실제 링크로 치환해서 반환한다. */
 export async function generateClientRequestChecklist(
-  input: ClientContextInput
+  input: ClientContextInput,
+  formLink?: string
 ): Promise<ClientRequestChecklistResult> {
   const response = await getClient().messages.parse({
     model: "claude-opus-4-8",
@@ -217,7 +222,9 @@ ${BASE_CLIENT_REQUEST_ITEMS}
   예시: 회사소개형이면 "대표 인사말", "회사 연혁", "사업 분야/서비스 소개 자료"를, 병원·전문직이면 "의료진/전문인력 소개 및 보유 장비·자격 사진"을 고려하되, 실제 이 고객사에 맞을 때만 넣으세요. 애매하면 넣지 마세요.
 - 쇼핑몰(제품 판매) 사이트인 경우 "상품 이미지 및 상품 설명 자료"는 항상 포함하세요. 단, 이건 실제 상품을 홈페이지에 업로드하기 위해서가 아니라, 어떤 상품을 파는지 보고 홈페이지의 전체적인 분위기·톤앤매너·디자인 방향을 잡기 위한 참고 자료라는 점을 description에 명확히 담으세요 (예: "실제 상품 등록용이 아니라 홈페이지 디자인 톤을 정하기 위한 참고용입니다. 대표 상품 몇 가지의 이미지와 간단한 설명만 보내주세요.").
 - items는 기본 항목 포함 최대 8개 이내, 정말 필요한 것만.
-- message는 대표님께 보낼 정중한 안내 메시지 전문을 작성하세요. 정중한 인사말로 시작해서 items 전체를 불릿(•)으로 나열하고, 짧은 마무리 인사로 끝내세요.
+- message는 대표님께 보낼 정중한 안내 메시지 본문을 작성하세요. 정중한 인사말로 시작해서 items 전체를 불릿(•)으로 나열하고, 그 아래 "질문폼 링크: {{FORM_LINK}}"를 별도 줄로 한 번 더 적은 다음, 짧은 마무리 인사로 끝내세요. 서명(이름·직함·연락처)은 쓰지 마세요 — 이메일 발송 시 시스템이 별도의 서명을 자동으로 붙입니다.
+- 질문폼 항목을 설명할 때는 실제 URL을 만들어내지 말고 반드시 {{FORM_LINK}} 플레이스홀더를 그대로 사용하세요 (예: "홈페이지 기획 질문폼 작성: {{FORM_LINK}} 접속 후 답변 작성").
+- subject는 이 메시지를 이메일로 보낼 때 쓸 제목입니다. "[달빛워크]"로 시작하고, 고객사명이 있으면 포함해서 용건이 한눈에 보이게 작성하세요.
 
 # 고객사 정보
 고객사명: ${input.clientName || "(미기재)"}
@@ -229,17 +236,22 @@ ${input.consultations.length > 0 ? input.consultations.map((c, i) => `[${i + 1}]
   });
 
   const fallback: ClientRequestChecklistResult = {
+    subject: `[달빛워크] ${input.clientName ? input.clientName + " " : ""}홈페이지 제작 준비자료 요청드립니다`,
     items: [
       { label: "로고 파일", description: "원본 파일(AI, PSD 등) 또는 배경이 투명한 고해상도 PNG로 준비해 주세요." },
-      { label: "홈페이지 기획 질문폼 작성", description: "안내해드린 질문폼 링크에 접속해서 답변을 작성해 주세요." },
+      { label: "홈페이지 기획 질문폼 작성", description: "{{FORM_LINK}} 접속해서 답변을 작성해 주세요." },
     ],
-    message: `안녕하세요, ${input.clientName || "고객"}님.\n원활한 홈페이지 제작을 위해 아래 자료를 준비해 주시면 감사하겠습니다.\n\n• 로고 파일: 원본 파일(AI, PSD 등) 또는 배경이 투명한 고해상도 PNG\n• 홈페이지 기획 질문폼 작성: 안내해드린 링크에서 답변 작성\n\n감사합니다.`,
+    message: `안녕하세요, ${input.clientName || "고객"}님.\n원활한 홈페이지 제작을 위해 아래 자료를 준비해 주시면 감사하겠습니다.\n\n• 로고 파일: 원본 파일(AI, PSD 등) 또는 배경이 투명한 고해상도 PNG\n• 홈페이지 기획 질문폼 작성: {{FORM_LINK}} 접속해서 답변 작성\n\n질문폼 링크: {{FORM_LINK}}\n\n감사합니다.`,
   };
 
-  if (response.stop_reason === "refusal" || !response.parsed_output) {
-    return fallback;
-  }
-  return response.parsed_output;
+  const result = response.stop_reason === "refusal" || !response.parsed_output ? fallback : response.parsed_output;
+
+  const linkText = formLink || "(질문폼을 먼저 생성한 뒤 다시 만들어주세요)";
+  return {
+    ...result,
+    items: result.items.map((it) => ({ ...it, description: it.description.replaceAll("{{FORM_LINK}}", linkText) })),
+    message: result.message.replaceAll("{{FORM_LINK}}", linkText),
+  };
 }
 
 const intakeFieldTypeSchema = z.enum(["text", "textarea", "select"]);

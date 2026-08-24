@@ -383,6 +383,7 @@ export default function ClientDetail({ id }: { id: string }) {
   const [isSuggestingQuestions, setIsSuggestingQuestions] = useState(false);
   const [requestChecklistDialogOpen, setRequestChecklistDialogOpen] = useState(false);
   const [viewingAnswersForm, setViewingAnswersForm] = useState<(typeof intakeForms)[number] | null>(null);
+  const [deletingFormId, setDeletingFormId] = useState<number | null>(null);
   const [showFormPreview, setShowFormPreview] = useState(false);
   const [isSavingFinal, setIsSavingFinal] = useState(false);
   const [editingFinal, setEditingFinal] = useState(false);
@@ -581,12 +582,15 @@ export default function ClientDetail({ id }: { id: string }) {
 
   const handleDeleteIntakeForm = async (id: number) => {
     if (!window.confirm('이 질문폼을 삭제하시겠습니까?')) return;
+    setDeletingFormId(id);
     try {
       await deleteFormMutation.mutateAsync({ id });
       await refetchIntakeForms();
       toast.success('삭제했습니다.');
     } catch {
       toast.error('삭제에 실패했습니다.');
+    } finally {
+      setDeletingFormId(null);
     }
   };
 
@@ -1240,10 +1244,15 @@ export default function ClientDetail({ id }: { id: string }) {
                     )}
                     <button
                       onClick={() => handleDeleteIntakeForm(f.id)}
-                      className="w-6 h-6 flex items-center justify-center rounded-md text-muted-foreground hover:text-destructive hover:bg-accent transition-colors"
+                      disabled={deletingFormId === f.id}
+                      className="w-6 h-6 flex items-center justify-center rounded-md text-muted-foreground hover:text-destructive hover:bg-accent transition-colors disabled:opacity-50"
                       title="삭제"
                     >
-                      <Trash2 className="w-3.5 h-3.5" />
+                      {deletingFormId === f.id ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <Trash2 className="w-3.5 h-3.5" />
+                      )}
                     </button>
                   </div>
                 </div>

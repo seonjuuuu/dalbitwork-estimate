@@ -6,7 +6,7 @@ import * as db from "./db";
 import type { DocumentItemRow, OptionalItemRow } from "../drizzle/schema";
 import { generateEstimateDraft, generateSiteStructure, classifyIntakeFormFields, suggestAdditionalIntakeQuestions, generateClientRequestChecklist } from "./ai";
 import { notifyUser } from "./push";
-import { sendMail } from "./mailer";
+import { sendMail, buildEmailHtml } from "./mailer";
 import { ENV } from "./_core/env";
 import { parseCardStatementXlsx } from "./cardStatementParser";
 
@@ -931,17 +931,20 @@ export const appRouter = router({
 
     /** 고객사 정보·상담 이력을 참고해 제작 전 고객에게 요청할 준비자료 체크리스트 + 발송용 안내 메시지를 생성 */
     generateClientRequestChecklist: protectedProcedure
-      .input(z.object({ clientId: z.number() }))
+      .input(z.object({ clientId: z.number(), formLink: z.string().optional() }))
       .mutation(async ({ ctx, input }) => {
         const client = await db.getClient(input.clientId, ctx.user.id);
         if (!client) throw new Error("고객사를 찾을 수 없습니다.");
         const consultations = await db.listConsultations(input.clientId, ctx.user.id);
-        return generateClientRequestChecklist({
-          clientName: client.name,
-          memo: client.memo,
-          consultations: consultations.map((c) => c.content).filter(Boolean),
-          existingQuestions: [],
-        });
+        return generateClientRequestChecklist(
+          {
+            clientName: client.name,
+            memo: client.memo,
+            consultations: consultations.map((c) => c.content).filter(Boolean),
+            existingQuestions: [],
+          },
+          input.formLink
+        );
       }),
   }),
 
@@ -1109,6 +1112,10 @@ export const appRouter = router({
       .query(async ({ ctx, input }) => {
         return db.listClientEmailsByClient(ctx.user.id, input.clientId);
       }),
+    /** 실제 발송될 이메일 HTML(본문+서명)을 그대로 미리보기용으로 반환 */
+    preview: protectedProcedure
+      .input(z.object({ body: z.string() }))
+      .query(({ input }) => ({ html: buildEmailHtml(input.body) })),
   }),
 
   push: router({

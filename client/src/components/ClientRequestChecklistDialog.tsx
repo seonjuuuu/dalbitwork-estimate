@@ -3,11 +3,12 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Sparkles, Loader2, Copy, ClipboardCheck, Send, History } from 'lucide-react';
+import { Sparkles, Loader2, Copy, ClipboardCheck, Send, History, Eye } from 'lucide-react';
 import { toast } from 'sonner';
 import { trpc } from '@/lib/trpc';
 
 export interface ClientRequestChecklistResult {
+  subject: string;
   items: { label: string; description: string }[];
   message: string;
 }
@@ -36,12 +37,18 @@ export default function ClientRequestChecklistDialog({
   const [message, setMessage] = useState('');
   const [subject, setSubject] = useState(DEFAULT_SUBJECT);
   const [to, setTo] = useState('');
+  const [previewHtml, setPreviewHtml] = useState<string | null>(null);
+  const [isPreviewLoading, setIsPreviewLoading] = useState(false);
   const generateMutation = trpc.ai.generateClientRequestChecklist.useMutation();
   const sendMutation = trpc.clientEmails.send.useMutation();
+  const utils = trpc.useUtils();
   const { data: history = [], refetch: refetchHistory } = trpc.clientEmails.listByClient.useQuery(
     { clientId },
     { enabled: isOpen }
   );
+  const { data: intakeForms = [] } = trpc.forms.listByClient.useQuery({ clientId }, { enabled: isOpen });
+  const pendingForm = intakeForms.find((f) => f.status === 'pending');
+  const formLink = pendingForm ? `${window.location.origin}/f/${pendingForm.token}` : undefined;
 
   useEffect(() => {
     if (isOpen) setTo(clientEmail || '');
@@ -49,10 +56,13 @@ export default function ClientRequestChecklistDialog({
 
   const handleGenerate = async () => {
     try {
-      const data = await generateMutation.mutateAsync({ clientId });
+      const data = await generateMutation.mutateAsync({ clientId, formLink });
       setResult(data);
       setMessage(data.message);
-      setSubject(DEFAULT_SUBJECT);
+      setSubject(data.subject || DEFAULT_SUBJECT);
+      if (!formLink) {
+        toast.warning('아직 만든 질문폼이 없어서 메시지에 링크가 빠졌어요. 질문폼을 먼저 만들어주세요.');
+      }
     } catch {
       toast.error('리스트 생성에 실패했습니다.');
     }
@@ -61,6 +71,18 @@ export default function ClientRequestChecklistDialog({
   const handleCopy = async () => {
     await navigator.clipboard.writeText(message);
     toast.success('메시지를 복사했어요.');
+  };
+
+  const handlePreview = async () => {
+    setIsPreviewLoading(true);
+    try {
+      const data = await utils.clientEmails.preview.fetch({ body: message });
+      setPreviewHtml(data.html);
+    } catch {
+      toast.error('미리보기를 불러오지 못했습니다.');
+    } finally {
+      setIsPreviewLoading(false);
+    }
   };
 
   const handleSend = async () => {
@@ -81,10 +103,12 @@ export default function ClientRequestChecklistDialog({
     setResult(null);
     setMessage('');
     setSubject(DEFAULT_SUBJECT);
+    setPreviewHtml(null);
     onClose();
   };
 
   return (
+    <>
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-[560px] max-h-[85vh] overflow-y-auto">
         <DialogHeader>
@@ -156,7 +180,19 @@ export default function ClientRequestChecklistDialog({
               </div>
 
               <div className="space-y-2 border-t border-border pt-4">
-                <p className="text-sm font-semibold text-foreground">이메일로 보내기</p>
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-semibold text-foreground">이메일로 보내기</p>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handlePreview}
+                    disabled={isPreviewLoading}
+                    className="gap-1.5 h-7 text-xs"
+                  >
+                    {isPreviewLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Eye className="w-3.5 h-3.5" />}
+                    미리보기
+                  </Button>
+                </div>
                 <Input
                   value={to}
                   onChange={(e) => setTo(e.target.value)}
@@ -208,5 +244,22 @@ export default function ClientRequestChecklistDialog({
         )}
       </DialogContent>
     </Dialog>
+
+    <Dialog open={!!previewHtml} onOpenChange={(open) => !open && setPreviewHtml(null)}>
+      <DialogContent className="sm:max-w-[640px] max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>이메일 미리보기</DialogTitle>
+          <DialogDescription>실제 발송되는 이메일 화면입니다 (제목: {subject})</DialogDescription>
+        </DialogHeader>
+        {previewHtml && (
+          <iframe
+            title="이메일 미리보기"
+            srcDoc={previewHtml}
+            className="w-full h-[420px] border border-border rounded-md bg-white"
+          />
+        )}
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }
