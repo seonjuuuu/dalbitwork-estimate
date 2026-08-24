@@ -5,9 +5,10 @@ const ENABLED_KEY = 'dalbit-desktop-notifications-enabled';
 const LAST_SEEN_KEY = 'dalbit-notification-last-seen-id';
 const POLL_INTERVAL_MS = 20000;
 
-// Electron BrowserWindow는 기본 UA에 "Electron/x.y.z"가 포함됨 (electron/main.cjs에서 별도 설정 안 함)
+// electron/main.cjs가 구글 로그인 통과를 위해 UA를 일반 크롬처럼 위장하면서,
+// 기본 "Electron/x.y.z" 문자열 대신 자체적으로 붙여둔 "DalbitDesktopApp" 마커로 판별함
 export function isElectronApp(): boolean {
-  return typeof navigator !== 'undefined' && /Electron/i.test(navigator.userAgent);
+  return typeof navigator !== 'undefined' && /DalbitDesktopApp/i.test(navigator.userAgent);
 }
 
 type DesktopNotificationContextValue = {
