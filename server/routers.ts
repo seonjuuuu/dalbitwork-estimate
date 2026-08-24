@@ -7,7 +7,6 @@ import type { DocumentItemRow, OptionalItemRow } from "../drizzle/schema";
 import { generateEstimateDraft, generateSiteStructure, classifyIntakeFormFields, suggestAdditionalIntakeQuestions, generateClientRequestChecklist } from "./ai";
 import { notifyUser } from "./push";
 import { sendMail, buildEmailHtml, APP_BASE_URL, PUBLIC_FORM_BASE_URL } from "./mailer";
-import { shortenUrl } from "./shortener";
 import { ENV } from "./_core/env";
 import { parseCardStatementXlsx } from "./cardStatementParser";
 
@@ -1046,7 +1045,7 @@ export const appRouter = router({
       )
       .mutation(async ({ ctx, input }) => {
         const token = nanoid(8);
-        const shortLink = await shortenUrl(`${PUBLIC_FORM_BASE_URL}/f/${token}`);
+        const shortLink = `${PUBLIC_FORM_BASE_URL}/f/${token}`;
         return db.createIntakeForm(ctx.user.id, input.clientId, token, input.questions, shortLink);
       }),
     listByClient: protectedProcedure
