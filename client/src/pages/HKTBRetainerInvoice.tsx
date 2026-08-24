@@ -218,16 +218,12 @@ export default function HKTBRetainerInvoice() {
     }
   };
 
-  const MONTH_NAMES_EN = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-
-  const getPeriodLabel = (items: HKTBRetainerItem[]): string => {
-    if (items.length < 2 || !items[0]?.dateFrom || !items[1]?.dateFrom) return '';
-    const [y1, m1] = items[0].dateFrom.split('.').map(Number);
-    const [y2, m2] = items[1].dateFrom.split('.').map(Number);
-    if (!m1 || !m2) return '';
-    const p1 = `${MONTH_NAMES_EN[m1]}${y1 !== y2 ? ' ' + y1 : ''}`;
-    const p2 = `${MONTH_NAMES_EN[m2]} ${y2}`;
-    return `${p1}–${p2}`;
+  const getPeriodMonths = (items: HKTBRetainerItem[]): [number, number] | null => {
+    if (items.length < 2 || !items[0]?.dateFrom || !items[1]?.dateFrom) return null;
+    const m1 = Number(items[0].dateFrom.split('.')[1]);
+    const m2 = Number(items[1].dateFrom.split('.')[1]);
+    if (!m1 || !m2) return null;
+    return [m1, m2];
   };
 
   const handleOpenEmailDialog = () => {
@@ -235,11 +231,11 @@ export default function HKTBRetainerInvoice() {
       toast.error('먼저 저장해주세요.');
       return;
     }
-    const period = getPeriodLabel(data.items);
-    const total = data.items.reduce((sum, item) => sum + calcItem(item).total, 0);
-    setEmailSubject(`DalBit Work - Retainer Fee Invoice${period ? ` (${period})` : ''} [${data.invoiceNo}]`);
+    const months = getPeriodMonths(data.items);
+    const [m1, m2] = months || ['', ''];
+    setEmailSubject(`[달빛워크] ${m1}~${m2}월 유지보수비용 리테이너피 인보이스 전달`);
     setEmailBody(
-      `Dear HKTB,\n\nPlease find attached the retainer fee invoice${period ? ` for ${period}` : ''} (Invoice No. ${data.invoiceNo}).\n\nTotal amount: KRW ${fmt(total)}\n\nPlease let us know if you have any questions.\n\nThank you.`
+      `안녕하세요 지현과장님\n달빛워크입니다\n${m1} - ${m2}월 유지보수 리테이너피 인보이스 전달드립니다.\n확인부탁드립니다.\n감사합니다`
     );
     setEmailDialogOpen(true);
   };
