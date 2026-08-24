@@ -80,7 +80,7 @@ export default function ClientRequestChecklistDialog({
   );
   const { data: intakeForms = [] } = trpc.forms.listByClient.useQuery({ clientId }, { enabled: isOpen });
   const pendingForm = intakeForms.find((f) => f.status === 'pending');
-  const formLink = pendingForm ? `${window.location.origin}/f/${pendingForm.token}` : undefined;
+  const formLink = pendingForm ? (pendingForm.shortLink || `${window.location.origin}/f/${pendingForm.token}`) : undefined;
 
   useEffect(() => {
     if (isOpen) setTo(clientEmail || '');

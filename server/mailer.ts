@@ -16,7 +16,7 @@ function getTransporter() {
   return transporter;
 }
 
-const APP_BASE_URL = "https://dalbitwork-estimate-5zcu.vercel.app";
+export const APP_BASE_URL = "https://dalbitwork-estimate-5zcu.vercel.app";
 
 const SIGNATURE_TEXT = `문선주 | WEB Site Developer
 M 010-2757-9116

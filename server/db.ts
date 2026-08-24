@@ -1391,13 +1391,14 @@ export async function createIntakeForm(
   userId: number,
   clientId: number,
   token: string,
-  questions: IntakeFormQuestion[]
+  questions: IntakeFormQuestion[],
+  shortLink?: string | null
 ) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   const [row] = await db
     .insert(intakeForms)
-    .values({ userId, clientId, token, questions, answers: questions.map(() => "") })
+    .values({ userId, clientId, token, questions, answers: questions.map(() => ""), shortLink: shortLink ?? null })
     .returning();
   return row;
 }

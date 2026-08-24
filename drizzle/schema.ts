@@ -407,6 +407,7 @@ export const intakeForms = pgTable("intake_forms", {
   questions: json("questions").$type<IntakeFormQuestion[]>().default([]).notNull(),
   answers: json("answers").$type<string[]>().default([]).notNull(),
   status: varchar("status", { length: 20 }).default("pending").notNull(), // "pending" | "submitted"
+  shortLink: varchar("shortLink", { length: 200 }), // is.gd 등으로 단축된 주소 (실패 시 null, 이 경우 /f/:token 그대로 사용)
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   submittedAt: timestamp("submittedAt"),
 });

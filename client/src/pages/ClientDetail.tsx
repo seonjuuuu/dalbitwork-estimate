@@ -594,8 +594,8 @@ export default function ClientDetail({ id }: { id: string }) {
     }
   };
 
-  const handleCopyFormLink = async (token: string) => {
-    const url = `${window.location.origin}/f/${token}`;
+  const handleCopyFormLink = async (f: { token: string; shortLink?: string | null }) => {
+    const url = f.shortLink || `${window.location.origin}/f/${f.token}`;
     try {
       await navigator.clipboard.writeText(url);
       toast.success('링크를 복사했어요.');
@@ -1227,14 +1227,14 @@ export default function ClientDetail({ id }: { id: string }) {
                     {f.status === 'pending' && (
                       <>
                         <button
-                          onClick={() => window.open(`${window.location.origin}/f/${f.token}`, '_blank', 'noreferrer')}
+                          onClick={() => window.open(f.shortLink || `${window.location.origin}/f/${f.token}`, '_blank', 'noreferrer')}
                           className="w-6 h-6 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
                           title="링크 바로가기"
                         >
                           <ExternalLink className="w-3.5 h-3.5" />
                         </button>
                         <button
-                          onClick={() => handleCopyFormLink(f.token)}
+                          onClick={() => handleCopyFormLink(f)}
                           className="w-6 h-6 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
                           title="링크 복사"
                         >
