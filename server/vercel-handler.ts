@@ -25,8 +25,10 @@ app.use(
 );
 
 // Vercel Cron이 매일 아침 8시(KST)에 호출 — 할 일 요약 알림 발송
+// CRON_SECRET이 설정 안 된 배포(예: 고객용으로 별도 연결한 프로젝트)에서는 항상 거부해서
+// 같은 vercel.json을 공유하는 다른 프로젝트에서 중복으로 알림이 발송되는 걸 막는다.
 app.get("/api/cron/daily-todo-summary", async (req, res) => {
-  if (ENV.cronSecret && req.headers.authorization !== `Bearer ${ENV.cronSecret}`) {
+  if (!ENV.cronSecret || req.headers.authorization !== `Bearer ${ENV.cronSecret}`) {
     res.status(401).json({ error: "Unauthorized" });
     return;
   }

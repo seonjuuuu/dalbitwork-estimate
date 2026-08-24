@@ -103,13 +103,21 @@ function useClearAppBadge() {
   }, []);
 }
 
+// 어드민(로그인·대시보드)이 뜨는 걸 허용하는 호스트만 여기 등록.
+// 그 외 호스트(고객 전용으로 별도 연결한 Vercel 도메인 등)에서는
+// 어떤 경로로 들어와도 어드민 화면이 절대 렌더링되지 않는다.
+const ADMIN_HOSTNAMES = new Set(["dalbitwork-estimate-5zcu.vercel.app", "localhost", "127.0.0.1"]);
+
 function App() {
   useClearAppBadge();
+
+  const hostname = typeof window !== "undefined" ? window.location.hostname : "";
+  const pathname = typeof window !== "undefined" ? window.location.pathname : "";
+  const isPublicHost = hostname !== "" && !ADMIN_HOSTNAMES.has(hostname);
 
   // 고객이 로그인 없이 접속하는 공개 질문폼 — wouter의 패턴 매칭에 기대지 않고,
   // 주소가 /f/로 시작하면 라우터 진입 전에 무조건 이 화면만 렌더링해서
   // 어떤 경우에도 로그인 화면/내부 대시보드가 노출되지 않도록 강제로 분기한다.
-  const pathname = typeof window !== "undefined" ? window.location.pathname : "";
   if (pathname.startsWith("/f/")) {
     const token = pathname.split("/")[2] || "";
     return (
@@ -118,6 +126,23 @@ function App() {
           <TooltipProvider>
             <Toaster />
             <PublicIntakeForm token={token} />
+          </TooltipProvider>
+        </ThemeProvider>
+      </ErrorBoundary>
+    );
+  }
+
+  // 어드민 목록에 없는 호스트(고객 전용 도메인)에서는 /f/ 경로가 아니면
+  // 로그인 화면조차 보여주지 않는다 — 어드민 존재 자체를 노출하지 않기 위함.
+  if (isPublicHost) {
+    return (
+      <ErrorBoundary>
+        <ThemeProvider defaultTheme="light">
+          <TooltipProvider>
+            <Toaster />
+            <div className="flex items-center justify-center min-h-screen bg-background">
+              <p className="text-sm text-muted-foreground">잘못된 접근입니다.</p>
+            </div>
           </TooltipProvider>
         </ThemeProvider>
       </ErrorBoundary>
