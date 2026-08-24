@@ -1249,13 +1249,21 @@ export async function insertNotificationEvent(
 export async function listUsers() {
   const db = await getDb();
   if (!db) return [];
-  return db.select({ id: users.id, hktbRetainerAutoEnabled: users.hktbRetainerAutoEnabled }).from(users);
+  return db
+    .select({
+      id: users.id,
+      hktbRetainerAutoEnabled: users.hktbRetainerAutoEnabled,
+      hktbRetainerMonthlyPrice: users.hktbRetainerMonthlyPrice,
+    })
+    .from(users);
 }
 
-export async function setHktbRetainerAutoEnabled(userId: number, enabled: boolean) {
+export async function setHktbRetainerAutoEnabled(userId: number, enabled: boolean, monthlyPrice?: string) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  await db.update(users).set({ hktbRetainerAutoEnabled: enabled }).where(eq(users.id, userId));
+  const data: { hktbRetainerAutoEnabled: boolean; hktbRetainerMonthlyPrice?: string } = { hktbRetainerAutoEnabled: enabled };
+  if (monthlyPrice) data.hktbRetainerMonthlyPrice = monthlyPrice;
+  await db.update(users).set(data).where(eq(users.id, userId));
   return { success: true };
 }
 

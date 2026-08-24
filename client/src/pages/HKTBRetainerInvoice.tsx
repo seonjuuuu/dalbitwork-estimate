@@ -79,6 +79,8 @@ export default function HKTBRetainerInvoice() {
   const { user, refresh: refreshAuth } = useAuth();
   const setAutoReminderMutation = trpc.hktbInvoices.setAutoReminderEnabled.useMutation();
   const [isTogglingAutoReminder, setIsTogglingAutoReminder] = useState(false);
+  const [priceDialogOpen, setPriceDialogOpen] = useState(false);
+  const [priceInput, setPriceInput] = useState('');
   const [data, setData] = useState<HKTBRetainerData>(makeDefaultData);
   const [savedId, setSavedId] = useState<number | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -231,10 +233,10 @@ export default function HKTBRetainerInvoice() {
     return [m1, m2];
   };
 
-  const handleToggleAutoReminder = async (checked: boolean) => {
+  const applyAutoReminderChange = async (checked: boolean, monthlyPrice?: string) => {
     setIsTogglingAutoReminder(true);
     try {
-      await setAutoReminderMutation.mutateAsync({ enabled: checked });
+      await setAutoReminderMutation.mutateAsync({ enabled: checked, monthlyPrice });
       await refreshAuth();
       toast.success(checked ? '자동 알림을 켰어요.' : '자동 알림을 껐어요.');
     } catch {
@@ -242,6 +244,26 @@ export default function HKTBRetainerInvoice() {
     } finally {
       setIsTogglingAutoReminder(false);
     }
+  };
+
+  const handleToggleAutoReminder = (checked: boolean) => {
+    // 껐다가 다시 켤 때(재계약 시점)는 그 계약연도의 월 관리비를 먼저 확인받는다
+    if (checked && user?.hktbRetainerAutoEnabled === false) {
+      setPriceInput(user?.hktbRetainerMonthlyPrice || '850,000');
+      setPriceDialogOpen(true);
+      return;
+    }
+    applyAutoReminderChange(checked);
+  };
+
+  const handleConfirmPriceAndEnable = () => {
+    const formatted = autoFormatNumber(priceInput);
+    if (!formatted) {
+      toast.error('금액을 입력해주세요.');
+      return;
+    }
+    setPriceDialogOpen(false);
+    applyAutoReminderChange(true, formatted);
   };
 
   const handleOpenEmailDialog = () => {
@@ -336,7 +358,10 @@ export default function HKTBRetainerInvoice() {
               disabled={isTogglingAutoReminder}
             />
             2개월 주기 자동 준비·알림 {user?.hktbRetainerAutoEnabled === false ? '꺼짐' : '켜짐'}
-            <span className="text-muted-foreground/70">(재계약 안 됐으면 꺼두세요)</span>
+            {user?.hktbRetainerAutoEnabled !== false && (
+              <span className="text-muted-foreground/70">(월 {user?.hktbRetainerMonthlyPrice || '850,000'}원 기준)</span>
+            )}
+            <span className="text-muted-foreground/70">· 재계약 안 됐으면 꺼두세요</span>
           </label>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -679,6 +704,28 @@ export default function HKTBRetainerInvoice() {
         )}
       </div>
       </div>
+
+      <Dialog open={priceDialogOpen} onOpenChange={setPriceDialogOpen}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>이번 계약연도 월 관리비</DialogTitle>
+          </DialogHeader>
+          <div className="py-2">
+            <p className="text-xs text-muted-foreground mb-2">재계약된 이번 계약연도의 고정 월 관리비를 입력해주세요. 앞으로 자동 생성되는 인보이스에 이 금액이 쓰여요.</p>
+            <Input
+              value={priceInput}
+              onChange={(e) => setPriceInput(autoFormatNumber(e.target.value))}
+              placeholder="850,000"
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPriceDialogOpen(false)}>취소</Button>
+            <Button onClick={handleConfirmPriceAndEnable} disabled={isTogglingAutoReminder}>
+              {isTogglingAutoReminder ? <Loader2 className="w-4 h-4 animate-spin" /> : '확인하고 켜기'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={emailDialogOpen} onOpenChange={setEmailDialogOpen}>
         <DialogContent className="sm:max-w-[520px]">

@@ -103,7 +103,6 @@ export async function sendDailyTodoSummaries() {
 // HKTB 관리비(Retainer) 청구 주기: 4-5, 6-7, 8-9, 10-11, 12-1, 2-3월 2개월 단위로,
 // 해당 구간이 끝난 다음 달 1일에 인보이스를 보내는 형식(예: 4-5월분 → 6월 1일 발송)
 const HKTB_RETAINER_DUE_MONTHS = new Set([2, 4, 6, 8, 10, 12]);
-const HKTB_RETAINER_MONTHLY_PRICE = "850,000";
 
 function lastDayOfMonth(year: number, month: number): number {
   return new Date(year, month, 0).getDate();
@@ -147,9 +146,6 @@ export async function checkHktbRetainerReminder(now: Date = new Date()) {
   const range1 = hktbMonthRange(y1, m1);
   const range2 = hktbMonthRange(y2, m2);
   const todayStr = kst.toISOString().slice(0, 10);
-  const price = 850000;
-  const vat = Math.round(price * 0.1);
-  const totalAmount = (price + vat) * 2;
 
   // 4월 1일(2-3월분)은 계약연도의 마지막 청구 주기 — 이 주기가 지나면 다음 주기는
   // 새 계약연도(6월 1일, 4-5월분)이므로, 재계약 여부를 확인하고 자동 알림을 끌 수 있게 안내한다.
@@ -168,14 +164,19 @@ export async function checkHktbRetainerReminder(now: Date = new Date()) {
     });
     if (alreadyExists) continue;
 
+    const monthlyPrice = user.hktbRetainerMonthlyPrice || "850,000";
+    const price = parseInt(monthlyPrice.replace(/,/g, ""), 10) || 850000;
+    const vat = Math.round(price * 0.1);
+    const totalAmount = (price + vat) * 2;
+
     await db.createHktbInvoice({
       userId: user.id,
       type: "retainer",
       invoiceNo: `${todayStr.replace(/-/g, "")}001A`,
       invoiceDate: todayStr,
       items: [
-        { id: nanoid(), dateFrom: range1.dateFrom, dateTo: range1.dateTo, jobDescription: "Retainer Fee", price: HKTB_RETAINER_MONTHLY_PRICE },
-        { id: nanoid(), dateFrom: range2.dateFrom, dateTo: range2.dateTo, jobDescription: "Retainer Fee", price: HKTB_RETAINER_MONTHLY_PRICE },
+        { id: nanoid(), dateFrom: range1.dateFrom, dateTo: range1.dateTo, jobDescription: "Retainer Fee", price: monthlyPrice },
+        { id: nanoid(), dateFrom: range2.dateFrom, dateTo: range2.dateTo, jobDescription: "Retainer Fee", price: monthlyPrice },
       ],
       totalAmount,
       revenueMonth: `${dueYear}-${String(dueMonth).padStart(2, "0")}`,

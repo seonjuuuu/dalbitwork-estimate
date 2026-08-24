@@ -36,6 +36,8 @@ export const users = pgTable("users", {
   // HKTB 관리비 인보이스 2개월 주기 자동 준비/알림 on-off. 4월(2-3월분, 계약연도 마지막 주기)
   // 알림 발송 시 재계약 여부를 물어보고, 재계약 안 하면 이걸 꺼서 다음 주기부터 알림이 안 오게 함
   hktbRetainerAutoEnabled: boolean("hktbRetainerAutoEnabled").default(true).notNull(),
+  // 재계약 시점(자동 알림을 다시 켤 때)마다 그 계약연도의 고정 월 관리비를 입력받아 저장
+  hktbRetainerMonthlyPrice: varchar("hktbRetainerMonthlyPrice", { length: 20 }).default("850,000").notNull(),
 });
 
 export type User = typeof users.$inferSelect;
