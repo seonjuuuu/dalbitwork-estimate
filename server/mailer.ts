@@ -17,6 +17,8 @@ function getTransporter() {
 }
 
 export const APP_BASE_URL = "https://dalbitwork-estimate-5zcu.vercel.app";
+// 고객에게 보내는 질문폼 링크 전용 도메인 — 어드민 주소와 완전히 분리된 별도 Vercel 프로젝트
+export const PUBLIC_FORM_BASE_URL = "https://dalbitwork-form-three.vercel.app";
 
 const SIGNATURE_TEXT = `문선주 | WEB Site Developer
 M 010-2757-9116
