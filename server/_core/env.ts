@@ -12,4 +12,5 @@ export const ENV = {
   cronSecret: process.env.CRON_SECRET ?? "",
   gmailUser: process.env.GMAIL_USER ?? "",
   gmailAppPassword: process.env.GMAIL_APP_PASSWORD ?? "",
+  bitlyAccessToken: process.env.BITLY_ACCESS_TOKEN ?? "",
 };
