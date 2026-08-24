@@ -1,6 +1,6 @@
 import { useLocation } from 'wouter';
 import { trpc } from '@/lib/trpc';
-import { CalendarDays, CheckSquare, Clock, ListTodo } from 'lucide-react';
+import { CalendarDays, CheckSquare, Clock, ListTodo, Loader2 } from 'lucide-react';
 
 const EVENT_TYPE_LABELS: Record<string, string> = {
   consultation: '상담',
@@ -37,8 +37,9 @@ function eventTimeLabel(e: CalEvent): string | null {
 
 export default function TodayBriefCard() {
   const [, navigate] = useLocation();
-  const { data: rawEvents = [] } = trpc.calendar.getEvents.useQuery();
-  const { data: todos = [] } = trpc.todos.list.useQuery();
+  const { data: rawEvents = [], isLoading: isLoadingEvents } = trpc.calendar.getEvents.useQuery();
+  const { data: todos = [], isLoading: isLoadingTodos } = trpc.todos.list.useQuery();
+  const isLoading = isLoadingEvents || isLoadingTodos;
 
   const events = rawEvents as CalEvent[];
   const todayStr = toDateStr(new Date());
@@ -55,7 +56,11 @@ export default function TodayBriefCard() {
         오늘
       </h2>
 
-      {hasNothing ? (
+      {isLoading ? (
+        <div className="flex items-center justify-center py-6">
+          <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+        </div>
+      ) : hasNothing ? (
         <p className="text-sm text-muted-foreground">오늘은 일정도, 남은 할 일도 없어요. 편안한 하루 보내세요!</p>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

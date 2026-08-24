@@ -137,8 +137,8 @@ export default function Expenses() {
   const [reviewRows, setReviewRows] = useState<ParsedRow[] | null>(null);
   const [reviewCategories, setReviewCategories] = useState<Record<string, Category | null>>({});
 
-  const { data: summary = [] } = trpc.expenses.monthlySummary.useQuery();
-  const { data: yearlySummary = [] } = trpc.expenses.yearlySummary.useQuery();
+  const { data: summary = [], isLoading: isLoadingSummary } = trpc.expenses.monthlySummary.useQuery();
+  const { data: yearlySummary = [], isLoading: isLoadingYearlySummary } = trpc.expenses.yearlySummary.useQuery();
   const parseMutation = trpc.expenses.parse.useMutation();
   const saveMutation = trpc.expenses.save.useMutation();
   const deleteMonthMutation = trpc.expenses.deleteMonth.useMutation();
@@ -413,7 +413,11 @@ export default function Expenses() {
             </Select>
           )}
         </div>
-        {monthlyByMonth.length === 0 ? (
+        {isLoadingSummary ? (
+          <div className="flex items-center justify-center py-6">
+            <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+          </div>
+        ) : monthlyByMonth.length === 0 ? (
           <p className="text-sm text-muted-foreground">이 연도에 저장된 지출이 없어요.</p>
         ) : (
           <div className="relative">
@@ -497,7 +501,11 @@ export default function Expenses() {
             </button>
           ))}
         </div>
-        {monthlyCharts.length === 0 ? (
+        {isLoadingSummary ? (
+          <div className="flex items-center justify-center py-6">
+            <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+          </div>
+        ) : monthlyCharts.length === 0 ? (
           <p className="text-sm text-muted-foreground">이 연도에 저장된 지출이 없어요.</p>
         ) : (
           <div className="space-y-6">
@@ -574,7 +582,11 @@ export default function Expenses() {
             </button>
           ))}
         </div>
-        {yearlyCharts.length === 0 ? (
+        {isLoadingYearlySummary ? (
+          <div className="flex items-center justify-center py-6">
+            <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+          </div>
+        ) : yearlyCharts.length === 0 ? (
           <p className="text-sm text-muted-foreground">아직 저장된 지출이 없어요.</p>
         ) : (
           <div className="space-y-6">
