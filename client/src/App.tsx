@@ -23,6 +23,7 @@ import KanbanPage from "./pages/KanbanPage";
 import MyPdfFiles from "./pages/MyPdfFiles";
 import Sidebar from "./components/Sidebar";
 import GlobalSearch from "./components/GlobalSearch";
+import GmailWatcher from "./components/GmailWatcher";
 import { useAuth } from "@/_core/hooks/useAuth";
 import LoginPage from "./pages/LoginPage";
 import PublicIntakeForm from "./pages/PublicIntakeForm";
@@ -163,6 +164,7 @@ function App() {
                     <Router />
                   </main>
                   <GlobalSearch />
+                  <GmailWatcher />
                 </div>
               </EstimateProvider>
             </DesktopNotificationProvider>

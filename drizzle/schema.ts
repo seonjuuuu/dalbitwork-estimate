@@ -435,3 +435,15 @@ export const clientEmails = pgTable("client_emails", {
 
 export type ClientEmail = typeof clientEmails.$inferSelect;
 export type InsertClientEmail = typeof clientEmails.$inferInsert;
+
+// 고객 메일 수신 감지(Gmail API, gmail.metadata)에서 이미 알림 보낸 메일을 기록해 중복 알림을 막는다
+export const gmailNotifiedMessages = pgTable("gmail_notified_messages", {
+  id: serial("id").primaryKey(),
+  userId: integer("userId").notNull(),
+  messageId: varchar("messageId", { length: 100 }).notNull().unique(),
+  fromAddress: varchar("fromAddress", { length: 320 }).default("").notNull(),
+  subject: varchar("subject", { length: 500 }).default("").notNull(),
+  notifiedAt: timestamp("notifiedAt").defaultNow().notNull(),
+});
+
+export type GmailNotifiedMessage = typeof gmailNotifiedMessages.$inferSelect;

@@ -1,7 +1,7 @@
 import { eq, and, or, ne, desc, asc, gte, lte, gt, isNull, isNotNull, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
-import { InsertUser, users, documents, InsertDocument, noteTemplates, InsertNoteTemplate, payments, serviceItems, clients, consultations, hktbInvoices, pdfFiles, todos, pushSubscriptions, notificationEvents, customEvents, cardTransactions, expenseMerchantRules, intakeForms, clientEmails } from "../drizzle/schema";
+import { InsertUser, users, documents, InsertDocument, noteTemplates, InsertNoteTemplate, payments, serviceItems, clients, consultations, hktbInvoices, pdfFiles, todos, pushSubscriptions, notificationEvents, customEvents, cardTransactions, expenseMerchantRules, intakeForms, clientEmails, gmailNotifiedMessages } from "../drizzle/schema";
 import type { IntakeFormQuestion } from "../drizzle/schema";
 import type { InsertPayment, InsertServiceItem, InsertClient, InsertConsultation, InsertHktbInvoice, InsertPdfFile, InsertTodo } from "../drizzle/schema";
 
@@ -1501,5 +1501,55 @@ export async function deleteClientEmail(userId: number, id: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   await db.delete(clientEmails).where(and(eq(clientEmails.id, id), eq(clientEmails.userId, userId)));
+  return { success: true };
+}
+
+// ─── 고객 메일 수신 감지 (Gmail API, gmail.metadata) ────
+
+export async function listClientContactEmails(userId: number): Promise<string[]> {
+  const db = await getDb();
+  if (!db) return [];
+  const rows = await db
+    .select({ contactEmail: clients.contactEmail })
+    .from(clients)
+    .where(eq(clients.userId, userId));
+  const emails = rows.map((r) => r.contactEmail.trim().toLowerCase()).filter(Boolean);
+  return Array.from(new Set(emails));
+}
+
+export async function findClientNameByEmail(userId: number, email: string): Promise<string | null> {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db
+    .select({ name: clients.name, contactEmail: clients.contactEmail })
+    .from(clients)
+    .where(eq(clients.userId, userId));
+  const found = rows.find((r) => r.contactEmail.trim().toLowerCase() === email.trim().toLowerCase());
+  return found?.name ?? null;
+}
+
+export async function isGmailMessageNotified(messageId: string): Promise<boolean> {
+  const db = await getDb();
+  if (!db) return false;
+  const rows = await db
+    .select({ id: gmailNotifiedMessages.id })
+    .from(gmailNotifiedMessages)
+    .where(eq(gmailNotifiedMessages.messageId, messageId))
+    .limit(1);
+  return rows.length > 0;
+}
+
+export async function markGmailMessageNotified(
+  userId: number,
+  messageId: string,
+  fromAddress: string,
+  subject: string
+) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db
+    .insert(gmailNotifiedMessages)
+    .values({ userId, messageId, fromAddress, subject })
+    .onConflictDoNothing();
   return { success: true };
 }

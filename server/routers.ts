@@ -6,6 +6,7 @@ import * as db from "./db";
 import type { DocumentItemRow, OptionalItemRow } from "../drizzle/schema";
 import { generateEstimateDraft, generateSiteStructure, classifyIntakeFormFields, suggestAdditionalIntakeQuestions, generateClientRequestChecklist, generateEmailDraft, generateSmsDraft } from "./ai";
 import { notifyUser } from "./push";
+import { checkNewClientEmails } from "./gmailWatcher";
 import { sendMail, sendHktbMail, buildEmailHtml, APP_BASE_URL, PUBLIC_FORM_BASE_URL } from "./mailer";
 import { ENV } from "./_core/env";
 import { parseCardStatementXlsx } from "./cardStatementParser";
@@ -1191,6 +1192,18 @@ export const appRouter = router({
     preview: protectedProcedure
       .input(z.object({ body: z.string() }))
       .query(({ input }) => ({ html: buildEmailHtml(input.body) })),
+  }),
+
+  gmail: router({
+    /** 등록된 고객 이메일로부터 온 새 메일이 있는지 확인(제목만, 본문은 안 봄) — 앱이 열려있는 동안 주기적으로 폴링해서 호출 */
+    checkNewMail: protectedProcedure.mutation(async ({ ctx }) => {
+      try {
+        return await checkNewClientEmails(ctx.user.id);
+      } catch (err) {
+        console.error("[gmail] checkNewClientEmails failed", err);
+        return { checked: 0, notified: 0 };
+      }
+    }),
   }),
 
   push: router({
