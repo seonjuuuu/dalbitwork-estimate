@@ -392,7 +392,11 @@ function NoteTemplateActions({
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-64">
           <DropdownMenuLabel className="text-xs font-semibold">템플릿 불러오기</DropdownMenuLabel>
-          {templates.length === 0 ? (
+          {templatesQuery.isLoading ? (
+            <div className="flex items-center justify-center py-3">
+              <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />
+            </div>
+          ) : templates.length === 0 ? (
             <div className="px-2 py-3 text-xs text-muted-foreground text-center">
               저장된 템플릿이 없습니다.
             </div>

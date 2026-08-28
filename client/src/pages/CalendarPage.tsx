@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { trpc } from '@/lib/trpc';
-import { ChevronLeft, ChevronRight, X, Plus, Trash2, Check, ChevronsUpDown, Building2, Pencil } from 'lucide-react';
+import { ChevronLeft, ChevronRight, X, Plus, Trash2, Check, ChevronsUpDown, Building2, Pencil, Loader2 } from 'lucide-react';
 import { useLocation } from 'wouter';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -530,7 +530,7 @@ export default function CalendarPage() {
   };
 
   const utils = trpc.useUtils();
-  const { data: rawEvents = [] } = trpc.calendar.getEvents.useQuery();
+  const { data: rawEvents = [], isLoading: isLoadingEvents } = trpc.calendar.getEvents.useQuery();
   const events = rawEvents as CalEvent[];
   const eventMap = buildEventMap(events);
   const deleteCustomEventMutation = trpc.calendar.deleteCustomEvent.useMutation();
@@ -572,7 +572,10 @@ export default function CalendarPage() {
       {/* Header */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 px-4 lg:px-6 py-4 border-b border-border bg-card flex-shrink-0">
         <div className="flex items-center gap-4">
-          <h1 className="text-lg font-semibold text-foreground">{year}년 {month + 1}월</h1>
+          <h1 className="text-lg font-semibold text-foreground flex items-center gap-2">
+            {year}년 {month + 1}월
+            {isLoadingEvents && <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />}
+          </h1>
           <div className="flex items-center gap-1">
             <button onClick={goToPrev} className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-accent text-muted-foreground hover:text-foreground transition-colors">
               <ChevronLeft className="w-4 h-4" />

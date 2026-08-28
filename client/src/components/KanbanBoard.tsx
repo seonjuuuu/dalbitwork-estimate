@@ -13,7 +13,7 @@ import {
 import { useLocation } from 'wouter';
 import { trpc } from '@/lib/trpc';
 import { toast } from 'sonner';
-import { GripVertical, ExternalLink, CheckCircle2 } from 'lucide-react';
+import { GripVertical, ExternalLink, CheckCircle2, Loader2 } from 'lucide-react';
 
 // ─── Column config ────────────────────────────────────────────────
 
@@ -191,7 +191,7 @@ function CompletedList({ clients }: { clients: KanbanClient[] }) {
 
 export default function KanbanBoard({ hide }: { hide?: WorkflowStatus[] } = {}) {
   const COLUMNS = hide ? ALL_COLUMNS.filter(c => !hide.includes(c.id)) : ALL_COLUMNS;
-  const { data: rawClients = [], refetch } = trpc.kanban.getClients.useQuery();
+  const { data: rawClients = [], isLoading, refetch } = trpc.kanban.getClients.useQuery();
   const updateStatusMutation = trpc.kanban.updateStatus.useMutation();
   const [draggingId, setDraggingId] = useState<number | null>(null);
   const [optimistic, setOptimistic] = useState<Record<number, WorkflowStatus>>({});
@@ -235,6 +235,14 @@ export default function KanbanBoard({ hide }: { hide?: WorkflowStatus[] } = {}) 
       toast.error('상태 변경에 실패했습니다.');
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   return (
     <div>

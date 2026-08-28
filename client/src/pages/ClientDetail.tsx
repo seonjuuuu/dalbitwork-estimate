@@ -336,7 +336,7 @@ export default function ClientDetail({ id }: { id: string }) {
   const { data: linkedTodos = [], refetch: refetchLinkedTodos } = trpc.todos.listByClient.useQuery({ clientId });
   const updateTodoMutation = trpc.todos.update.useMutation();
   const deleteTodoMutation = trpc.todos.delete.useMutation();
-  const { data: intakeForms = [], refetch: refetchIntakeForms } = trpc.forms.listByClient.useQuery({ clientId });
+  const { data: intakeForms = [], isLoading: isLoadingIntakeForms, refetch: refetchIntakeForms } = trpc.forms.listByClient.useQuery({ clientId });
   const createFormMutation = trpc.forms.create.useMutation();
   const deleteFormMutation = trpc.forms.deleteForm.useMutation();
   const classifyFieldsMutation = trpc.forms.classifyFields.useMutation();
@@ -352,10 +352,11 @@ export default function ClientDetail({ id }: { id: string }) {
   const utils = trpc.useUtils();
   const copyDocMutation = trpc.documents.copyDocument.useMutation();
   const duplicateAsEstimateMutation = trpc.documents.duplicateAsEstimate.useMutation();
-  const { data: depositedIds = [] } = trpc.documents.getDepositedDocumentIds.useQuery();
-  const { data: finalPaidIds = [] } = trpc.documents.getFinalPaidDocumentIds.useQuery();
+  const { data: depositedIds = [], isLoading: isLoadingDepositedIds } = trpc.documents.getDepositedDocumentIds.useQuery();
+  const { data: finalPaidIds = [], isLoading: isLoadingFinalPaidIds } = trpc.documents.getFinalPaidDocumentIds.useQuery();
   const depositedSet = new Set(depositedIds);
   const finalPaidSet = new Set(finalPaidIds);
+  const isLoadingDepositFinal = isLoadingDepositedIds || isLoadingFinalPaidIds;
   const [notesDialogDoc, setNotesDialogDoc] = useState<DocumentData | null>(null);
   const [copyingDocId, setCopyingDocId] = useState<string | null>(null);
   const [duplicatingDocId, setDuplicatingDocId] = useState<string | null>(null);
@@ -1225,7 +1226,11 @@ export default function ClientDetail({ id }: { id: string }) {
             </Button>
           </div>
         </div>
-        {intakeForms.length === 0 ? (
+        {isLoadingIntakeForms ? (
+          <div className="flex items-center justify-center py-6">
+            <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+          </div>
+        ) : intakeForms.length === 0 ? (
           <p className="text-sm text-muted-foreground">아직 만든 질문폼이 없어요. 고객에게 보낼 링크를 만들어보세요.</p>
         ) : (
           <div className="space-y-2">
@@ -1759,36 +1764,42 @@ export default function ClientDetail({ id }: { id: string }) {
                     복사
                   </Button>
 
-                  {depositedSet.has(est.id) ? (
-                    <span className="flex items-center gap-1 text-[10px] font-medium text-emerald-600 px-1.5 py-1 rounded bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 whitespace-nowrap">
-                      <CheckCircle2 className="w-3 h-3" /> 계약금
-                    </span>
+                  {isLoadingDepositFinal ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />
                   ) : (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleOpenDepositDialog(est.id, est.totalMax, client.name, 50)}
-                      className="h-6 px-2 text-[11px] gap-1 text-amber-600 hover:text-amber-700"
-                    >
-                      <CreditCard className="w-3 h-3" /> 계약금
-                    </Button>
-                  )}
+                    <>
+                      {depositedSet.has(est.id) ? (
+                        <span className="flex items-center gap-1 text-[10px] font-medium text-emerald-600 px-1.5 py-1 rounded bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 whitespace-nowrap">
+                          <CheckCircle2 className="w-3 h-3" /> 계약금
+                        </span>
+                      ) : (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleOpenDepositDialog(est.id, est.totalMax, client.name, 50)}
+                          className="h-6 px-2 text-[11px] gap-1 text-amber-600 hover:text-amber-700"
+                        >
+                          <CreditCard className="w-3 h-3" /> 계약금
+                        </Button>
+                      )}
 
-                  {finalPaidSet.has(est.id) ? (
-                    <span className="flex items-center gap-1 text-[10px] font-medium text-blue-600 px-1.5 py-1 rounded bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 whitespace-nowrap">
-                      <CheckCircle2 className="w-3 h-3" /> 잔금
-                    </span>
-                  ) : depositedSet.has(est.id) && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleOpenFinalDialog(est.id, est.totalMax, client.name, 50)}
-                      disabled={openingFinalId === est.id}
-                      className="h-6 px-2 text-[11px] gap-1 text-blue-600 hover:text-blue-700"
-                    >
-                      {openingFinalId === est.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <CreditCard className="w-3 h-3" />}
-                      잔금
-                    </Button>
+                      {finalPaidSet.has(est.id) ? (
+                        <span className="flex items-center gap-1 text-[10px] font-medium text-blue-600 px-1.5 py-1 rounded bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 whitespace-nowrap">
+                          <CheckCircle2 className="w-3 h-3" /> 잔금
+                        </span>
+                      ) : depositedSet.has(est.id) && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleOpenFinalDialog(est.id, est.totalMax, client.name, 50)}
+                          disabled={openingFinalId === est.id}
+                          className="h-6 px-2 text-[11px] gap-1 text-blue-600 hover:text-blue-700"
+                        >
+                          {openingFinalId === est.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <CreditCard className="w-3 h-3" />}
+                          잔금
+                        </Button>
+                      )}
+                    </>
                   )}
 
                   <Button

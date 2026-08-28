@@ -110,7 +110,7 @@ export default function Dashboard() {
   const [, navigate] = useLocation();
   const { data, isLoading, refetch } = trpc.dashboard.getData.useQuery();
   const [expandedStatus, setExpandedStatus] = useState<string | null>('계약');
-  const { data: allClients = [] } = trpc.clients.list.useQuery(undefined, { enabled: !!expandedStatus });
+  const { data: allClients = [], isLoading: isLoadingAllClients } = trpc.clients.list.useQuery(undefined, { enabled: !!expandedStatus });
   const [expandedCard, setExpandedCard] = useState<'contract' | 'consulting' | 'unpaid' | null>(null);
 
   // 자정이 지나면 "이번 달" 데이터를 자동으로 새로고침 (탭을 켜둔 채로 날짜가 바뀌어도 반영)
@@ -378,22 +378,30 @@ export default function Dashboard() {
 
               {expandedStatus && (
                 <div className="mt-3 pt-3 border-t border-border">
-                  <p className="text-[11px] font-semibold text-muted-foreground mb-1.5">
-                    {expandedStatus} 고객사 ({allClients.filter((c) => (c.status ?? '상담') === expandedStatus).length}곳)
-                  </p>
-                  <div className="max-h-40 overflow-y-auto space-y-0.5">
-                    {allClients
-                      .filter((c) => (c.status ?? '상담') === expandedStatus)
-                      .map((c) => (
-                        <button
-                          key={c.id}
-                          onClick={() => navigate(`/clients/${c.id}`)}
-                          className="w-full text-left text-sm text-foreground hover:text-primary hover:bg-accent rounded px-2 py-1 transition-colors truncate"
-                        >
-                          {c.name}
-                        </button>
-                      ))}
-                  </div>
+                  {isLoadingAllClients ? (
+                    <div className="flex items-center justify-center py-4">
+                      <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : (
+                    <>
+                      <p className="text-[11px] font-semibold text-muted-foreground mb-1.5">
+                        {expandedStatus} 고객사 ({allClients.filter((c) => (c.status ?? '상담') === expandedStatus).length}곳)
+                      </p>
+                      <div className="max-h-40 overflow-y-auto space-y-0.5">
+                        {allClients
+                          .filter((c) => (c.status ?? '상담') === expandedStatus)
+                          .map((c) => (
+                            <button
+                              key={c.id}
+                              onClick={() => navigate(`/clients/${c.id}`)}
+                              className="w-full text-left text-sm text-foreground hover:text-primary hover:bg-accent rounded px-2 py-1 transition-colors truncate"
+                            >
+                              {c.name}
+                            </button>
+                          ))}
+                      </div>
+                    </>
+                  )}
                 </div>
               )}
             </>

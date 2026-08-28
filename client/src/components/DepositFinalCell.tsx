@@ -16,10 +16,15 @@ interface DepositFinalCellProps {
 
 export default function DepositFinalCell({ kind, docId, totalMax, clientName, depositRatio }: DepositFinalCellProps) {
   const utils = trpc.useUtils();
-  const { data: depositedIds = [] } = trpc.documents.getDepositedDocumentIds.useQuery();
-  const { data: finalPaidIds = [] } = trpc.documents.getFinalPaidDocumentIds.useQuery();
+  const { data: depositedIds = [], isLoading: isLoadingDeposited } = trpc.documents.getDepositedDocumentIds.useQuery();
+  const { data: finalPaidIds = [], isLoading: isLoadingFinalPaid } = trpc.documents.getFinalPaidDocumentIds.useQuery();
   const isDeposited = new Set(depositedIds).has(docId);
   const isFinalPaid = new Set(finalPaidIds).has(docId);
+  const isLoadingStatus = kind === 'deposit' ? isLoadingDeposited : isLoadingDeposited || isLoadingFinalPaid;
+
+  if (isLoadingStatus) {
+    return <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />;
+  }
 
   const [depositDialogOpen, setDepositDialogOpen] = useState(false);
   const [finalDialogOpen, setFinalDialogOpen] = useState(false);

@@ -4,7 +4,7 @@ import { trpc } from '@/lib/trpc';
 import { useEstimate } from '@/contexts/EstimateContext';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from '@/components/ui/command';
-import { Building2, FileText, FileCheck } from 'lucide-react';
+import { Building2, FileText, FileCheck, Loader2 } from 'lucide-react';
 
 const MAX_RESULTS = 8;
 
@@ -34,7 +34,7 @@ export default function GlobalSearch() {
     if (!open) setQuery('');
   }, [open]);
 
-  const { data: clients = [] } = trpc.clients.list.useQuery(undefined, { enabled: open });
+  const { data: clients = [], isLoading: isLoadingClients } = trpc.clients.list.useQuery(undefined, { enabled: open });
 
   const q = query.trim().toLowerCase();
   const matchedClients = q
@@ -75,6 +75,10 @@ export default function GlobalSearch() {
           <CommandList>
             {q === '' ? (
               <CommandEmpty>고객사명이나 문서 제목을 입력하세요.</CommandEmpty>
+            ) : isLoadingClients ? (
+              <div className="flex items-center justify-center py-6">
+                <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+              </div>
             ) : !hasResults ? (
               <CommandEmpty>검색 결과가 없습니다.</CommandEmpty>
             ) : (

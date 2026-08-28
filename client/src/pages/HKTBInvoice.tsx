@@ -57,7 +57,7 @@ export default function HKTBInvoice() {
   const prevBlobUrlRef = useRef<string | null>(null);
   const renderTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const { data: savedList, refetch: refetchList } = trpc.hktbInvoices.list.useQuery({ type: 'translation' });
+  const { data: savedList, isLoading: isLoadingList, refetch: refetchList } = trpc.hktbInvoices.list.useQuery({ type: 'translation' });
   const createMutation = trpc.hktbInvoices.create.useMutation();
   const updateMutation = trpc.hktbInvoices.update.useMutation();
   const deleteMutation = trpc.hktbInvoices.delete.useMutation();
@@ -283,7 +283,11 @@ export default function HKTBInvoice() {
           </div>
           {sidebarOpen && listOpen && (
             <div className="max-h-[600px] overflow-y-auto">
-              {savedList && savedList.length > 0 ? (
+              {isLoadingList ? (
+                <div className="p-6 flex items-center justify-center">
+                  <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+                </div>
+              ) : savedList && savedList.length > 0 ? (
                 <div className="p-2 space-y-1">
                   {savedList.map(inv => {
                     const items = inv.items as { date?: string }[];

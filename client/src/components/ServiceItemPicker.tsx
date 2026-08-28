@@ -3,7 +3,7 @@ import { trpc } from '@/lib/trpc';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Search, Plus, Tag, Boxes } from 'lucide-react';
+import { Search, Plus, Tag, Boxes, Loader2 } from 'lucide-react';
 
 interface ServiceItemPickerProps {
   isOpen: boolean;
@@ -12,7 +12,7 @@ interface ServiceItemPickerProps {
 }
 
 export default function ServiceItemPicker({ isOpen, onClose, onSelect }: ServiceItemPickerProps) {
-  const { data: items = [] } = trpc.serviceItems.list.useQuery(undefined, { enabled: isOpen });
+  const { data: items = [], isLoading } = trpc.serviceItems.list.useQuery(undefined, { enabled: isOpen });
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
@@ -97,7 +97,11 @@ export default function ServiceItemPicker({ isOpen, onClose, onSelect }: Service
 
           {/* 목록 */}
           <div className="flex-1 overflow-y-auto space-y-4 pr-1">
-            {items.length === 0 ? (
+            {isLoading ? (
+              <div className="flex items-center justify-center py-10">
+                <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+              </div>
+            ) : items.length === 0 ? (
               <div className="text-center py-10">
                 <Boxes className="w-10 h-10 text-muted-foreground mx-auto mb-3 opacity-40" />
                 <p className="text-sm text-muted-foreground">등록된 서비스가 없습니다.</p>

@@ -26,10 +26,11 @@ export default function DocumentRowActions({ docId, docType, totalMax, clientNam
   const utils = trpc.useUtils();
   const copyMutation = trpc.documents.copyDocument.useMutation();
   const duplicateMutation = trpc.documents.duplicateAsEstimate.useMutation();
-  const { data: depositedIds = [] } = trpc.documents.getDepositedDocumentIds.useQuery(undefined, { enabled: docType === 'estimate' && showDepositFinal });
-  const { data: finalPaidIds = [] } = trpc.documents.getFinalPaidDocumentIds.useQuery(undefined, { enabled: docType === 'estimate' && showDepositFinal });
+  const { data: depositedIds = [], isLoading: isLoadingDeposited } = trpc.documents.getDepositedDocumentIds.useQuery(undefined, { enabled: docType === 'estimate' && showDepositFinal });
+  const { data: finalPaidIds = [], isLoading: isLoadingFinalPaid } = trpc.documents.getFinalPaidDocumentIds.useQuery(undefined, { enabled: docType === 'estimate' && showDepositFinal });
   const isDeposited = new Set(depositedIds).has(docId);
   const isFinalPaid = new Set(finalPaidIds).has(docId);
+  const isLoadingDepositFinal = isLoadingDeposited || isLoadingFinalPaid;
 
   const [copying, setCopying] = useState(false);
   const [duplicating, setDuplicating] = useState(false);
@@ -144,6 +145,9 @@ export default function DocumentRowActions({ docId, docType, totalMax, clientNam
           </Button>
         )}
         {docType === 'estimate' && showDepositFinal && (
+          isLoadingDepositFinal ? (
+            <Loader2 className="w-3 h-3 animate-spin text-muted-foreground" />
+          ) : (
           <>
             {isDeposited ? (
               <span
@@ -170,6 +174,7 @@ export default function DocumentRowActions({ docId, docType, totalMax, clientNam
               </Button>
             )}
           </>
+          )
         )}
         <Button variant="ghost" size="sm" onClick={handleDelete} disabled={deleting} title="삭제" className={`${btnCls} text-destructive hover:text-destructive`}>
           {deleting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />} 삭제

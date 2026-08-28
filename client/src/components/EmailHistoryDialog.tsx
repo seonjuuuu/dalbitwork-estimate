@@ -18,7 +18,7 @@ function formatSentAt(dateStr: string) {
 export default function EmailHistoryDialog({ isOpen, onClose, clientId }: EmailHistoryDialogProps) {
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [expandedId, setExpandedId] = useState<number | null>(null);
-  const { data: history = [], refetch } = trpc.clientEmails.listByClient.useQuery(
+  const { data: history = [], isLoading, refetch } = trpc.clientEmails.listByClient.useQuery(
     { clientId },
     { enabled: isOpen }
   );
@@ -49,7 +49,11 @@ export default function EmailHistoryDialog({ isOpen, onClose, clientId }: EmailH
           <DialogDescription>이 고객사에게 보낸 이메일·문자 발송 기록이에요. 테스트로 보낸 항목은 삭제할 수 있어요.</DialogDescription>
         </DialogHeader>
 
-        {history.length === 0 ? (
+        {isLoading ? (
+          <div className="flex items-center justify-center py-10">
+            <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+          </div>
+        ) : history.length === 0 ? (
           <p className="text-sm text-muted-foreground py-6 text-center">아직 발송 이력이 없어요.</p>
         ) : (
           <ul className="space-y-2">
