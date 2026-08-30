@@ -479,7 +479,7 @@ export interface SmsDraftContext {
 /** 담당자가 입력한 "문자 보내는 목적"을 바탕으로, 이메일보다 짧고 친근한 말투의 문자 초안을 AI로 생성 */
 export async function generateSmsDraft(input: SmsDraftContext): Promise<{ message: string }> {
   const fallback = {
-    message: `안녕하세요 ${input.clientName || "고객"}님! ${input.purpose}`,
+    message: `안녕하세요 대표님! ${input.purpose}`,
   };
 
   const response = await getClient().messages.parse({
@@ -497,7 +497,7 @@ export async function generateSmsDraft(input: SmsDraftContext): Promise<{ messag
 # 지침
 - 이메일과 달리 문자는 짧고 편하게 읽히는 게 중요해요. 3~5문장 이내로 간결하게 작성하세요.
 - 존댓말은 유지하되, 딱딱한 격식체(공문서 같은 말투) 대신 친근하고 편안한 말투로 쓰세요. 이모지는 과하지 않게 최대 1개 정도만 필요하면 사용하세요.
-- 인사말도 "안녕하세요! ~님" 정도로 가볍게, 용건을 자연스럽게 전달하고, 짧게 마무리하세요.
+- 인사말은 고객사명을 붙이지 말고 "안녕하세요 대표님!" 정도로 가볍게, 용건을 자연스럽게 전달하고, 짧게 마무리하세요.
 - 서명(이름·직함·연락처)은 쓰지 마세요.
 
 # 고객사 정보

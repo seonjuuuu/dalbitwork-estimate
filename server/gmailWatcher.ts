@@ -69,13 +69,14 @@ export async function checkNewClientEmails(userId: number) {
     const fromHeader = headers.find((h) => h.name === "From")?.value || "";
     const subject = headers.find((h) => h.name === "Subject")?.value || "(제목 없음)";
     const fromAddress = extractEmailAddress(fromHeader);
+    const isClientEmail = clientEmailSet.has(fromAddress);
+    const clientName = isClientEmail ? await db.findClientNameByEmail(userId, fromAddress) : null;
 
     // 등록된 고객 이메일이 아니면 알림 대상이 아니지만, 다음 폴링 때 또 확인하지 않도록
     // 처리한 메일로 기록은 남겨서 매번 다시 조회하지 않게 한다.
-    await db.markGmailMessageNotified(userId, msg.id, fromAddress, subject);
-    if (!clientEmailSet.has(fromAddress)) continue;
+    await db.markGmailMessageNotified(userId, msg.id, fromAddress, subject, isClientEmail, clientName);
+    if (!isClientEmail) continue;
 
-    const clientName = await db.findClientNameByEmail(userId, fromAddress);
     await notifyUser(userId, {
       title: "새 메일 도착",
       body: `${clientName || fromAddress}님이 메일을 보냈어요: ${subject}`,

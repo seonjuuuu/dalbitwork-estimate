@@ -443,6 +443,8 @@ export const gmailNotifiedMessages = pgTable("gmail_notified_messages", {
   messageId: varchar("messageId", { length: 100 }).notNull().unique(),
   fromAddress: varchar("fromAddress", { length: 320 }).default("").notNull(),
   subject: varchar("subject", { length: 500 }).default("").notNull(),
+  isClientEmail: boolean("isClientEmail").default(false).notNull(),
+  clientName: varchar("clientName", { length: 500 }),
   notifiedAt: timestamp("notifiedAt").defaultNow().notNull(),
 });
 

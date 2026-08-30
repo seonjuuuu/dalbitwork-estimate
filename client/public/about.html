@@ -14,21 +14,49 @@
         color: #1a1a1a;
       }
       h1 { font-size: 24px; margin-bottom: 4px; }
+      h2 { font-size: 16px; margin-top: 28px; }
       .sub { color: #888; font-size: 14px; margin-bottom: 28px; }
-      p { font-size: 14px; color: #333; }
+      p, li { font-size: 14px; color: #333; }
       a { color: #1155cc; }
+      .privacy-link {
+        display: inline-block;
+        margin-top: 8px;
+        padding: 10px 16px;
+        border: 1px solid #1155cc;
+        border-radius: 6px;
+        font-weight: 600;
+      }
     </style>
   </head>
   <body>
     <h1>달빛워크</h1>
     <p class="sub">웹 에이전시 달빛워크의 내부 업무 관리 시스템</p>
     <p>
-      견적서·제안서 작성, 고객사 관리, 프로젝트 진행 현황 관리를 위해 달빛워크 운영자가
-      직접 사용하는 개인 내부 도구입니다. 외부에 공개 제공되지 않습니다.
+      견적서·제안서 작성, 고객사 관리, 프로젝트 진행 현황 관리를 위해 달빛워크 운영자(문선주)가
+      직접 사용하는 개인 내부 도구입니다. 외부 사용자에게 제공되지 않는 1인 운영 도구입니다.
     </p>
+
+    <h2>주요 기능</h2>
+    <ul>
+      <li>견적서·제안서 작성 및 PDF 생성</li>
+      <li>고객사 정보·상담 이력 관리</li>
+      <li>프로젝트 진행 현황(칸반보드) 관리</li>
+      <li>일정·할 일 관리 및 알림</li>
+      <li>고객사로부터 온 이메일 수신 알림 (Gmail 연동)</li>
+    </ul>
+
+    <h2>Gmail 데이터 사용 안내</h2>
     <p>
-      개인정보처리방침은 <a href="/privacy.html">여기</a>에서 확인하실 수 있습니다.
+      이 앱은 Google의 <strong>gmail.metadata</strong> 권한만 사용합니다. 등록된 고객사 이메일
+      주소로부터 새 메일이 도착했을 때 운영자 본인에게 알림을 보내기 위한 용도로만 사용되며,
+      이메일 <strong>제목·발신자 등 메타데이터만 확인</strong>하고 본문 내용에는 접근하지 않습니다.
     </p>
+
+    <h2>개인정보처리방침</h2>
+    <p>
+      <a class="privacy-link" href="/privacy.html">개인정보처리방침 전체 보기 →</a>
+    </p>
+
     <p>문의: dalbit.work@gmail.com</p>
   </body>
 </html>

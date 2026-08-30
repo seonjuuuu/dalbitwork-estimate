@@ -1204,6 +1204,11 @@ export const appRouter = router({
         return { checked: 0, notified: 0 };
       }
     }),
+
+    /** 고객사에서 받은 메일 목록 (제목·발신자만, 본문 없음) */
+    listReceivedMail: protectedProcedure.query(async ({ ctx }) => {
+      return db.listReceivedClientEmails(ctx.user.id);
+    }),
   }),
 
   push: router({

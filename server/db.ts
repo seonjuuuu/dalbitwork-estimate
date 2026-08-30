@@ -1543,13 +1543,26 @@ export async function markGmailMessageNotified(
   userId: number,
   messageId: string,
   fromAddress: string,
-  subject: string
+  subject: string,
+  isClientEmail = false,
+  clientName: string | null = null
 ) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   await db
     .insert(gmailNotifiedMessages)
-    .values({ userId, messageId, fromAddress, subject })
+    .values({ userId, messageId, fromAddress, subject, isClientEmail, clientName })
     .onConflictDoNothing();
   return { success: true };
+}
+
+export async function listReceivedClientEmails(userId: number, limit = 30) {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select()
+    .from(gmailNotifiedMessages)
+    .where(and(eq(gmailNotifiedMessages.userId, userId), eq(gmailNotifiedMessages.isClientEmail, true)))
+    .orderBy(desc(gmailNotifiedMessages.notifiedAt))
+    .limit(limit);
 }

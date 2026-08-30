@@ -6,6 +6,7 @@ import KanbanBoard from '@/components/KanbanBoard';
 import TodoList from '@/components/TodoList';
 import PushNotificationCard from '@/components/PushNotificationCard';
 import TodayBriefCard from '@/components/TodayBriefCard';
+import ReceivedMailCard from '@/components/ReceivedMailCard';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend,
@@ -172,6 +173,9 @@ export default function Dashboard() {
 
       {/* 오늘의 할 일 및 일정 */}
       <TodayBriefCard />
+
+      {/* 고객사에서 받은 메일 */}
+      <ReceivedMailCard />
 
       {/* 이번 달 실적 알림 */}
       <MonthlyPerformanceBanner
