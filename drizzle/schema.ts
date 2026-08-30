@@ -38,6 +38,9 @@ export const users = pgTable("users", {
   hktbRetainerAutoEnabled: boolean("hktbRetainerAutoEnabled").default(true).notNull(),
   // 재계약 시점(자동 알림을 다시 켤 때)마다 그 계약연도의 고정 월 관리비를 입력받아 저장
   hktbRetainerMonthlyPrice: varchar("hktbRetainerMonthlyPrice", { length: 20 }).default("850,000").notNull(),
+  // Gmail 메일 수신 감지용 refresh token — 테스트 모드라 7일마다 만료되는데, 앱 안의
+  // "Gmail 재연결" 버튼으로 자체 갱신할 수 있도록 .env가 아닌 DB에 저장
+  gmailMetadataRefreshToken: text("gmailMetadataRefreshToken"),
 });
 
 export type User = typeof users.$inferSelect;

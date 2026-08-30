@@ -1,6 +1,7 @@
 import { useLocation } from 'wouter';
 import { trpc } from '@/lib/trpc';
-import { Mail, Loader2 } from 'lucide-react';
+import { Mail, Loader2, RefreshCw } from 'lucide-react';
+import { useAuth } from '@/_core/hooks/useAuth';
 
 function formatReceivedAt(dateStr: string) {
   const d = new Date(dateStr);
@@ -9,17 +10,33 @@ function formatReceivedAt(dateStr: string) {
 
 export default function ReceivedMailCard() {
   const [, navigate] = useLocation();
+  const { user } = useAuth();
   const { data: mail = [], isLoading } = trpc.gmail.listReceivedMail.useQuery();
+
+  const handleReconnect = () => {
+    if (!user) return;
+    window.open(`/api/gmail-oauth/start?state=${user.id}`, '_blank', 'noreferrer');
+  };
 
   return (
     <div className="bg-card border border-border rounded-xl p-5">
-      <h2 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
-        <Mail className="w-4 h-4 text-muted-foreground" />
-        받은 메일
-        {mail.length > 0 && (
-          <span className="text-xs text-muted-foreground font-normal">({mail.length}건)</span>
-        )}
-      </h2>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
+          <Mail className="w-4 h-4 text-muted-foreground" />
+          받은 메일
+          {mail.length > 0 && (
+            <span className="text-xs text-muted-foreground font-normal">({mail.length}건)</span>
+          )}
+        </h2>
+        <button
+          onClick={handleReconnect}
+          title="Gmail 연결이 끊겼을 때(7일마다) 다시 눌러주세요"
+          className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <RefreshCw className="w-3 h-3" />
+          Gmail 재연결
+        </button>
+      </div>
 
       {isLoading ? (
         <div className="flex items-center justify-center py-8">

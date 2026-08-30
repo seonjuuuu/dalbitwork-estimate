@@ -1267,6 +1267,24 @@ export async function setHktbRetainerAutoEnabled(userId: number, enabled: boolea
   return { success: true };
 }
 
+export async function getGmailMetadataRefreshToken(userId: number): Promise<string | null> {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db
+    .select({ token: users.gmailMetadataRefreshToken })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+  return rows[0]?.token ?? null;
+}
+
+export async function setGmailMetadataRefreshToken(userId: number, token: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(users).set({ gmailMetadataRefreshToken: token }).where(eq(users.id, userId));
+  return { success: true };
+}
+
 export async function listNotificationEventsSince(userId: number, sinceId: number) {
   const db = await getDb();
   if (!db) return [];

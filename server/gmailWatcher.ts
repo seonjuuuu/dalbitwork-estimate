@@ -2,14 +2,21 @@ import { ENV } from "./_core/env";
 import * as db from "./db";
 import { notifyUser } from "./push";
 
-let cachedAccessToken: { token: string; expiresAt: number } | null = null;
+const accessTokenCache = new Map<number, { token: string; expiresAt: number }>();
 
-async function getAccessToken(): Promise<string> {
-  if (cachedAccessToken && cachedAccessToken.expiresAt > Date.now() + 30_000) {
-    return cachedAccessToken.token;
+async function getAccessToken(userId: number): Promise<string> {
+  const cached = accessTokenCache.get(userId);
+  if (cached && cached.expiresAt > Date.now() + 30_000) {
+    return cached.token;
   }
-  if (!ENV.gmailMetadataClientId || !ENV.gmailMetadataClientSecret || !ENV.gmailMetadataRefreshToken) {
-    throw new Error("GMAIL_METADATA_* 환경변수가 설정되지 않았습니다.");
+  if (!ENV.gmailMetadataClientId || !ENV.gmailMetadataClientSecret) {
+    throw new Error("GMAIL_METADATA_CLIENT_ID / GMAIL_METADATA_CLIENT_SECRET가 설정되지 않았습니다.");
+  }
+  // DB에 저장된 토큰(앱 안의 "Gmail 재연결" 버튼으로 갱신됨)을 우선 쓰고,
+  // 없으면 최초 배포 시점에 .env로 넣어둔 값을 폴백으로 사용
+  const refreshToken = (await db.getGmailMetadataRefreshToken(userId)) || ENV.gmailMetadataRefreshToken;
+  if (!refreshToken) {
+    throw new Error("Gmail refresh token이 없습니다. 앱에서 'Gmail 재연결'을 먼저 진행해주세요.");
   }
   const res = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
@@ -17,7 +24,7 @@ async function getAccessToken(): Promise<string> {
     body: new URLSearchParams({
       client_id: ENV.gmailMetadataClientId,
       client_secret: ENV.gmailMetadataClientSecret,
-      refresh_token: ENV.gmailMetadataRefreshToken,
+      refresh_token: refreshToken,
       grant_type: "refresh_token",
     }),
   });
@@ -25,8 +32,8 @@ async function getAccessToken(): Promise<string> {
     throw new Error(`Gmail 토큰 갱신 실패: ${await res.text()}`);
   }
   const data = await res.json();
-  cachedAccessToken = { token: data.access_token, expiresAt: Date.now() + data.expires_in * 1000 };
-  return cachedAccessToken.token;
+  accessTokenCache.set(userId, { token: data.access_token, expiresAt: Date.now() + data.expires_in * 1000 });
+  return data.access_token;
 }
 
 function extractEmailAddress(fromHeader: string): string {
@@ -42,7 +49,7 @@ export async function checkNewClientEmails(userId: number) {
   if (clientEmails.length === 0) return { checked: 0, notified: 0 };
   const clientEmailSet = new Set(clientEmails);
 
-  const accessToken = await getAccessToken();
+  const accessToken = await getAccessToken(userId);
 
   const listRes = await fetch(
     `https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=20&labelIds=INBOX`,
@@ -86,4 +93,42 @@ export async function checkNewClientEmails(userId: number) {
   }
 
   return { checked: messages.length, notified };
+}
+
+/** Gmail 재연결(OAuth) 시작 URL */
+export function buildGmailReconnectUrl(redirectUri: string, state: string): string {
+  const params = new URLSearchParams({
+    client_id: ENV.gmailMetadataClientId,
+    redirect_uri: redirectUri,
+    response_type: "code",
+    scope: "https://www.googleapis.com/auth/gmail.metadata",
+    access_type: "offline",
+    prompt: "consent",
+    state,
+  });
+  return `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
+}
+
+/** 재연결 콜백에서 받은 code를 refresh token으로 교환해서 DB에 저장 */
+export async function completeGmailReconnect(code: string, redirectUri: string, userId: number) {
+  const res = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      client_id: ENV.gmailMetadataClientId,
+      client_secret: ENV.gmailMetadataClientSecret,
+      code,
+      grant_type: "authorization_code",
+      redirect_uri: redirectUri,
+    }),
+  });
+  if (!res.ok) {
+    throw new Error(`토큰 교환 실패: ${await res.text()}`);
+  }
+  const data = await res.json();
+  if (!data.refresh_token) {
+    throw new Error("refresh_token을 받지 못했습니다. 구글 계정 권한에서 기존 연결을 해제하고 다시 시도해주세요.");
+  }
+  await db.setGmailMetadataRefreshToken(userId, data.refresh_token);
+  accessTokenCache.delete(userId);
 }
