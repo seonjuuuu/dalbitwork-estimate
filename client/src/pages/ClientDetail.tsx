@@ -1281,7 +1281,9 @@ export default function ClientDetail({ id }: { id: string }) {
                 </div>
                 {f.status === 'submitted' ? (
                   <div className="flex items-center justify-between gap-2">
-                    <p className="text-xs text-muted-foreground">질문 {f.questions.length}개 · 답변 제출됨</p>
+                    <p className="text-xs text-muted-foreground">
+                      질문 {f.questions.length}개 · {f.submittedAt ? `${new Date(f.submittedAt).toLocaleString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })} 제출됨` : '답변 제출됨'}
+                    </p>
                     <Button size="sm" variant="outline" onClick={() => setViewingAnswersForm(f)} className="h-6 text-xs px-2">
                       답변 보기
                     </Button>
@@ -1299,6 +1301,11 @@ export default function ClientDetail({ id }: { id: string }) {
         <DialogContent className="sm:max-w-[560px] max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>질문폼 답변</DialogTitle>
+            {viewingAnswersForm?.submittedAt && (
+              <p className="text-xs text-muted-foreground">
+                {new Date(viewingAnswersForm.submittedAt).toLocaleString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })} 제출
+              </p>
+            )}
           </DialogHeader>
           <div className="space-y-4">
             {viewingAnswersForm?.questions.map((q, i) => (
