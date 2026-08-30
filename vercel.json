@@ -10,7 +10,6 @@
   "rewrites": [
     { "source": "/api/trpc/:path*", "destination": "/api/index" },
     { "source": "/api/cron/:path*", "destination": "/api/index" },
-    { "source": "/api/gmail-oauth/:path*", "destination": "/api/index" },
     { "source": "/f/:token", "destination": "/api/index" },
     { "source": "/f/:token/", "destination": "/api/index" },
     { "source": "/(.*)", "destination": "/index.html" }

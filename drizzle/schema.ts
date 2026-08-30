@@ -443,7 +443,7 @@ export type InsertClientEmail = typeof clientEmails.$inferInsert;
 export const gmailNotifiedMessages = pgTable("gmail_notified_messages", {
   id: serial("id").primaryKey(),
   userId: integer("userId").notNull(),
-  messageId: varchar("messageId", { length: 100 }).notNull().unique(),
+  messageId: varchar("messageId", { length: 500 }).notNull().unique(),
   fromAddress: varchar("fromAddress", { length: 320 }).default("").notNull(),
   subject: varchar("subject", { length: 500 }).default("").notNull(),
   isClientEmail: boolean("isClientEmail").default(false).notNull(),

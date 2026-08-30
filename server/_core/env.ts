@@ -14,7 +14,4 @@ export const ENV = {
   gmailAppPassword: process.env.GMAIL_APP_PASSWORD ?? "",
   hktbGmailUser: process.env.HKTB_GMAIL_USER ?? "",
   hktbGmailAppPassword: process.env.HKTB_GMAIL_APP_PASSWORD ?? "",
-  gmailMetadataClientId: process.env.GMAIL_METADATA_CLIENT_ID ?? "",
-  gmailMetadataClientSecret: process.env.GMAIL_METADATA_CLIENT_SECRET ?? "",
-  gmailMetadataRefreshToken: process.env.GMAIL_METADATA_REFRESH_TOKEN ?? "",
 };
