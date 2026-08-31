@@ -226,6 +226,7 @@ function DayDetail({
   onAddEvent,
   onEditCustomEvent,
   onDeleteCustomEvent,
+  deletingEventId,
 }: {
   date: string;
   events: CalEvent[];
@@ -233,6 +234,7 @@ function DayDetail({
   onAddEvent?: () => void;
   onEditCustomEvent?: (event: CalEvent) => void;
   onDeleteCustomEvent?: (id: number) => void;
+  deletingEventId?: number | null;
 }) {
   const [, navigate] = useLocation();
   const d = new Date(date + 'T00:00:00');
@@ -293,15 +295,22 @@ function DayDetail({
                     <Pencil className="w-3.5 h-3.5" />
                   </button>
                 )}
-                {onDeleteCustomEvent && (
-                  <button
-                    onClick={() => onDeleteCustomEvent(Number(e.id.replace('custom-', '')))}
-                    className="w-6 h-6 flex items-center justify-center rounded-md text-muted-foreground hover:text-destructive hover:bg-background/60"
-                    title="일정 삭제"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                )}
+                {onDeleteCustomEvent && (() => {
+                  const eventId = Number(e.id.replace('custom-', ''));
+                  const isDeleting = deletingEventId === eventId;
+                  return (
+                    <button
+                      onClick={() => onDeleteCustomEvent(eventId)}
+                      disabled={isDeleting}
+                      className="w-6 h-6 flex items-center justify-center rounded-md text-muted-foreground hover:text-destructive hover:bg-background/60"
+                      title="일정 삭제"
+                    >
+                      {isDeleting
+                        ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        : <Trash2 className="w-3.5 h-3.5" />}
+                    </button>
+                  );
+                })()}
               </div>
             )}
           </div>
@@ -534,14 +543,18 @@ export default function CalendarPage() {
   const events = rawEvents as CalEvent[];
   const eventMap = buildEventMap(events);
   const deleteCustomEventMutation = trpc.calendar.deleteCustomEvent.useMutation();
+  const [deletingCustomEventId, setDeletingCustomEventId] = useState<number | null>(null);
 
   const handleDeleteCustomEvent = async (id: number) => {
+    setDeletingCustomEventId(id);
     try {
       await deleteCustomEventMutation.mutateAsync({ id });
       await utils.calendar.getEvents.invalidate();
       toast.success('일정을 삭제했습니다.');
     } catch {
       toast.error('일정 삭제에 실패했습니다.');
+    } finally {
+      setDeletingCustomEventId(null);
     }
   };
 
@@ -658,6 +671,7 @@ export default function CalendarPage() {
               onAddEvent={() => openAddEvent()}
               onEditCustomEvent={openEditEvent}
               onDeleteCustomEvent={handleDeleteCustomEvent}
+              deletingEventId={deletingCustomEventId}
             />
           </div>
         )}
@@ -683,6 +697,7 @@ export default function CalendarPage() {
                     onAddEvent={() => openAddEvent()}
                     onEditCustomEvent={openEditEvent}
                     onDeleteCustomEvent={handleDeleteCustomEvent}
+                    deletingEventId={deletingCustomEventId}
                   />
                 ) : (
                   <div className="p-4">

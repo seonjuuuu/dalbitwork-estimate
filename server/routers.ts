@@ -1205,10 +1205,31 @@ export const appRouter = router({
       }
     }),
 
-    /** 고객사에서 받은 메일 목록 (제목·발신자만, 본문 없음) */
+    /** 고객사에서 받은 메일 목록 (제목·발신자만, 본문 없음) - 대시보드용, 확인 안 한 것만 */
     listReceivedMail: protectedProcedure.query(async ({ ctx }) => {
       return db.listReceivedClientEmails(ctx.user.id);
     }),
+
+    /** 받은 메일 확인 체크 - 대시보드 목록에서 사라짐(삭제되진 않음) */
+    confirmReceivedMail: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        return db.confirmReceivedMail(ctx.user.id, input.id);
+      }),
+
+    /** 받은 메일 삭제 (전체 이력 페이지용) */
+    deleteReceivedMail: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        return db.deleteReceivedMail(ctx.user.id, input.id);
+      }),
+
+    /** 받은 메일 전체 이력 (확인 여부 무관, 페이징) */
+    listAllReceivedMail: protectedProcedure
+      .input(z.object({ page: z.number().min(1).default(1), pageSize: z.number().min(1).max(100).default(20) }))
+      .query(async ({ ctx, input }) => {
+        return db.listAllReceivedClientEmails(ctx.user.id, input.page, input.pageSize);
+      }),
   }),
 
   push: router({

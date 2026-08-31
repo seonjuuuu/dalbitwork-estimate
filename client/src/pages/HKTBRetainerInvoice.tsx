@@ -92,6 +92,8 @@ export default function HKTBRetainerInvoice() {
   const [listOpen, setListOpen] = useState(true);
   const [revenueMonth, setRevenueMonth] = useState<string>('');
   const [showRevenueInput, setShowRevenueInput] = useState(false);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [isRegisteringRevenue, setIsRegisteringRevenue] = useState(false);
   const [emailDialogOpen, setEmailDialogOpen] = useState(false);
   const [emailTo, setEmailTo] = useState(() => localStorage.getItem('hktb-retainer-email-to') || '');
   const [emailSubject, setEmailSubject] = useState('');
@@ -182,21 +184,31 @@ export default function HKTBRetainerInvoice() {
 
   const handleDelete = async (id: number) => {
     if (!confirm('삭제하시겠습니까?')) return;
-    await deleteMutation.mutateAsync({ id });
-    if (savedId === id) { setData(makeDefaultData()); setSavedId(null); }
-    refetchList();
-    toast.success('삭제되었습니다.');
+    setDeletingId(id);
+    try {
+      await deleteMutation.mutateAsync({ id });
+      if (savedId === id) { setData(makeDefaultData()); setSavedId(null); }
+      refetchList();
+      toast.success('삭제되었습니다.');
+    } finally {
+      setDeletingId(null);
+    }
   };
 
   const handleNew = () => { setData(makeDefaultData()); setSavedId(null); setSelectedPair(null); setRevenueMonth(''); setShowRevenueInput(false); };
 
   const handleRegisterRevenue = async (month: string) => {
     if (!savedId) { toast.error('먼저 저장해주세요'); return; }
-    await updateMutation.mutateAsync({ id: savedId, revenueMonth: month || null });
-    setRevenueMonth(month);
-    setShowRevenueInput(false);
-    refetchList();
-    toast.success(month ? `${month} 매출로 등록됐습니다` : '매출 등록이 해제됐습니다');
+    setIsRegisteringRevenue(true);
+    try {
+      await updateMutation.mutateAsync({ id: savedId, revenueMonth: month || null });
+      setRevenueMonth(month);
+      setShowRevenueInput(false);
+      refetchList();
+      toast.success(month ? `${month} 매출로 등록됐습니다` : '매출 등록이 해제됐습니다');
+    } finally {
+      setIsRegisteringRevenue(false);
+    }
   };
 
   // 기간 선택 시 다음 달을 매출 등록 기본값으로 제안
@@ -400,11 +412,18 @@ export default function HKTBRetainerInvoice() {
                       })()}
                       id="revenue-month-input-retainer"
                     />
-                    <Button size="sm" className="h-8 text-xs gap-1" onClick={() => {
-                      const val = (document.getElementById('revenue-month-input-retainer') as HTMLInputElement)?.value;
-                      if (val) handleRegisterRevenue(val);
-                    }}>확인</Button>
-                    <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={() => setShowRevenueInput(false)}>취소</Button>
+                    <Button
+                      size="sm"
+                      className="h-8 text-xs gap-1"
+                      disabled={isRegisteringRevenue}
+                      onClick={() => {
+                        const val = (document.getElementById('revenue-month-input-retainer') as HTMLInputElement)?.value;
+                        if (val) handleRegisterRevenue(val);
+                      }}
+                    >
+                      {isRegisteringRevenue && <Loader2 className="w-3 h-3 animate-spin" />}확인
+                    </Button>
+                    <Button variant="ghost" size="sm" className="h-8 text-xs" disabled={isRegisteringRevenue} onClick={() => setShowRevenueInput(false)}>취소</Button>
                   </>
                 ) : (
                   <Button variant="outline" size="sm" onClick={() => setShowRevenueInput(true)} className="gap-1.5 border-emerald-300 text-emerald-700 hover:bg-emerald-50">
@@ -482,8 +501,8 @@ export default function HKTBRetainerInvoice() {
                           <div className="text-[10px] text-muted-foreground">{inv.totalAmount.toLocaleString('en-US')}</div>
                         </button>
                         <div className="flex justify-end px-2 pb-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button onClick={() => handleDelete(inv.id)} className="text-muted-foreground hover:text-destructive">
-                            <Trash2 className="w-3 h-3" />
+                          <button onClick={() => handleDelete(inv.id)} disabled={deletingId === inv.id} className="text-muted-foreground hover:text-destructive">
+                            {deletingId === inv.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
                           </button>
                         </div>
                       </div>

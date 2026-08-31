@@ -372,6 +372,7 @@ export default function ClientDetail({ id }: { id: string }) {
   const [form, setForm] = useState<ConsultationForm>(emptyForm);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [deletingConsultationId, setDeletingConsultationId] = useState<number | null>(null);
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [editingMemoId, setEditingMemoId] = useState<number | null>(null);
   const [memoDraft, setMemoDraft] = useState('');
@@ -426,6 +427,9 @@ export default function ClientDetail({ id }: { id: string }) {
 
   const [editingWorkSchedule, setEditingWorkSchedule] = useState(false);
   const [isSavingWorkSchedule, setIsSavingWorkSchedule] = useState(false);
+  const [deletingLinkedEventId, setDeletingLinkedEventId] = useState<number | null>(null);
+  const [togglingLinkedTodoId, setTogglingLinkedTodoId] = useState<number | null>(null);
+  const [deletingLinkedTodoId, setDeletingLinkedTodoId] = useState<number | null>(null);
   const [workScheduleForm, setWorkScheduleForm] = useState({
     workStartDate: '', pcDraftDate: '', mobileDraftDate: '', finalDeliveryDate: '',
   });
@@ -465,31 +469,40 @@ export default function ClientDetail({ id }: { id: string }) {
 
   const handleDeleteLinkedEvent = async (eventId: number) => {
     if (!window.confirm('이 일정을 삭제하시겠습니까?')) return;
+    setDeletingLinkedEventId(eventId);
     try {
       await deleteLinkedEventMutation.mutateAsync({ id: eventId });
       await refetchLinkedEvents();
       toast.success('일정을 삭제했습니다.');
     } catch {
       toast.error('일정 삭제에 실패했습니다.');
+    } finally {
+      setDeletingLinkedEventId(null);
     }
   };
 
   const handleToggleLinkedTodo = async (id: number, completed: boolean) => {
+    setTogglingLinkedTodoId(id);
     try {
       await updateTodoMutation.mutateAsync({ id, completed: !completed });
       await refetchLinkedTodos();
     } catch {
       toast.error('변경에 실패했습니다.');
+    } finally {
+      setTogglingLinkedTodoId(null);
     }
   };
 
   const handleDeleteLinkedTodo = async (id: number) => {
+    setDeletingLinkedTodoId(id);
     try {
       await deleteTodoMutation.mutateAsync({ id });
       await refetchLinkedTodos();
       toast.success('할 일을 삭제했습니다.');
     } catch {
       toast.error('삭제에 실패했습니다.');
+    } finally {
+      setDeletingLinkedTodoId(null);
     }
   };
 
@@ -839,12 +852,15 @@ export default function ClientDetail({ id }: { id: string }) {
 
   const handleDelete = async (consultId: number) => {
     if (!window.confirm('이 상담 이력을 삭제하시겠습니까?')) return;
+    setDeletingConsultationId(consultId);
     try {
       await deleteMutation.mutateAsync({ id: consultId });
       await refetch();
       toast.success('삭제되었습니다.');
     } catch {
       toast.error('삭제에 실패했습니다.');
+    } finally {
+      setDeletingConsultationId(null);
     }
   };
 
@@ -1140,10 +1156,13 @@ export default function ClientDetail({ id }: { id: string }) {
                 </div>
                 <button
                   onClick={() => handleDeleteLinkedEvent(ev.id)}
+                  disabled={deletingLinkedEventId === ev.id}
                   className="w-6 h-6 flex items-center justify-center rounded-md text-muted-foreground hover:text-destructive hover:bg-accent transition-colors flex-shrink-0"
                   title="일정 삭제"
                 >
-                  <Trash2 className="w-3.5 h-3.5" />
+                  {deletingLinkedEventId === ev.id
+                    ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    : <Trash2 className="w-3.5 h-3.5" />}
                 </button>
               </div>
             ))}
@@ -1164,11 +1183,14 @@ export default function ClientDetail({ id }: { id: string }) {
               <div key={t.id} className="flex items-center gap-2 border border-border rounded-lg p-3">
                 <button
                   onClick={() => handleToggleLinkedTodo(t.id, t.completed)}
+                  disabled={togglingLinkedTodoId === t.id}
                   className={`w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 transition-colors ${
                     t.completed ? 'border-primary bg-primary' : 'border-input hover:border-primary'
                   }`}
                 >
-                  {t.completed && <Check className="w-3 h-3 text-primary-foreground" />}
+                  {togglingLinkedTodoId === t.id
+                    ? <Loader2 className="w-3 h-3 animate-spin text-muted-foreground" />
+                    : t.completed && <Check className="w-3 h-3 text-primary-foreground" />}
                 </button>
                 <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full flex-shrink-0 ${TODO_PRIORITY_LABEL[t.priority].cls}`}>
                   {TODO_PRIORITY_LABEL[t.priority].label}
@@ -1182,10 +1204,13 @@ export default function ClientDetail({ id }: { id: string }) {
                 </span>
                 <button
                   onClick={() => handleDeleteLinkedTodo(t.id)}
+                  disabled={deletingLinkedTodoId === t.id}
                   className="w-6 h-6 flex items-center justify-center rounded-md text-muted-foreground hover:text-destructive hover:bg-accent transition-colors flex-shrink-0"
                   title="할 일 삭제"
                 >
-                  <Trash2 className="w-3.5 h-3.5" />
+                  {deletingLinkedTodoId === t.id
+                    ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    : <Trash2 className="w-3.5 h-3.5" />}
                 </button>
               </div>
             ))}
@@ -2111,8 +2136,16 @@ export default function ClientDetail({ id }: { id: string }) {
                         <Button variant="ghost" size="sm" onClick={() => handleEdit(c)} className="h-7 text-xs gap-1">
                           <Edit className="w-3 h-3" /> 수정
                         </Button>
-                        <Button variant="ghost" size="sm" onClick={() => handleDelete(c.id)} className="h-7 text-xs gap-1 text-destructive hover:text-destructive">
-                          <Trash2 className="w-3 h-3" /> 삭제
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDelete(c.id)}
+                          disabled={deletingConsultationId === c.id}
+                          className="h-7 text-xs gap-1 text-destructive hover:text-destructive"
+                        >
+                          {deletingConsultationId === c.id
+                            ? <Loader2 className="w-3 h-3 animate-spin" />
+                            : <Trash2 className="w-3 h-3" />} 삭제
                         </Button>
                       </div>
                     </div>

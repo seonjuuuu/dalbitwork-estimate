@@ -5,6 +5,14 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+/** IMAP에서 저장해둔 Message-ID로 Gmail 웹에서 해당 메일을 바로 여는 링크를 만든다.
+ *  본문은 우리 서버가 아예 가져오지 않으므로, 실제로 열어서 보는 건 항상 Gmail 쪽에서 처리. */
+export function buildGmailMessageUrl(messageId: string, gmailUser: string): string | null {
+  if (!messageId || messageId.startsWith('uid-')) return null; // Message-ID 헤더가 없던 메일(폴백 키)은 검색 불가
+  const stripped = messageId.replace(/^</, '').replace(/>$/, '');
+  return `https://mail.google.com/mail/?authuser=${encodeURIComponent(gmailUser)}#search/rfc822msgid:${encodeURIComponent(stripped)}`;
+}
+
 export function formatPhone(value: string): string {
   const digits = value.replace(/\D/g, '');
   if (digits.startsWith('02')) {

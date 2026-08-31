@@ -21,6 +21,7 @@ import Expenses from "./pages/Expenses";
 import CalendarPage from "./pages/CalendarPage";
 import KanbanPage from "./pages/KanbanPage";
 import MyPdfFiles from "./pages/MyPdfFiles";
+import ReceivedMailHistory from "./pages/ReceivedMailHistory";
 import Sidebar from "./components/Sidebar";
 import GlobalSearch from "./components/GlobalSearch";
 import GmailWatcher from "./components/GmailWatcher";
@@ -76,6 +77,7 @@ function Router() {
       </Route>
       <Route path="/kanban" component={KanbanPage} />
       <Route path="/my-pdfs" component={MyPdfFiles} />
+      <Route path="/received-mail" component={ReceivedMailHistory} />
       <Route path="/calendar" component={CalendarPage} />
       <Route path="/sales" component={MonthlySales} />
       <Route path="/hktb-invoice" component={HKTBInvoice} />

@@ -449,6 +449,8 @@ export const gmailNotifiedMessages = pgTable("gmail_notified_messages", {
   isClientEmail: boolean("isClientEmail").default(false).notNull(),
   clientName: varchar("clientName", { length: 500 }),
   notifiedAt: timestamp("notifiedAt").defaultNow().notNull(),
+  confirmedAt: timestamp("confirmedAt"),
+  deletedAt: timestamp("deletedAt"),
 });
 
 export type GmailNotifiedMessage = typeof gmailNotifiedMessages.$inferSelect;

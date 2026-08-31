@@ -49,11 +49,13 @@ function CashReceiptToggle({
   date,
   onToggle,
   onDateChange,
+  pending,
 }: {
   issued: boolean;
   date: string | null;
   onToggle: (issued: boolean, date: string | null) => void;
   onDateChange: (date: string) => void;
+  pending?: boolean;
 }) {
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -117,11 +119,15 @@ function CashReceiptToggle({
 
   return (
     <div className="flex items-center justify-end gap-2">
-      <Switch
-        checked={issued}
-        onCheckedChange={handleToggle}
-        className="data-[state=checked]:bg-emerald-500"
-      />
+      {pending ? (
+        <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+      ) : (
+        <Switch
+          checked={issued}
+          onCheckedChange={handleToggle}
+          className="data-[state=checked]:bg-emerald-500"
+        />
+      )}
       {/* 고정 너비 + 우측 정렬: th와 날짜 끝 위치 일치 */}
       <div className="w-28 flex items-center justify-end">
         {issued ? (
@@ -428,6 +434,7 @@ export default function MonthlySales() {
                         date={inv.cashReceiptDate ?? null}
                         onToggle={(issued, date) => updateHktbCashReceipt.mutate({ id: inv.id, issued, date })}
                         onDateChange={(date) => updateHktbCashReceipt.mutate({ id: inv.id, issued: true, date })}
+                        pending={updateHktbCashReceipt.isPending && updateHktbCashReceipt.variables?.id === inv.id}
                       />
                     </div>
                   </td>
@@ -487,6 +494,7 @@ export default function MonthlySales() {
                         date={f.cashReceiptDate ?? null}
                         onToggle={(issued, date) => updateFinalCashReceipt.mutate({ id: f.id, issued, date })}
                         onDateChange={(date) => updateFinalCashReceipt.mutate({ id: f.id, issued: true, date })}
+                        pending={updateFinalCashReceipt.isPending && updateFinalCashReceipt.variables?.id === f.id}
                       />
                     </div>
                   </td>
@@ -573,6 +581,7 @@ export default function MonthlySales() {
                       date={p.cashReceiptDate ?? null}
                       onToggle={(issued, date) => updatePaymentCashReceipt.mutate({ id: p.id, issued, date })}
                       onDateChange={(date) => updatePaymentCashReceipt.mutate({ id: p.id, issued: true, date })}
+                      pending={updatePaymentCashReceipt.isPending && updatePaymentCashReceipt.variables?.id === p.id}
                     />
                   </div>
                 </td>

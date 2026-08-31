@@ -1556,13 +1556,62 @@ export async function markGmailMessageNotified(
   return { success: true };
 }
 
-export async function listReceivedClientEmails(userId: number, limit = 30) {
+/** 대시보드 카드용 - 아직 확인 체크 안 한 것만, 최근 순으로 일부만 */
+export async function listReceivedClientEmails(userId: number, limit = 10) {
   const db = await getDb();
   if (!db) return [];
   return db
     .select()
     .from(gmailNotifiedMessages)
-    .where(and(eq(gmailNotifiedMessages.userId, userId), eq(gmailNotifiedMessages.isClientEmail, true)))
+    .where(and(
+      eq(gmailNotifiedMessages.userId, userId),
+      eq(gmailNotifiedMessages.isClientEmail, true),
+      isNull(gmailNotifiedMessages.confirmedAt),
+      isNull(gmailNotifiedMessages.deletedAt)
+    ))
     .orderBy(desc(gmailNotifiedMessages.notifiedAt))
     .limit(limit);
+}
+
+export async function confirmReceivedMail(userId: number, id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db
+    .update(gmailNotifiedMessages)
+    .set({ confirmedAt: new Date() })
+    .where(and(eq(gmailNotifiedMessages.id, id), eq(gmailNotifiedMessages.userId, userId)));
+  return { success: true };
+}
+
+/** 소프트 삭제 - messageId 기록 자체는 남겨서, 같은 메일이 다음 폴링 때 "새 메일"로 재알림되는 걸 막는다 */
+export async function deleteReceivedMail(userId: number, id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db
+    .update(gmailNotifiedMessages)
+    .set({ deletedAt: new Date() })
+    .where(and(eq(gmailNotifiedMessages.id, id), eq(gmailNotifiedMessages.userId, userId)));
+  return { success: true };
+}
+
+/** 전체 이력 페이지용 - 확인 여부와 상관없이 전부(삭제한 건 제외), 페이징 */
+export async function listAllReceivedClientEmails(userId: number, page: number, pageSize: number) {
+  const db = await getDb();
+  if (!db) return { items: [], total: 0 };
+  const where = and(
+    eq(gmailNotifiedMessages.userId, userId),
+    eq(gmailNotifiedMessages.isClientEmail, true),
+    isNull(gmailNotifiedMessages.deletedAt)
+  );
+  const [items, countRows] = await Promise.all([
+    db
+      .select()
+      .from(gmailNotifiedMessages)
+      .where(where)
+      .orderBy(desc(gmailNotifiedMessages.notifiedAt))
+      .limit(pageSize)
+      .offset((page - 1) * pageSize),
+    db.select({ count: sql<number>`count(*)::int` }).from(gmailNotifiedMessages).where(where),
+  ]);
+  return { items, total: countRows[0]?.count ?? 0 };
 }

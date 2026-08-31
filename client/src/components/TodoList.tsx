@@ -228,8 +228,10 @@ export default function TodoList() {
                 <button
                   onClick={() => handleToggle(t.id, t.completed)}
                   disabled={busyId === t.id}
-                  className="w-4 h-4 rounded border border-input flex-shrink-0 hover:border-primary transition-colors"
-                />
+                  className="w-4 h-4 rounded border border-input flex-shrink-0 hover:border-primary transition-colors flex items-center justify-center"
+                >
+                  {busyId === t.id && <Loader2 className="w-3 h-3 animate-spin text-muted-foreground" />}
+                </button>
                 <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full flex-shrink-0 ${PRIORITY_LABEL[t.priority].cls}`}>
                   {PRIORITY_LABEL[t.priority].label}
                 </span>
@@ -308,7 +310,9 @@ export default function TodoList() {
                         disabled={busyId === t.id}
                         className="w-4 h-4 rounded border border-primary bg-primary flex items-center justify-center flex-shrink-0"
                       >
-                        <Check className="w-3 h-3 text-primary-foreground" />
+                        {busyId === t.id
+                          ? <Loader2 className="w-3 h-3 animate-spin text-primary-foreground" />
+                          : <Check className="w-3 h-3 text-primary-foreground" />}
                       </button>
                       <span className="text-sm text-muted-foreground line-through flex-1 min-w-[100px] truncate">{t.content}</span>
                       <button
