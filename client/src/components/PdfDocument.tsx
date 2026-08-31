@@ -900,15 +900,15 @@ export default function PdfDocument({ doc }: PdfDocumentProps) {
           </View>
         </View>
 
-        {/* Optional Items (선택사항) - 견적 합계에 포함되지 않음 */}
-        {doc.optionalItems && doc.optionalItems.length > 0 && (
+        {/* Optional Items (선택사항) - 견적 합계에 포함되지 않음, "노출" 체크 해제한 항목은 PDF에서 제외 */}
+        {doc.optionalItems && doc.optionalItems.filter((item) => item.visible !== false).length > 0 && (
           <View style={s.optionalSection}>
             <View style={s.optionalTitleRow}>
               <Text style={s.optionalBadge}>선택</Text>
               <Text style={s.optionalTitle}>선택사항</Text>
               <Text style={s.optionalHint}>· 위 견적 합계에 포함되지 않습니다</Text>
             </View>
-            {doc.optionalItems.map((item, idx) => (
+            {doc.optionalItems.filter((item) => item.visible !== false).map((item, idx) => (
               <View key={item.id} style={idx === 0 ? [s.optionalRow, s.optionalRowFirst] : s.optionalRow}>
                 <View style={s.optionalNameCol}>
                   <Text style={s.optionalName}>{item.name || '-'}</Text>

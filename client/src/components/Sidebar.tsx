@@ -149,11 +149,17 @@ export default function Sidebar() {
     >
       {/* Logo */}
       <div className="flex items-center px-4 py-5 border-b border-border">
-        {collapsed ? (
-          <img src={SYMBOL_LOGO_URL} alt="달빛워크" className="w-10 h-10 object-contain flex-shrink-0" />
-        ) : (
-          <img src={WORDMARK_LOGO_URL} alt="달빛워크" className="h-11 w-auto object-contain" />
-        )}
+        <button
+          type="button"
+          onClick={() => navigate('/')}
+          className="flex items-center hover:opacity-80 transition-opacity"
+        >
+          {collapsed ? (
+            <img src={SYMBOL_LOGO_URL} alt="달빛워크" className="w-10 h-10 object-contain flex-shrink-0" />
+          ) : (
+            <img src={WORDMARK_LOGO_URL} alt="달빛워크" className="h-11 w-auto object-contain" />
+          )}
+        </button>
       </div>
 
       {/* 통합 검색 */}

@@ -19,6 +19,7 @@ interface EstimateContextType {
   addOptionalItem: () => void;
   removeOptionalItem: (id: string) => void;
   updateOptionalItem: (id: string, field: keyof OptionalItem, value: string) => void;
+  toggleOptionalItemVisible: (id: string) => void;
   addNote: () => void;
   removeNote: (index: number) => void;
   updateNote: (index: number, value: string) => void;
@@ -340,7 +341,7 @@ export function EstimateProvider({ children }: { children: ReactNode }) {
   const addOptionalItem = useCallback(() => {
     setCurrentDoc((prev) => ({
       ...prev,
-      optionalItems: [...(prev.optionalItems || []), { id: nanoid(), name: '', description: '', quantity: '1', price: '', payer: '당사' }],
+      optionalItems: [...(prev.optionalItems || []), { id: nanoid(), name: '', description: '', quantity: '1', price: '', payer: '당사', visible: true }],
     }));
   }, []);
 
@@ -356,6 +357,15 @@ export function EstimateProvider({ children }: { children: ReactNode }) {
       ...prev,
       optionalItems: (prev.optionalItems || []).map((item) =>
         item.id === id ? { ...item, [field]: value } : item
+      ),
+    }));
+  }, []);
+
+  const toggleOptionalItemVisible = useCallback((id: string) => {
+    setCurrentDoc((prev) => ({
+      ...prev,
+      optionalItems: (prev.optionalItems || []).map((item) =>
+        item.id === id ? { ...item, visible: item.visible === false } : item
       ),
     }));
   }, []);
@@ -430,6 +440,7 @@ export function EstimateProvider({ children }: { children: ReactNode }) {
         addOptionalItem,
         removeOptionalItem,
         updateOptionalItem,
+        toggleOptionalItemVisible,
         addNote,
         removeNote,
         updateNote,

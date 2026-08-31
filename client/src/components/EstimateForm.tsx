@@ -547,6 +547,7 @@ export default function EstimateForm() {
     addOptionalItem,
     removeOptionalItem,
     updateOptionalItem,
+    toggleOptionalItemVisible,
     addNote,
     removeNote,
     updateNote,
@@ -1312,16 +1313,17 @@ export default function EstimateForm() {
           <p className="text-xs text-muted-foreground text-center py-4">등록된 선택사항이 없습니다.</p>
         ) : (
           <div className="overflow-x-auto -mx-1 px-1 space-y-2">
-            <div className="grid grid-cols-[1.3fr_1fr_0.5fr_0.8fr_0.9fr_auto] gap-1.5 mb-1 min-w-[560px]">
+            <div className="grid grid-cols-[1.3fr_1fr_0.5fr_0.8fr_0.9fr_auto_auto] gap-1.5 mb-1 min-w-[600px]">
               <span className="text-[11px] font-medium text-muted-foreground px-1">항목명</span>
               <span className="text-[11px] font-medium text-muted-foreground px-1">설명</span>
               <span className="text-[11px] font-medium text-muted-foreground px-1">수량</span>
               <span className="text-[11px] font-medium text-muted-foreground px-1">금액(원)</span>
               <span className="text-[11px] font-medium text-muted-foreground px-1">결제 주체</span>
+              <span className="text-[11px] font-medium text-muted-foreground px-1 text-center">노출</span>
               <span className="w-8" />
             </div>
             {(currentDoc.optionalItems || []).map((item) => (
-              <div key={item.id} className="grid grid-cols-[1.3fr_1fr_0.5fr_0.8fr_0.9fr_auto] gap-1.5 items-center group min-w-[560px]">
+              <div key={item.id} className="grid grid-cols-[1.3fr_1fr_0.5fr_0.8fr_0.9fr_auto_auto] gap-1.5 items-center group min-w-[600px]">
                 <Input
                   value={item.name}
                   onChange={(e) => updateOptionalItem(item.id, 'name', e.target.value)}
@@ -1357,6 +1359,12 @@ export default function EstimateForm() {
                     <SelectItem value="고객사">고객사 직접결제</SelectItem>
                   </SelectContent>
                 </Select>
+                <div className="flex items-center justify-center" title="문서(PDF)에 이 항목 노출 여부">
+                  <Checkbox
+                    checked={item.visible !== false}
+                    onCheckedChange={() => toggleOptionalItemVisible(item.id)}
+                  />
+                </div>
                 <button
                   onClick={() => removeOptionalItem(item.id)}
                   className="w-8 h-8 flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-all"

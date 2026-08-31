@@ -187,6 +187,7 @@ export const clients = pgTable("clients", {
   isWorking: boolean("isWorking").default(false).notNull(),
   workStartDate: varchar("workStartDate", { length: 20 }).default("").notNull(),
   pcDraftDate: varchar("pcDraftDate", { length: 20 }).default("").notNull(),
+  clientConfirmDate: varchar("clientConfirmDate", { length: 20 }).default("").notNull(),
   mobileDraftDate: varchar("mobileDraftDate", { length: 20 })
     .default("")
     .notNull(),

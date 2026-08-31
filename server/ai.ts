@@ -117,6 +117,63 @@ ${inquiryText}`,
   return response.parsed_output;
 }
 
+const quickEstimateReplySchema = z.object({
+  replyText: z
+    .string()
+    .describe(
+      "고객에게 그대로 복사해서 보낼 수 있는 짧은 답장 메시지. 정중한 인사말로 시작해서, 문의 내용 기준으로 대략적인 가격대(예: \"약 250~350만원 정도\")를 안내하고, 정확한 견적은 상담을 통해 확정된다는 안내로 짧게 마무리. 문자/카톡으로 보낼 메시지이므로 이메일보다 짧고 편안한 말투로, 5문장 이내. 서명(이름·직함·연락처)은 절대 쓰지 마세요."
+    ),
+  priceRangeLabel: z.string().describe("가격대만 짧게 뽑은 값 (예: \"약 250~350만원\"). 담당자 화면에 참고용으로 표시."),
+});
+
+export type QuickEstimateReplyResult = z.infer<typeof quickEstimateReplySchema>;
+
+/** 정식 상담 없이 고객이 가볍게 견적을 물어볼 때, 서비스 품목표 기준 대략적인 가격대를 담은 짧은 답장 문구를 AI로 생성 */
+export async function generateQuickEstimateReply(
+  inquiryText: string,
+  serviceItems: ServiceItemInfo[]
+): Promise<QuickEstimateReplyResult> {
+  const catalogText = serviceItems
+    .map(i => `- ${i.name} | 단가: ${i.unitPrice || "미기재"} | 분류: ${i.category || "-"} | 설명: ${i.description || "-"}`)
+    .join("\n");
+
+  const response = await getClient().messages.parse({
+    model: "claude-opus-4-8",
+    max_tokens: 1024,
+    output_config: {
+      format: zodOutputFormat(quickEstimateReplySchema),
+    },
+    messages: [
+      {
+        role: "user",
+        content: `당신은 웹 에이전시 "달빛워크" 담당자가, 정식 상담 전에 고객이 가볍게 "대략 얼마예요?" 하고 물어봤을 때 보낼 답장을 작성하는 보조입니다.
+아직 정식 상담이 아니므로 정확한 견적서를 만드는 게 아니라, 서비스 품목표를 참고해서 대략적인 가격대만 안내하는 짧은 답장을 작성하세요.
+
+# 지침
+- 서비스 품목표에서 분류가 "패키지"인 항목들의 가격대를 참고해서, 문의 내용에 가장 근접한 패키지(또는 패키지들)를 기준으로 대략적인 가격 범위를 추정하세요.
+- 문의 내용이 애매하거나 정보가 부족하면 범위를 넓게 잡고, 정확한 견적은 상담 후 확정된다는 점을 반드시 안내하세요.
+- replyText는 문자/카톡으로 바로 보낼 메시지입니다. 정중하지만 편안한 말투로, 5문장 이내로 짧게 작성하세요. 가격대를 안내한 뒤 "정확한 견적은 상담을 통해 확정해드려요" 같은 문장으로 마무리하세요.
+- 서명(이름·직함·연락처)은 절대 쓰지 마세요.
+- priceRangeLabel은 replyText에 담긴 가격대만 짧게 뽑아주세요 (예: "약 250~350만원").
+
+# 서비스 품목표
+${catalogText || "(등록된 품목 없음)"}
+
+# 고객 문의 내용
+${inquiryText}`,
+      },
+    ],
+  });
+
+  if (response.stop_reason === "refusal") {
+    throw new Error("AI가 이 요청을 처리할 수 없습니다. 문의 내용을 확인해주세요.");
+  }
+  if (!response.parsed_output) {
+    throw new Error("AI 응답을 해석하지 못했습니다. 다시 시도해주세요.");
+  }
+  return response.parsed_output;
+}
+
 export interface PreviousSiteStructure {
   menuStructure: { label: string; subItems: string[] }[];
   questions: string[];

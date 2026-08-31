@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -61,6 +61,19 @@ export default function FinalPaymentConfirmDialog({
   const [isLoading, setIsLoading] = useState(false);
   const recordPaymentMutation = trpc.documents.recordPayment.useMutation();
   const utils = trpc.useUtils();
+
+  // 이 다이얼로그는 항상 마운트된 채로 열고 닫히기만 하는데, 부모가 실제 기납부 계약금을
+  // 비동기로 조회해서 넘겨주다 보니 처음 마운트 시점(depositAmount=0)의 기본값에 고정돼버리는 문제가 있었음.
+  // 열릴 때마다 최신 depositAmount 기준으로 다시 계산해서 채워준다.
+  useEffect(() => {
+    if (isOpen) {
+      setFinalAmount(remaining.toString());
+      setPaymentDate(todayDotStr());
+      setCashReceiptIssued(false);
+      setCashReceiptDate(todayDotStr());
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, remaining]);
 
   const handleDateInput = (value: string) => {
     const digits = value.replace(/[^0-9]/g, '').slice(0, 8);

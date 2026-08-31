@@ -51,6 +51,7 @@ export interface OptionalItem {
   quantity: string;
   price: string;
   payer: string;
+  visible?: boolean; // 문서(PDF)에 이 항목을 노출할지 여부. 미지정(undefined)이면 노출로 취급
 }
 
 // 콤마 제거하고 숫자만 추출

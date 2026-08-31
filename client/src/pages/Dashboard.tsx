@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react';
 import { useLocation } from 'wouter';
 import { trpc } from '@/lib/trpc';
-import { FileText, FileCheck, Building2, TrendingUp, AlertCircle, Loader2, Edit, MessageSquare, Wallet } from 'lucide-react';
+import { FileText, FileCheck, Building2, TrendingUp, AlertCircle, Loader2, Edit, MessageSquare, Wallet, Sparkles } from 'lucide-react';
 import KanbanBoard from '@/components/KanbanBoard';
 import TodoList from '@/components/TodoList';
 import PushNotificationCard from '@/components/PushNotificationCard';
 import TodayBriefCard from '@/components/TodayBriefCard';
 import ReceivedMailCard from '@/components/ReceivedMailCard';
+import QuickEstimateReplyDialog from '@/components/QuickEstimateReplyDialog';
+import { Button } from '@/components/ui/button';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend,
@@ -113,6 +115,7 @@ export default function Dashboard() {
   const [expandedStatus, setExpandedStatus] = useState<string | null>('계약');
   const { data: allClients = [], isLoading: isLoadingAllClients } = trpc.clients.list.useQuery(undefined, { enabled: !!expandedStatus });
   const [expandedCard, setExpandedCard] = useState<'contract' | 'consulting' | 'unpaid' | null>(null);
+  const [quickReplyOpen, setQuickReplyOpen] = useState(false);
 
   // 자정이 지나면 "이번 달" 데이터를 자동으로 새로고침 (탭을 켜둔 채로 날짜가 바뀌어도 반영)
   useEffect(() => {
@@ -166,10 +169,18 @@ export default function Dashboard() {
   return (
     <div className="max-w-6xl mx-auto p-6 space-y-8">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">대시보드</h1>
-        <p className="text-sm text-muted-foreground mt-1">{now.getFullYear()}년 {monthLabel} 현황</p>
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">대시보드</h1>
+          <p className="text-sm text-muted-foreground mt-1">{now.getFullYear()}년 {monthLabel} 현황</p>
+        </div>
+        <Button variant="outline" size="sm" onClick={() => setQuickReplyOpen(true)} className="gap-1.5">
+          <Sparkles className="w-3.5 h-3.5" />
+          빠른 견적 문의 답장
+        </Button>
       </div>
+
+      <QuickEstimateReplyDialog isOpen={quickReplyOpen} onClose={() => setQuickReplyOpen(false)} />
 
       {/* 오늘의 할 일 및 일정 */}
       <TodayBriefCard />

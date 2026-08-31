@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useLocation } from 'wouter';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -24,6 +24,8 @@ interface AIEstimateDraftDialogProps {
   contactPhone?: string;
   contactEmail?: string;
   consultations?: Consultation[];
+  /** AI 구성안 등 다른 화면에서 미리 채워서 열 때 사용. 다이얼로그가 열릴 때 한 번 textarea에 반영됨 */
+  initialInquiryText?: string;
 }
 
 export default function AIEstimateDraftDialog({
@@ -34,12 +36,21 @@ export default function AIEstimateDraftDialog({
   contactPhone,
   contactEmail,
   consultations = [],
+  initialInquiryText,
 }: AIEstimateDraftDialogProps) {
   const [, navigate] = useLocation();
   const { loadDraft } = useEstimate();
   const [inquiryText, setInquiryText] = useState('');
   const [docType, setDocType] = useState<'proposal' | 'estimate'>('proposal');
   const [selectedConsultationId, setSelectedConsultationId] = useState<string>('');
+
+  useEffect(() => {
+    if (isOpen && initialInquiryText) {
+      setInquiryText(initialInquiryText);
+      setSelectedConsultationId('');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, initialInquiryText]);
 
   const draftMutation = trpc.ai.draftEstimate.useMutation();
 
@@ -79,7 +90,7 @@ export default function AIEstimateDraftDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[520px]">
+      <DialogContent className="sm:max-w-[520px] max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Sparkles className="w-4 h-4 text-primary" />

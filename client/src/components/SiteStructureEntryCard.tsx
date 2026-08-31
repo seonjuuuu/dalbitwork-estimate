@@ -1,5 +1,5 @@
 import { Button } from '@/components/ui/button';
-import { ListTree, HelpCircle, Trash2 } from 'lucide-react';
+import { ListTree, HelpCircle, Trash2, Calculator } from 'lucide-react';
 import { toast } from 'sonner';
 import { trpc } from '@/lib/trpc';
 
@@ -15,9 +15,10 @@ interface SiteStructureEntryCardProps {
   clientId: number;
   entry: SiteStructureEntry;
   index: number;
+  onUseForEstimate?: (entry: SiteStructureEntry) => void;
 }
 
-export default function SiteStructureEntryCard({ clientId, entry, index }: SiteStructureEntryCardProps) {
+export default function SiteStructureEntryCard({ clientId, entry, index, onUseForEstimate }: SiteStructureEntryCardProps) {
   const utils = trpc.useUtils();
   const deleteMutation = trpc.clients.deleteSiteStructure.useMutation();
 
@@ -38,16 +39,29 @@ export default function SiteStructureEntryCard({ clientId, entry, index }: SiteS
         <span className="text-xs font-semibold text-muted-foreground">
           {index + 1}차 · {new Date(entry.generatedAt).toLocaleDateString('ko-KR')}
         </span>
-        <Button
-          size="sm"
-          variant="ghost"
-          onClick={handleDelete}
-          disabled={deleteMutation.isPending}
-          className="gap-1 h-6 text-xs text-destructive hover:text-destructive px-1.5"
-        >
-          <Trash2 className="w-3 h-3" />
-          삭제
-        </Button>
+        <div className="flex items-center gap-1">
+          {onUseForEstimate && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => onUseForEstimate(entry)}
+              className="gap-1 h-6 text-xs px-1.5"
+            >
+              <Calculator className="w-3 h-3" />
+              이 구성안으로 견적 뽑기
+            </Button>
+          )}
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={handleDelete}
+            disabled={deleteMutation.isPending}
+            className="gap-1 h-6 text-xs text-destructive hover:text-destructive px-1.5"
+          >
+            <Trash2 className="w-3 h-3" />
+            삭제
+          </Button>
+        </div>
       </div>
 
       {entry.summary && (

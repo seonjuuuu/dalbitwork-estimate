@@ -4,7 +4,7 @@ import { z } from "zod";
 import { nanoid } from "nanoid";
 import * as db from "./db";
 import type { DocumentItemRow, OptionalItemRow } from "../drizzle/schema";
-import { generateEstimateDraft, generateSiteStructure, classifyIntakeFormFields, suggestAdditionalIntakeQuestions, generateClientRequestChecklist, generateEmailDraft, generateSmsDraft } from "./ai";
+import { generateEstimateDraft, generateSiteStructure, classifyIntakeFormFields, suggestAdditionalIntakeQuestions, generateClientRequestChecklist, generateEmailDraft, generateSmsDraft, generateQuickEstimateReply } from "./ai";
 import { notifyUser } from "./push";
 import { checkNewClientEmails } from "./gmailWatcher";
 import { sendMail, sendHktbMail, buildEmailHtml, APP_BASE_URL, PUBLIC_FORM_BASE_URL } from "./mailer";
@@ -443,6 +443,7 @@ export const appRouter = router({
         isWorking: z.boolean().optional(),
         workStartDate: z.string().optional(),
         pcDraftDate: z.string().optional(),
+        clientConfirmDate: z.string().optional(),
         mobileDraftDate: z.string().optional(),
         finalDeliveryDate: z.string().optional(),
         linkedEstimateId: z.number().nullable().optional(),
@@ -847,6 +848,22 @@ export const appRouter = router({
   }),
 
   ai: router({
+    /** 정식 상담 없이 가벼운 견적 문의에 답장할 짧은 문구(대략적인 가격대 포함)를 생성 */
+    draftQuickReply: protectedProcedure
+      .input(z.object({ inquiryText: z.string().min(1) }))
+      .mutation(async ({ ctx, input }) => {
+        const serviceItems = await db.listServiceItems(ctx.user.id);
+        return generateQuickEstimateReply(
+          input.inquiryText,
+          serviceItems.map(i => ({
+            name: i.name,
+            description: i.description,
+            unitPrice: i.unitPrice,
+            category: i.category,
+          }))
+        );
+      }),
+
     /** 문의 내용을 분석해 제안서/견적서 초안(프로젝트 정보·품목·참고사항)을 생성 */
     draftEstimate: protectedProcedure
       .input(

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -62,6 +62,18 @@ export default function DepositConfirmDialog({
   const [isLoading, setIsLoading] = useState(false);
   const recordPaymentMutation = trpc.documents.recordPayment.useMutation();
   const utils = trpc.useUtils();
+
+  // 다이얼로그가 항상 마운트된 채로 열고 닫히기만 해서, 다시 열 때 이전에 수정했던 값이 아니라
+  // 최신 비율 기준 기본값으로 다시 채워주기 위해 열릴 때마다 리셋
+  useEffect(() => {
+    if (isOpen) {
+      setDepositAmount(Math.round(totalAmount * (depositRatio / 100)).toString());
+      setPaymentDate(todayDotStr());
+      setCashReceiptIssued(false);
+      setCashReceiptDate(todayDotStr());
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, totalAmount, depositRatio]);
 
   const handleDateInput = (value: string) => {
     const digits = value.replace(/[^0-9]/g, '').slice(0, 8);

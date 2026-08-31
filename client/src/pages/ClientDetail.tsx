@@ -113,6 +113,40 @@ const TODO_PRIORITY_LABEL: Record<string, { label: string; cls: string }> = {
   low: { label: '낮음', cls: 'bg-slate-100 text-slate-600 dark:bg-slate-800/50 dark:text-slate-400' },
 };
 
+/** "YYYY.MM.DD" 날짜에서 주말(토·일)은 건너뛰고 워킹데이만 N일 더한 날짜를 구한다 */
+function addWorkingDays(dateStr: string, days: number): string {
+  const parts = dateStr.split('.').map(Number);
+  if (parts.length !== 3 || parts.some((n) => isNaN(n))) return '';
+  const d = new Date(parts[0], parts[1] - 1, parts[2]);
+  if (isNaN(d.getTime())) return '';
+  let added = 0;
+  while (added < days) {
+    d.setDate(d.getDate() + 1);
+    const day = d.getDay();
+    if (day !== 0 && day !== 6) added++;
+  }
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${y}.${m}.${dd}`;
+}
+
+/** AI 구성안(메뉴 구성)을 "AI 기반 견적서 생성" 다이얼로그에 넣을 문의 내용 텍스트로 변환.
+ *  페이지 수를 명확히 셀 수 있게 해서, 추가 페이지 비용 계산이 더 정확해짐. */
+function formatSiteStructureForEstimate(entry: {
+  menuStructure: { label: string; subItems: string[] }[];
+  summary: string;
+}): string {
+  const totalPages = entry.menuStructure.reduce((sum, m) => sum + Math.max(1, m.subItems.length), 0);
+  const menuText = entry.menuStructure
+    .map((m) => `- ${m.label}${m.subItems.length > 0 ? '\n' + m.subItems.map((s) => `  · ${s}`).join('\n') : ''}`)
+    .join('\n');
+  return `[AI 구성안 기반 견적 요청]
+${entry.summary ? `요약: ${entry.summary}\n` : ''}
+메뉴 구성 (총 ${entry.menuStructure.length}개 메뉴, 페이지/섹션 ${totalPages}개):
+${menuText}`;
+}
+
 function formatBytes(bytes: number) {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
@@ -317,6 +351,62 @@ function ClientAttachments({ clientId }: { clientId: number }) {
   );
 }
 
+/** "YYYY.MM.DD" 텍스트 입력 + 달력 선택 둘 다 되는 날짜 필드 */
+function DateInputWithCalendar({
+  value,
+  onChange,
+  placeholder,
+}: {
+  value: string;
+  onChange: (formatted: string) => void;
+  placeholder: string;
+}) {
+  const handleTextInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const digits = e.target.value.replace(/[^0-9]/g, '').slice(0, 8);
+    let formatted = digits;
+    if (digits.length > 4) formatted = digits.slice(0, 4) + '.' + digits.slice(4);
+    if (digits.length > 6) formatted = digits.slice(0, 4) + '.' + digits.slice(4, 6) + '.' + digits.slice(6);
+    onChange(formatted);
+  };
+
+  const parsed = (() => {
+    const parts = value.split('.').map(Number);
+    if (parts.length !== 3 || parts.some(isNaN)) return undefined;
+    const d = new Date(parts[0], parts[1] - 1, parts[2]);
+    return isNaN(d.getTime()) ? undefined : d;
+  })();
+
+  return (
+    <div className="flex gap-1.5">
+      <Input value={value} onChange={handleTextInput} placeholder={placeholder} maxLength={10} className="text-sm" />
+      <Popover>
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            className="h-9 w-9 flex items-center justify-center rounded-md border border-input text-muted-foreground hover:text-foreground hover:bg-accent transition-colors flex-shrink-0"
+          >
+            <CalendarDays className="w-4 h-4" />
+          </button>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-0" align="end">
+          <Calendar
+            mode="single"
+            locale={ko}
+            selected={parsed}
+            onSelect={(date) => {
+              if (!date) return;
+              const y = date.getFullYear();
+              const m = String(date.getMonth() + 1).padStart(2, '0');
+              const d = String(date.getDate()).padStart(2, '0');
+              onChange(`${y}.${m}.${d}`);
+            }}
+          />
+        </PopoverContent>
+      </Popover>
+    </div>
+  );
+}
+
 export default function ClientDetail({ id }: { id: string }) {
   const [, navigate] = useLocation();
   const clientId = parseInt(id);
@@ -380,6 +470,7 @@ export default function ClientDetail({ id }: { id: string }) {
   const [finalPaymentDate, setFinalPaymentDate] = useState('');
   const [finalPaymentAmount, setFinalPaymentAmount] = useState('');
   const [aiDraftDialogOpen, setAiDraftDialogOpen] = useState(false);
+  const [aiDraftInitialText, setAiDraftInitialText] = useState<string | undefined>(undefined);
   const [aiStructureDialogOpen, setAiStructureDialogOpen] = useState(false);
   const [formDialogOpen, setFormDialogOpen] = useState(false);
   const [formFields, setFormFields] = useState<EditableIntakeField[]>([]);
@@ -431,7 +522,7 @@ export default function ClientDetail({ id }: { id: string }) {
   const [togglingLinkedTodoId, setTogglingLinkedTodoId] = useState<number | null>(null);
   const [deletingLinkedTodoId, setDeletingLinkedTodoId] = useState<number | null>(null);
   const [workScheduleForm, setWorkScheduleForm] = useState({
-    workStartDate: '', pcDraftDate: '', mobileDraftDate: '', finalDeliveryDate: '',
+    workStartDate: '', pcDraftDate: '', clientConfirmDate: '', mobileDraftDate: '', finalDeliveryDate: '',
   });
 
   useEffect(() => {
@@ -439,18 +530,15 @@ export default function ClientDetail({ id }: { id: string }) {
       setWorkScheduleForm({
         workStartDate: client.workStartDate ?? '',
         pcDraftDate: client.pcDraftDate ?? '',
+        clientConfirmDate: client.clientConfirmDate ?? '',
         mobileDraftDate: client.mobileDraftDate ?? '',
         finalDeliveryDate: client.finalDeliveryDate ?? '',
       });
     }
   }, [client?.id]);
 
-  const handleWorkScheduleDateInput = (field: keyof typeof workScheduleForm) => (e: React.ChangeEvent<HTMLInputElement>) => {
-    const digits = e.target.value.replace(/[^0-9]/g, '').slice(0, 8);
-    let formatted = digits;
-    if (digits.length > 4) formatted = digits.slice(0, 4) + '.' + digits.slice(4);
-    if (digits.length > 6) formatted = digits.slice(0, 4) + '.' + digits.slice(4, 6) + '.' + digits.slice(6);
-    setWorkScheduleForm((f) => ({ ...f, [field]: formatted }));
+  const setWorkScheduleField = (field: keyof typeof workScheduleForm) => (value: string) => {
+    setWorkScheduleForm((f) => ({ ...f, [field]: value }));
   };
 
   const handleSaveWorkSchedule = async () => {
@@ -1090,19 +1178,65 @@ export default function ClientDetail({ id }: { id: string }) {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs text-muted-foreground mb-1 block">작업 시작일</label>
-              <Input value={workScheduleForm.workStartDate} onChange={handleWorkScheduleDateInput('workStartDate')} placeholder="2026.01.01" maxLength={10} className="text-sm" />
+              <DateInputWithCalendar
+                value={workScheduleForm.workStartDate}
+                onChange={setWorkScheduleField('workStartDate')}
+                placeholder="2026.01.01"
+              />
             </div>
             <div>
-              <label className="text-xs text-muted-foreground mb-1 block">PC 시안일</label>
-              <Input value={workScheduleForm.pcDraftDate} onChange={handleWorkScheduleDateInput('pcDraftDate')} placeholder="2026.01.01" maxLength={10} className="text-sm" />
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-xs text-muted-foreground block">PC 시안 전달 예정일</label>
+                {workScheduleForm.workStartDate && (
+                  <button
+                    type="button"
+                    onClick={() => setWorkScheduleField('pcDraftDate')(addWorkingDays(workScheduleForm.workStartDate, 15))}
+                    className="text-[11px] text-primary hover:underline"
+                  >
+                    시작일+3주 계산
+                  </button>
+                )}
+              </div>
+              <DateInputWithCalendar
+                value={workScheduleForm.pcDraftDate}
+                onChange={setWorkScheduleField('pcDraftDate')}
+                placeholder="2026.01.01"
+              />
             </div>
             <div>
-              <label className="text-xs text-muted-foreground mb-1 block">모바일 작업일</label>
-              <Input value={workScheduleForm.mobileDraftDate} onChange={handleWorkScheduleDateInput('mobileDraftDate')} placeholder="2026.01.01" maxLength={10} className="text-sm" />
+              <label className="text-xs text-muted-foreground mb-1 block">고객 확정일</label>
+              <DateInputWithCalendar
+                value={workScheduleForm.clientConfirmDate}
+                onChange={setWorkScheduleField('clientConfirmDate')}
+                placeholder="2026.01.01"
+              />
+            </div>
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-xs text-muted-foreground block">모바일 작업 완료 예정일</label>
+                {workScheduleForm.clientConfirmDate && (
+                  <button
+                    type="button"
+                    onClick={() => setWorkScheduleField('mobileDraftDate')(addWorkingDays(workScheduleForm.clientConfirmDate, 5))}
+                    className="text-[11px] text-primary hover:underline"
+                  >
+                    확정일+1주 계산
+                  </button>
+                )}
+              </div>
+              <DateInputWithCalendar
+                value={workScheduleForm.mobileDraftDate}
+                onChange={setWorkScheduleField('mobileDraftDate')}
+                placeholder="2026.01.01"
+              />
             </div>
             <div>
               <label className="text-xs text-muted-foreground mb-1 block">완성 전달일</label>
-              <Input value={workScheduleForm.finalDeliveryDate} onChange={handleWorkScheduleDateInput('finalDeliveryDate')} placeholder="2026.01.01" maxLength={10} className="text-sm" />
+              <DateInputWithCalendar
+                value={workScheduleForm.finalDeliveryDate}
+                onChange={setWorkScheduleField('finalDeliveryDate')}
+                placeholder="2026.01.01"
+              />
             </div>
           </div>
         ) : (
@@ -1113,11 +1247,15 @@ export default function ClientDetail({ id }: { id: string }) {
             </div>
             <div className="flex items-center gap-2 text-muted-foreground">
               <CalendarDays className="w-3.5 h-3.5 flex-shrink-0" />
-              <span>PC 시안일: {client.pcDraftDate || '—'}</span>
+              <span>PC 시안 전달 예정일: {client.pcDraftDate || '—'}</span>
             </div>
             <div className="flex items-center gap-2 text-muted-foreground">
               <CalendarDays className="w-3.5 h-3.5 flex-shrink-0" />
-              <span>모바일 작업일: {client.mobileDraftDate || '—'}</span>
+              <span>고객 확정일: {client.clientConfirmDate || '—'}</span>
+            </div>
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <CalendarDays className="w-3.5 h-3.5 flex-shrink-0" />
+              <span>모바일 작업 완료 예정일: {client.mobileDraftDate || '—'}</span>
             </div>
             <div className="flex items-center gap-2 text-muted-foreground">
               <CalendarDays className="w-3.5 h-3.5 flex-shrink-0" />
@@ -1989,7 +2127,16 @@ export default function ClientDetail({ id }: { id: string }) {
 
           <div className="space-y-4">
             {client.siteStructures.map((entry, entryIdx) => (
-              <SiteStructureEntryCard key={entry.id} clientId={clientId} entry={entry} index={entryIdx} />
+              <SiteStructureEntryCard
+                key={entry.id}
+                clientId={clientId}
+                entry={entry}
+                index={entryIdx}
+                onUseForEstimate={(e) => {
+                  setAiDraftInitialText(formatSiteStructureForEstimate(e));
+                  setAiDraftDialogOpen(true);
+                }}
+              />
             ))}
           </div>
         </div>
@@ -2010,7 +2157,7 @@ export default function ClientDetail({ id }: { id: string }) {
               <ListTree className="w-3.5 h-3.5" />
               AI 구성안 생성
             </Button>
-            <Button size="sm" variant="outline" onClick={() => setAiDraftDialogOpen(true)} className="gap-1 h-7 text-xs">
+            <Button size="sm" variant="outline" onClick={() => { setAiDraftInitialText(undefined); setAiDraftDialogOpen(true); }} className="gap-1 h-7 text-xs">
               <Sparkles className="w-3.5 h-3.5" />
               AI 기반 제안서 생성
             </Button>
@@ -2196,6 +2343,7 @@ export default function ClientDetail({ id }: { id: string }) {
         contactPhone={client.contactPhone}
         contactEmail={client.contactEmail}
         consultations={consultations}
+        initialInquiryText={aiDraftInitialText}
       />
       <AISiteStructureDialog
         isOpen={aiStructureDialogOpen}
