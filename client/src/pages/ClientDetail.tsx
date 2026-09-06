@@ -712,6 +712,18 @@ export default function ClientDetail({ id }: { id: string }) {
     }
   };
 
+  const handleCopyFormAnswers = async (f: { questions: { text: string; required?: boolean }[]; answers: string[] }) => {
+    const text = f.questions
+      .map((q, i) => `${i + 1}. ${q.text}\n${f.answers[i] || '—'}`)
+      .join('\n\n');
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success('답변을 복사했어요.');
+    } catch {
+      toast.error('복사에 실패했습니다. 직접 선택해서 복사해주세요.');
+    }
+  };
+
   useEffect(() => {
     if (client && (client as any).linkedEstimateId) {
       setSyncedEstimateId((client as any).linkedEstimateId);
@@ -1463,7 +1475,20 @@ export default function ClientDetail({ id }: { id: string }) {
       <Dialog open={!!viewingAnswersForm} onOpenChange={(open) => !open && setViewingAnswersForm(null)}>
         <DialogContent className="sm:max-w-[560px] max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>질문폼 답변</DialogTitle>
+            <div className="flex items-center justify-between gap-2 pr-6">
+              <DialogTitle>질문폼 답변</DialogTitle>
+              {viewingAnswersForm && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 text-xs px-2 gap-1"
+                  onClick={() => handleCopyFormAnswers(viewingAnswersForm)}
+                >
+                  <Copy className="w-3.5 h-3.5" />
+                  전체 복사
+                </Button>
+              )}
+            </div>
             {viewingAnswersForm?.submittedAt && (
               <p className="text-xs text-muted-foreground">
                 {new Date(viewingAnswersForm.submittedAt).toLocaleString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })} 제출
