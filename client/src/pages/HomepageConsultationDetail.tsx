@@ -65,21 +65,21 @@ export default function HomepageConsultationDetail({ id }: { id: string }) {
   }
 
   return (
-    <div className="max-w-3xl mx-auto p-6">
-      <div className="flex items-center gap-3 mb-6">
+    <div className="max-w-3xl mx-auto p-4 sm:p-6">
+      <div className="flex items-center gap-2 sm:gap-3 mb-6 flex-wrap">
         <button
           onClick={() => navigate('/homepage-consultations')}
           className="w-8 h-8 flex items-center justify-center rounded-md text-muted-foreground hover:bg-accent transition-colors flex-shrink-0"
         >
           <ArrowLeft className="w-4 h-4" />
         </button>
-        <MessageSquareText className="w-6 h-6 text-primary" />
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">{item.name}님의 상담 신청</h1>
+        <MessageSquareText className="w-6 h-6 text-primary flex-shrink-0" />
+        <div className="min-w-0">
+          <h1 className="text-lg sm:text-2xl font-bold text-foreground truncate">{item.name}님의 상담 신청</h1>
           <p className="text-sm text-muted-foreground mt-1">{formatReceivedAt(String(item.createdAt))}</p>
         </div>
         <span
-          className={`ml-auto text-xs px-2 py-1 rounded-full flex-shrink-0 ${
+          className={`sm:ml-auto text-xs px-2 py-1 rounded-full flex-shrink-0 ${
             item.isRead ? 'bg-muted text-muted-foreground' : 'bg-primary/10 text-primary'
           }`}
         >
@@ -87,7 +87,7 @@ export default function HomepageConsultationDetail({ id }: { id: string }) {
         </span>
       </div>
 
-      <div className="border border-border rounded-lg p-5 flex flex-col gap-4">
+      <div className="border border-border rounded-lg p-4 sm:p-5 flex flex-col gap-4">
         <div className="flex items-center gap-3">
           <Phone className="w-4 h-4 text-muted-foreground flex-shrink-0" />
           <span className="text-sm text-muted-foreground w-16 flex-shrink-0">연락처</span>
@@ -128,7 +128,7 @@ export default function HomepageConsultationDetail({ id }: { id: string }) {
         </div>
       </div>
 
-      <div className="flex items-center gap-2 mt-4">
+      <div className="flex items-center gap-2 mt-4 flex-wrap">
         <Button variant="outline" onClick={handleToggleRead}>
           {item.isRead ? '안읽음으로 표시' : '읽음으로 표시'}
         </Button>

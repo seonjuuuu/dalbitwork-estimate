@@ -55,23 +55,23 @@ export default function HomepageConsultations() {
   };
 
   return (
-    <div className="max-w-6xl mx-auto p-6">
-      <div className="flex items-center gap-3 mb-6">
+    <div className="max-w-6xl mx-auto p-4 sm:p-6">
+      <div className="flex items-center gap-2 sm:gap-3 mb-6 flex-wrap">
         <button
           onClick={() => navigate('/')}
           className="w-8 h-8 flex items-center justify-center rounded-md text-muted-foreground hover:bg-accent transition-colors flex-shrink-0"
         >
           <ArrowLeft className="w-4 h-4" />
         </button>
-        <MessageSquareText className="w-6 h-6 text-primary" />
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">홈페이지 상담폼</h1>
+        <MessageSquareText className="w-6 h-6 text-primary flex-shrink-0" />
+        <div className="min-w-0">
+          <h1 className="text-xl sm:text-2xl font-bold text-foreground truncate">홈페이지 상담폼</h1>
           <p className="text-sm text-muted-foreground mt-1">
             {isLoading ? '불러오는 중...' : `총 ${total}건`}
           </p>
         </div>
         {unread.length > 0 && (
-          <span className="ml-auto text-xs px-2.5 py-1 rounded-full bg-primary/10 text-primary font-semibold flex-shrink-0">
+          <span className="sm:ml-auto text-xs px-2.5 py-1 rounded-full bg-primary/10 text-primary font-semibold flex-shrink-0">
             안읽음 {unread.length}건
           </span>
         )}
@@ -95,7 +95,57 @@ export default function HomepageConsultations() {
         </div>
       ) : (
         <>
-          <div className="border border-border rounded-lg overflow-x-auto">
+          {/* 모바일: 카드 목록 */}
+          <div className="flex flex-col gap-2 sm:hidden">
+            {items.map((item, idx) => {
+              const rowNumber = (page - 1) * PAGE_SIZE + idx + 1;
+              return (
+                <div
+                  key={item.id}
+                  onClick={() => navigate(`/homepage-consultations/${item.id}`)}
+                  className={`border border-border rounded-lg p-3 cursor-pointer ${!item.isRead ? 'bg-primary/5' : 'bg-card'}`}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="text-xs text-muted-foreground mb-0.5">No.{rowNumber}</p>
+                      <p className="font-medium text-foreground truncate">
+                        {item.name}{item.company ? ` (${item.company})` : ''}
+                      </p>
+                      <p className="text-sm text-muted-foreground truncate">{item.contact}</p>
+                      <p className="text-sm text-muted-foreground truncate">{item.service}</p>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="w-8 h-8 text-muted-foreground hover:text-destructive flex-shrink-0"
+                      onClick={e => { e.stopPropagation(); handleDelete(item.id, item.name); }}
+                      disabled={deletingId === item.id}
+                    >
+                      {deletingId === item.id
+                        ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        : <Trash2 className="w-3.5 h-3.5" />}
+                    </Button>
+                  </div>
+                  <div className="flex items-center justify-between gap-2 mt-2 pt-2 border-t border-border/60">
+                    <button
+                      onClick={e => { e.stopPropagation(); handleToggleRead(item.id, item.isRead); }}
+                      className={`text-[11px] px-1.5 py-0.5 rounded-full transition-colors ${
+                        item.isRead
+                          ? 'bg-muted text-muted-foreground hover:bg-muted/70'
+                          : 'bg-primary/10 text-primary hover:bg-primary/20'
+                      }`}
+                    >
+                      {item.isRead ? '읽음' : '안읽음'}
+                    </button>
+                    <span className="text-xs text-muted-foreground">{formatReceivedAt(String(item.createdAt))}</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* 데스크탑: 테이블 */}
+          <div className="hidden sm:block border border-border rounded-lg overflow-x-auto">
             <table className="w-full table-fixed border-collapse text-sm min-w-[880px]">
               <colgroup>
                 <col className="w-[5%]" />
@@ -177,11 +227,11 @@ export default function HomepageConsultations() {
           </div>
 
           {/* Pagination */}
-          <div className="flex items-center justify-between mt-4">
+          <div className="flex items-center justify-between gap-2 mt-4 flex-wrap">
             <span className="text-sm text-muted-foreground">
               {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, total)} / {total}개
             </span>
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1 flex-wrap">
               <Button
                 variant="outline"
                 size="sm"
