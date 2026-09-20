@@ -40,6 +40,10 @@ export interface DocumentData {
   optionalItems: OptionalItem[]; // 선택사항
   depositPaidDate?: string; // 계약금 입금일 (YYYY-MM-DD)
   finalPaidDate?: string; // 잔금 입금일 (YYYY-MM-DD)
+  signToken?: string | null; // 고객 서명 요청 링크 토큰
+  signedAt?: string | null; // 서명 완료 시각
+  signerName?: string | null; // 서명인 이름
+  signatureDataUrl?: string | null; // 서명 이미지(PNG data URL)
   createdAt?: string;
   updatedAt?: string;
 }

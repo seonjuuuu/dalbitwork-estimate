@@ -30,6 +30,7 @@ import GmailWatcher from "./components/GmailWatcher";
 import { useAuth } from "@/_core/hooks/useAuth";
 import LoginPage from "./pages/LoginPage";
 import PublicIntakeForm from "./pages/PublicIntakeForm";
+import PublicSignDocument from "./pages/PublicSignDocument";
 import { Loader2 } from "lucide-react";
 import { useEffect } from "react";
 
@@ -141,7 +142,23 @@ function App() {
     );
   }
 
-  // 어드민 목록에 없는 호스트(고객 전용 도메인)에서는 /f/ 경로가 아니면
+  // 고객이 로그인 없이 접속하는 공개 계약서 서명 페이지 — /f/와 동일한 이유로
+  // 라우터/로그인 화면을 거치지 않고 이 경로만 강제로 분기한다.
+  if (pathname.startsWith("/sign/")) {
+    const token = pathname.split("/")[2] || "";
+    return (
+      <ErrorBoundary>
+        <ThemeProvider defaultTheme="light">
+          <TooltipProvider>
+            <Toaster />
+            <PublicSignDocument token={token} />
+          </TooltipProvider>
+        </ThemeProvider>
+      </ErrorBoundary>
+    );
+  }
+
+  // 어드민 목록에 없는 호스트(고객 전용 도메인)에서는 /f/, /sign/ 경로가 아니면
   // 로그인 화면조차 보여주지 않는다 — 어드민 존재 자체를 노출하지 않기 위함.
   if (isPublicHost) {
     return (

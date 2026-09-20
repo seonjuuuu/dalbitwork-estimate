@@ -76,6 +76,11 @@ export const documents = pgTable("documents", {
     .$type<OptionalItemRow[]>()
     .default([])
     .notNull(),
+  // 고객 전자서명 — 공개 링크(/sign/:token)로 발송해서 서명받는 용도
+  signToken: varchar("signToken", { length: 40 }).unique(),
+  signedAt: timestamp("signedAt"),
+  signerName: varchar("signerName", { length: 200 }),
+  signatureDataUrl: text("signatureDataUrl"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt")
     .defaultNow()

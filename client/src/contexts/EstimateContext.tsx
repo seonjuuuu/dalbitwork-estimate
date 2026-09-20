@@ -70,6 +70,10 @@ function dbDocToLocal(doc: {
   noContact?: boolean;
   businessType: string;
   optionalItems?: { id: string; name: string; description: string; quantity: string; price: string; payer: string }[];
+  signToken?: string | null;
+  signedAt?: Date | string | null;
+  signerName?: string | null;
+  signatureDataUrl?: string | null;
   createdAt: Date | string;
   updatedAt: Date | string;
 }): DocumentData {
@@ -114,6 +118,10 @@ function dbDocToLocal(doc: {
       price: item.price || '',
       payer: item.payer || '',
     })),
+    signToken: doc.signToken || null,
+    signedAt: doc.signedAt ? (typeof doc.signedAt === 'string' ? doc.signedAt : new Date(doc.signedAt).toISOString()) : null,
+    signerName: doc.signerName || null,
+    signatureDataUrl: doc.signatureDataUrl || null,
     createdAt: typeof doc.createdAt === 'string' ? doc.createdAt : new Date(doc.createdAt).toISOString(),
     updatedAt: typeof doc.updatedAt === 'string' ? doc.updatedAt : new Date(doc.updatedAt).toISOString(),
   };

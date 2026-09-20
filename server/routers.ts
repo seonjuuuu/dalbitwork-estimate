@@ -396,6 +396,55 @@ export const appRouter = router({
       .query(async ({ ctx }) => {
         return db.getFinalPaidDocumentIds(ctx.user.id);
       }),
+
+    /** 고객 서명 요청 링크 생성 (기존 서명 있으면 초기화하고 재발급) */
+    createSignLink: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        const token = nanoid(12);
+        const doc = await db.setDocumentSignToken(input.id, ctx.user.id, token);
+        if (!doc) throw new Error("Document not found or not authorized");
+        return { token, link: `${PUBLIC_FORM_BASE_URL}/sign/${token}` };
+      }),
+
+    /** 공개 서명 페이지 — 로그인 불필요, 토큰만으로 접근 */
+    getByToken: publicProcedure
+      .input(z.object({ token: z.string() }))
+      .query(async ({ input }) => {
+        const doc = await db.getDocumentByToken(input.token);
+        if (!doc) return null;
+        // userId는 서버 내부용이라 공개 응답에서는 제외
+        const { userId: _userId, ...publicDoc } = doc;
+        return publicDoc;
+      }),
+
+    /** 공개 서명 제출 — 로그인 불필요, 토큰만으로 처리 */
+    submitSignature: publicProcedure
+      .input(z.object({ token: z.string(), signerName: z.string().min(1).max(200), signatureDataUrl: z.string().min(1) }))
+      .mutation(async ({ input }) => {
+        const before = await db.getDocumentByToken(input.token);
+        if (!before) throw new Error("유효하지 않은 링크입니다.");
+        if (before.signedAt) throw new Error("이미 서명이 완료된 계약서입니다.");
+
+        const updated = await db.submitDocumentSignature(input.token, input.signerName, input.signatureDataUrl);
+        if (!updated) throw new Error("제출에 실패했습니다.");
+
+        await notifyUser(before.userId, {
+          title: "계약서 서명 완료",
+          body: `${input.signerName}님이 "${before.clientName || before.projectName || '계약서'}"에 서명했어요.`,
+          url: `/${before.type}s/${before.id}`,
+        }).catch(() => {});
+
+        if (ENV.gmailUser) {
+          await sendMail(
+            ENV.gmailUser,
+            `[달빛워크] 계약서 서명 완료 - ${input.signerName}`,
+            `${input.signerName}님이 "${before.clientName || before.projectName || '계약서'}" 문서에 서명을 완료했습니다.\n\n어드민에서 확인해주세요.`
+          ).catch(() => {});
+        }
+
+        return { success: true };
+      }),
   }),
 
   clients: router({

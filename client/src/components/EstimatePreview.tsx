@@ -1,4 +1,4 @@
-import { Download, Eye, ExternalLink, Loader2, Save } from 'lucide-react';
+import { Download, Eye, ExternalLink, Loader2, Save, PenLine, Copy, CheckCircle2 } from 'lucide-react';
 import { useCallback, useState, useRef, useEffect } from 'react';
 import { pdf } from '@react-pdf/renderer';
 import PdfDocument from './PdfDocument';
@@ -6,16 +6,18 @@ import { getDocTypeLabel } from '@/lib/types';
 import { useEstimate } from '@/contexts/EstimateContext';
 import { useIsMobile } from '@/hooks/useMobile';
 import { Button } from '@/components/ui/button';
+import { trpc } from '@/lib/trpc';
 import { toast } from 'sonner';
 
 export default function EstimatePreview() {
-  const { currentDoc, saveDocument, isSaving } = useEstimate();
+  const { currentDoc, setCurrentDoc, saveDocument, isSaving } = useEstimate();
   const isMobile = useIsMobile();
   const [isRendering, setIsRendering] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const [pdfBlobUrl, setPdfBlobUrl] = useState<string | null>(null);
   const renderTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const prevBlobUrlRef = useRef<string | null>(null);
+  const createSignLinkMutation = trpc.documents.createSignLink.useMutation();
 
   const docLabel = getDocTypeLabel(currentDoc.type);
 
@@ -25,6 +27,29 @@ export default function EstimatePreview() {
       toast.success(`${docLabel}가 저장되었습니다.`);
     } catch (err) {
       toast.error('저장에 실패했습니다. 다시 시도해주세요.');
+    }
+  };
+
+  const copyToClipboard = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success('서명 요청 링크를 복사했어요.');
+    } catch {
+      toast.error('복사에 실패했습니다.');
+    }
+  };
+
+  const handleCreateSignLink = async () => {
+    if (!currentDoc.id) {
+      toast.error('먼저 저장한 후에 서명 요청 링크를 만들 수 있어요.');
+      return;
+    }
+    try {
+      const { token, link } = await createSignLinkMutation.mutateAsync({ id: parseInt(currentDoc.id) });
+      setCurrentDoc((prev) => ({ ...prev, signToken: token, signedAt: null, signerName: null, signatureDataUrl: null }));
+      await copyToClipboard(link);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : '링크 생성에 실패했습니다.');
     }
   };
 
@@ -107,7 +132,7 @@ export default function EstimatePreview() {
             <Loader2 className="w-3 h-3 animate-spin ml-1" />
           )}
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap justify-end">
           <Button
             onClick={handleSave}
             disabled={isSaving}
@@ -128,8 +153,44 @@ export default function EstimatePreview() {
             <Download className="w-4 h-4" />
             {isDownloading ? '생성 중...' : 'PDF 다운로드'}
           </Button>
+          {currentDoc.signedAt ? (
+            <Button variant="outline" className="gap-2 text-emerald-600 border-emerald-300" disabled>
+              <CheckCircle2 className="w-4 h-4" />
+              {currentDoc.signerName}님 서명 완료
+            </Button>
+          ) : currentDoc.signToken ? (
+            <Button
+              variant="outline"
+              onClick={handleCreateSignLink}
+              disabled={createSignLinkMutation.isPending}
+              className="gap-2"
+            >
+              {createSignLinkMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Copy className="w-4 h-4" />}
+              서명 링크 다시 복사
+            </Button>
+          ) : (
+            <Button
+              variant="outline"
+              onClick={handleCreateSignLink}
+              disabled={createSignLinkMutation.isPending}
+              className="gap-2"
+            >
+              {createSignLinkMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <PenLine className="w-4 h-4" />}
+              서명 요청 링크 생성
+            </Button>
+          )}
         </div>
       </div>
+
+      {currentDoc.signedAt && currentDoc.signatureDataUrl && (
+        <div className="border border-border rounded-lg p-4 bg-muted/20 flex items-center gap-4">
+          <img src={currentDoc.signatureDataUrl} alt="서명" className="h-16 bg-white border border-border rounded" />
+          <div className="text-sm text-muted-foreground">
+            <p className="text-foreground font-medium">{currentDoc.signerName}</p>
+            <p>{new Date(currentDoc.signedAt).toLocaleString('ko-KR')}</p>
+          </div>
+        </div>
+      )}
 
       {/* Preview Container - iframe으로 PDF 직접 표시 */}
       <div

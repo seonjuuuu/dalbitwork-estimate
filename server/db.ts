@@ -90,6 +90,37 @@ export async function updateDocument(id: number, userId: number, data: Partial<O
   return doc;
 }
 
+/** 고객 서명 요청 링크 생성 — 기존 서명이 있으면 초기화하고 새 토큰 발급 */
+export async function setDocumentSignToken(id: number, userId: number, token: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db
+    .update(documents)
+    .set({ signToken: token, signedAt: null, signerName: null, signatureDataUrl: null })
+    .where(and(eq(documents.id, id), eq(documents.userId, userId)));
+  return getDocument(id, userId);
+}
+
+/** 공개 서명 페이지용 — 토큰만으로 조회 (로그인 불필요) */
+export async function getDocumentByToken(token: string) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const rows = await db.select().from(documents).where(eq(documents.signToken, token)).limit(1);
+  return rows[0];
+}
+
+/** 공개 서명 제출 — 토큰만으로 처리 (로그인 불필요), 이미 서명된 건 재서명 불가 */
+export async function submitDocumentSignature(token: string, signerName: string, signatureDataUrl: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const [row] = await db
+    .update(documents)
+    .set({ signerName, signatureDataUrl, signedAt: new Date() })
+    .where(and(eq(documents.signToken, token), isNull(documents.signedAt)))
+    .returning();
+  return row;
+}
+
 export async function deleteDocument(id: number, userId: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
