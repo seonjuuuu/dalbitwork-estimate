@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useLocation } from 'wouter';
 import { trpc } from '@/lib/trpc';
-import { FileText, FileCheck, Building2, TrendingUp, AlertCircle, Loader2, Edit, MessageSquare, Wallet, Sparkles, BarChart3, Search, ExternalLink } from 'lucide-react';
+import { FileText, FileCheck, Building2, TrendingUp, AlertCircle, Loader2, Edit, MessageSquare, Wallet, Sparkles, BarChart3, Search, ExternalLink, Globe } from 'lucide-react';
 import KanbanBoard from '@/components/KanbanBoard';
 import TodoList from '@/components/TodoList';
 import PushNotificationCard from '@/components/PushNotificationCard';
@@ -181,8 +181,15 @@ export default function Dashboard() {
         </Button>
       </div>
 
-      {/* 홈페이지 트래킹 바로가기 */}
+      {/* 홈페이지 및 트래킹 바로가기 */}
       <div className="flex flex-wrap gap-2">
+        <Button asChild variant="default" size="sm" className="gap-1.5">
+          <a href="https://www.dalbit-work.co.kr/" target="_blank" rel="noreferrer">
+            <Globe className="w-3.5 h-3.5" />
+            달빛워크 홈페이지
+            <ExternalLink className="w-3 h-3" />
+          </a>
+        </Button>
         <Button asChild variant="outline" size="sm" className="gap-1.5">
           <a href="https://analytics.google.com/" target="_blank" rel="noreferrer">
             <BarChart3 className="w-3.5 h-3.5" />
