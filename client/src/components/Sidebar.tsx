@@ -1,8 +1,9 @@
 import { useEstimate } from '@/contexts/EstimateContext';
-import { FilePlus, FileText, List, ChevronLeft, ChevronRight, FileCheck, LogOut, User, BookOpen, BarChart3, Boxes, Building2, LayoutDashboard, Globe, CalendarDays, KanbanSquare, FolderOpen, Search, Megaphone } from 'lucide-react';
+import { FilePlus, FileText, List, ChevronLeft, ChevronRight, FileCheck, LogOut, User, BookOpen, BarChart3, Boxes, Building2, LayoutDashboard, Globe, CalendarDays, KanbanSquare, FolderOpen, Search, Megaphone, MessageSquareText } from 'lucide-react';
 import { useState } from 'react';
 import { useLocation } from 'wouter';
 import { useAuth } from '@/_core/hooks/useAuth';
+import { trpc } from '@/lib/trpc';
 
 const SYMBOL_LOGO_URL = '/logo-symbol.png'; // 접힌 사이드바 등 공간이 좁을 때 쓰는 심볼 (PWA 아이콘인 icon-512.png는 그대로 유지)
 const WORDMARK_LOGO_URL = '/logo-full.png'; // 펼친 사이드바용 워드마크 로고
@@ -16,6 +17,8 @@ export default function Sidebar() {
   const [location, navigate] = useLocation();
   const { newDocument, currentDoc } = useEstimate();
   const { user, logout } = useAuth();
+  const { data: unreadConsultations = [] } = trpc.homepageConsultations.listUnread.useQuery();
+  const unreadConsultationCount = unreadConsultations.length;
 
   // 현재 편집 중인 문서 타입으로 활성 상태 판단
   const isOnEditor = location === '/editor';
@@ -77,6 +80,13 @@ export default function Sidebar() {
       id: 'service-items',
       active: location === '/services',
       onClick: () => navigate('/services'),
+    },
+    {
+      icon: MessageSquareText,
+      label: '홈페이지 상담폼',
+      id: 'homepage-consultations',
+      active: location === '/homepage-consultations',
+      onClick: () => navigate('/homepage-consultations'),
     },
     {
       icon: Building2,
@@ -229,20 +239,37 @@ export default function Sidebar() {
             관리
           </p>
         )}
-        {navItems.slice(3, 11).map((item) => (
-          <button
-            key={item.id}
-            onClick={item.onClick}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-sm transition-colors ${
-              item.active
-                ? 'bg-primary/10 text-primary font-medium'
-                : 'text-muted-foreground hover:bg-accent hover:text-foreground'
-            } ${collapsed ? 'justify-center' : ''}`}
-          >
-            <item.icon className="w-4.5 h-4.5 flex-shrink-0" />
-            {!collapsed && <span>{item.label}</span>}
-          </button>
-        ))}
+        {navItems.slice(3, 12).map((item) => {
+          const badgeCount = item.id === 'homepage-consultations' ? unreadConsultationCount : 0;
+          return (
+            <button
+              key={item.id}
+              onClick={item.onClick}
+              className={`relative w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-sm transition-colors ${
+                item.active
+                  ? 'bg-primary/10 text-primary font-medium'
+                  : 'text-muted-foreground hover:bg-accent hover:text-foreground'
+              } ${collapsed ? 'justify-center' : ''}`}
+            >
+              <span className="relative flex-shrink-0">
+                <item.icon className="w-4.5 h-4.5" />
+                {collapsed && badgeCount > 0 && (
+                  <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-primary" />
+                )}
+              </span>
+              {!collapsed && (
+                <span className="flex items-center gap-1.5 min-w-0">
+                  <span className="truncate">{item.label}</span>
+                  {badgeCount > 0 && (
+                    <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-semibold flex-shrink-0">
+                      {badgeCount}
+                    </span>
+                  )}
+                </span>
+              )}
+            </button>
+          );
+        })}
 
         {/* Divider */}
         <div className="my-2 border-t border-border" />
@@ -253,7 +280,7 @@ export default function Sidebar() {
             분석
           </p>
         )}
-        {navItems.slice(11).map((item) => (
+        {navItems.slice(12).map((item) => (
           <button
             key={item.id}
             onClick={item.onClick}

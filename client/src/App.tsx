@@ -22,6 +22,8 @@ import CalendarPage from "./pages/CalendarPage";
 import KanbanPage from "./pages/KanbanPage";
 import MyPdfFiles from "./pages/MyPdfFiles";
 import ReceivedMailHistory from "./pages/ReceivedMailHistory";
+import HomepageConsultations from "./pages/HomepageConsultations";
+import HomepageConsultationDetail from "./pages/HomepageConsultationDetail";
 import Sidebar from "./components/Sidebar";
 import GlobalSearch from "./components/GlobalSearch";
 import GmailWatcher from "./components/GmailWatcher";
@@ -72,6 +74,10 @@ function Router() {
       <Route path="/templates" component={NoteTemplates} />
       <Route path="/services" component={ServiceItems} />
       <Route path="/clients" component={Clients} />
+      <Route path="/homepage-consultations" component={HomepageConsultations} />
+      <Route path="/homepage-consultations/:id">
+        {(params) => <HomepageConsultationDetail id={params.id} />}
+      </Route>
       <Route path="/clients/:id">
         {(params) => <ClientDetail id={params.id} />}
       </Route>

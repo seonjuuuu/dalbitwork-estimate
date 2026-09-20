@@ -6,6 +6,7 @@ import { createContext } from "./_core/context";
 import { ENV } from "./_core/env";
 import { sendDailyTodoSummaries, checkHktbRetainerReminder } from "./cron";
 import * as db from "./db";
+import { registerPublicConsultationRoute } from "./publicConsultation";
 
 function escapeHtml(s: string) {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -15,6 +16,9 @@ const app = express();
 
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
+
+// 홈페이지(dalbit-work.co.kr) 상담 신청 폼 → 클라이언트 생성 + 알림
+registerPublicConsultationRoute(app);
 
 app.use(
   "/api/trpc",

@@ -1,8 +1,8 @@
 import { eq, and, or, ne, desc, asc, gte, lte, gt, isNull, isNotNull, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
-import { InsertUser, users, documents, InsertDocument, noteTemplates, InsertNoteTemplate, payments, serviceItems, clients, consultations, hktbInvoices, pdfFiles, todos, pushSubscriptions, notificationEvents, customEvents, cardTransactions, expenseMerchantRules, intakeForms, clientEmails, gmailNotifiedMessages } from "../drizzle/schema";
-import type { IntakeFormQuestion } from "../drizzle/schema";
+import { InsertUser, users, documents, InsertDocument, noteTemplates, InsertNoteTemplate, payments, serviceItems, clients, consultations, hktbInvoices, pdfFiles, todos, pushSubscriptions, notificationEvents, customEvents, cardTransactions, expenseMerchantRules, intakeForms, clientEmails, gmailNotifiedMessages, homepageConsultations } from "../drizzle/schema";
+import type { IntakeFormQuestion, InsertHomepageConsultation } from "../drizzle/schema";
 import type { InsertPayment, InsertServiceItem, InsertClient, InsertConsultation, InsertHktbInvoice, InsertPdfFile, InsertTodo } from "../drizzle/schema";
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -1614,4 +1614,69 @@ export async function listAllReceivedClientEmails(userId: number, page: number, 
     db.select({ count: sql<number>`count(*)::int` }).from(gmailNotifiedMessages).where(where),
   ]);
   return { items, total: countRows[0]?.count ?? 0 };
+}
+
+/** 홈페이지 상담 신청 폼 — 공개 제출 엔드포인트에서 사용 */
+export async function createHomepageConsultation(data: InsertHomepageConsultation) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const [row] = await db.insert(homepageConsultations).values(data).returning();
+  return row;
+}
+
+export async function listHomepageConsultations(userId: number, page: number, pageSize: number) {
+  const db = await getDb();
+  if (!db) return { items: [], total: 0 };
+  const where = eq(homepageConsultations.userId, userId);
+  const [items, countRows] = await Promise.all([
+    db
+      .select()
+      .from(homepageConsultations)
+      .where(where)
+      .orderBy(desc(homepageConsultations.createdAt))
+      .limit(pageSize)
+      .offset((page - 1) * pageSize),
+    db.select({ count: sql<number>`count(*)::int` }).from(homepageConsultations).where(where),
+  ]);
+  return { items, total: countRows[0]?.count ?? 0 };
+}
+
+export async function listUnreadHomepageConsultations(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select()
+    .from(homepageConsultations)
+    .where(and(eq(homepageConsultations.userId, userId), eq(homepageConsultations.isRead, false)))
+    .orderBy(desc(homepageConsultations.createdAt));
+}
+
+export async function getHomepageConsultation(id: number, userId: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db
+    .select()
+    .from(homepageConsultations)
+    .where(and(eq(homepageConsultations.id, id), eq(homepageConsultations.userId, userId)))
+    .limit(1);
+  return result[0];
+}
+
+export async function markHomepageConsultationRead(id: number, userId: number, isRead: boolean) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db
+    .update(homepageConsultations)
+    .set({ isRead })
+    .where(and(eq(homepageConsultations.id, id), eq(homepageConsultations.userId, userId)));
+  return { success: true };
+}
+
+export async function deleteHomepageConsultation(id: number, userId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db
+    .delete(homepageConsultations)
+    .where(and(eq(homepageConsultations.id, id), eq(homepageConsultations.userId, userId)));
+  return { success: true };
 }

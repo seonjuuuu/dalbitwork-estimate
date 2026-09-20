@@ -9,6 +9,7 @@ import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { ENV } from "./env";
 import { sendDailyTodoSummaries } from "../cron";
+import { registerPublicConsultationRoute } from "../publicConsultation";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -37,6 +38,8 @@ async function startServer() {
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
   // OAuth callback under /api/oauth/callback
   registerOAuthRoutes(app);
+  // 홈페이지(dalbit-work.co.kr) 상담 신청 폼 → 클라이언트 생성 + 알림
+  registerPublicConsultationRoute(app);
   // tRPC API
   app.use(
     "/api/trpc",

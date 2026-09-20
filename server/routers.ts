@@ -1264,6 +1264,39 @@ export const appRouter = router({
       }),
   }),
 
+  /** 홈페이지(dalbit-work.co.kr) 상담 신청 폼 인박스 — 고객사 관리와 분리된 별도 리스트 */
+  homepageConsultations: router({
+    list: protectedProcedure
+      .input(z.object({ page: z.number().min(1).default(1), pageSize: z.number().min(1).max(100).default(20) }))
+      .query(async ({ ctx, input }) => {
+        return db.listHomepageConsultations(ctx.user.id, input.page, input.pageSize);
+      }),
+
+    get: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .query(async ({ ctx, input }) => {
+        const row = await db.getHomepageConsultation(input.id, ctx.user.id);
+        return row ?? null;
+      }),
+
+    /** 대시보드 카드 / 사이드바 배지 / 목록 상단 안읽음 건수용 */
+    listUnread: protectedProcedure.query(async ({ ctx }) => {
+      return db.listUnreadHomepageConsultations(ctx.user.id);
+    }),
+
+    markRead: protectedProcedure
+      .input(z.object({ id: z.number(), isRead: z.boolean() }))
+      .mutation(async ({ ctx, input }) => {
+        return db.markHomepageConsultationRead(input.id, ctx.user.id, input.isRead);
+      }),
+
+    delete: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        return db.deleteHomepageConsultation(input.id, ctx.user.id);
+      }),
+  }),
+
   push: router({
     /** 프론트에서 알림 구독을 만들 때 필요한 VAPID 공개키 */
     getPublicKey: publicProcedure.query(() => ({

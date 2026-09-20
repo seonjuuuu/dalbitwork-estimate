@@ -455,3 +455,20 @@ export const gmailNotifiedMessages = pgTable("gmail_notified_messages", {
 });
 
 export type GmailNotifiedMessage = typeof gmailNotifiedMessages.$inferSelect;
+
+// 홈페이지(dalbit-work.co.kr) 상담 신청 폼 제출 목록 — 고객사 관리와 분리된 별도 인박스
+export const homepageConsultations = pgTable("homepage_consultations", {
+  id: serial("id").primaryKey(),
+  userId: integer("userId").notNull(),
+  name: varchar("name", { length: 100 }).notNull(),
+  company: varchar("company", { length: 200 }).default("").notNull(),
+  contact: varchar("contact", { length: 50 }).notNull(),
+  service: varchar("service", { length: 100 }).notNull(),
+  budget: varchar("budget", { length: 100 }).default("").notNull(),
+  message: text("message").default("").notNull(),
+  isRead: boolean("isRead").default(false).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type HomepageConsultation = typeof homepageConsultations.$inferSelect;
+export type InsertHomepageConsultation = typeof homepageConsultations.$inferInsert;

@@ -7,6 +7,7 @@ import TodoList from '@/components/TodoList';
 import PushNotificationCard from '@/components/PushNotificationCard';
 import TodayBriefCard from '@/components/TodayBriefCard';
 import ReceivedMailCard from '@/components/ReceivedMailCard';
+import HomepageConsultationCard from '@/components/HomepageConsultationCard';
 import QuickEstimateReplyDialog from '@/components/QuickEstimateReplyDialog';
 import { Button } from '@/components/ui/button';
 import {
@@ -184,6 +185,9 @@ export default function Dashboard() {
 
       {/* 오늘의 할 일 및 일정 */}
       <TodayBriefCard />
+
+      {/* 홈페이지 상담폼 안읽음 */}
+      <HomepageConsultationCard />
 
       {/* 고객사에서 받은 메일 */}
       <ReceivedMailCard />
