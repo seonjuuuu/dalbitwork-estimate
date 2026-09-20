@@ -1,11 +1,14 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { pdf } from '@react-pdf/renderer';
 import { trpc } from '@/lib/trpc';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Loader2, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
 import SignaturePad, { type SignaturePadHandle } from '@/components/SignaturePad';
-import { formatWithCommas, getItemFinalPrice, type DocumentItem } from '@/lib/types';
+import PdfDocument from '@/components/PdfDocument';
+import PdfViewer from '@/components/PdfViewer';
+import type { DocumentData } from '@/lib/types';
 
 const WORDMARK_LOGO_URL = '/logo-full.png';
 
@@ -19,6 +22,21 @@ export default function PublicSignDocument({ token }: { token: string }) {
   const signaturePadRef = useRef<SignaturePadHandle>(null);
   const [signerName, setSignerName] = useState('');
   const [submitted, setSubmitted] = useState(false);
+  const [pdfBlob, setPdfBlob] = useState<Blob | null>(null);
+
+  useEffect(() => {
+    if (!doc) return;
+    let cancelled = false;
+    pdf(<PdfDocument doc={doc as unknown as DocumentData} />)
+      .toBlob()
+      .then((blob) => {
+        if (!cancelled) setPdfBlob(blob);
+      })
+      .catch((err) => console.error('계약서 PDF 생성 오류:', err));
+    return () => {
+      cancelled = true;
+    };
+  }, [doc]);
 
   const handleSubmit = async () => {
     if (!signerName.trim()) {
@@ -65,58 +83,8 @@ export default function PublicSignDocument({ token }: { token: string }) {
           </div>
         ) : (
           <div className="space-y-6">
-            <div className="border border-border rounded-lg overflow-hidden">
-              <div className="bg-muted/30 px-4 py-3 border-b border-border">
-                <p className="text-xs text-muted-foreground">견적 및 계약서</p>
-                <p className="text-sm font-semibold text-foreground">{doc.projectName || doc.clientName || '홈페이지 제작 계약'}</p>
-              </div>
-              <div className="p-4 space-y-3">
-                <div className="grid grid-cols-2 gap-y-1.5 text-sm">
-                  <span className="text-muted-foreground">고객사</span>
-                  <span className="text-foreground text-right">{doc.clientName || '-'}</span>
-                  <span className="text-muted-foreground">플랫폼</span>
-                  <span className="text-foreground text-right">{doc.platform || '-'}</span>
-                  <span className="text-muted-foreground">계약일</span>
-                  <span className="text-foreground text-right">{doc.date || '-'}</span>
-                </div>
-
-                <div className="border-t border-border pt-3">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="text-muted-foreground text-xs">
-                        <th className="text-left font-normal pb-1">항목</th>
-                        <th className="text-right font-normal pb-1">금액</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {(doc.items as DocumentItem[]).map((item) => (
-                        <tr key={item.id}>
-                          <td className="py-1 text-foreground">{item.name}</td>
-                          <td className="py-1 text-right text-foreground whitespace-nowrap">
-                            {formatWithCommas(getItemFinalPrice(item))}원
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-
-                <div className="border-t border-border pt-3 flex items-center justify-between">
-                  <span className="text-sm font-semibold text-foreground">총 계약 금액</span>
-                  <span className="text-base font-bold text-foreground">{formatWithCommas(doc.totalMin)}원</span>
-                </div>
-
-                {doc.notes.length > 0 && (
-                  <div className="border-t border-border pt-3">
-                    <p className="text-xs text-muted-foreground mb-1.5">유의사항</p>
-                    <ul className="text-xs text-muted-foreground space-y-1 list-disc list-inside">
-                      {doc.notes.map((note, i) => (
-                        <li key={i}>{note}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </div>
+            <div className="border border-border rounded-lg bg-muted/20 p-2">
+              <PdfViewer blob={pdfBlob} />
             </div>
 
             <div className="space-y-4">
