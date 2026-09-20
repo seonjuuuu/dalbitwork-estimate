@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useLocation } from 'wouter';
 import { trpc } from '@/lib/trpc';
-import { FileText, FileCheck, Building2, TrendingUp, AlertCircle, Loader2, Edit, MessageSquare, Wallet, Sparkles } from 'lucide-react';
+import { FileText, FileCheck, Building2, TrendingUp, AlertCircle, Loader2, Edit, MessageSquare, Wallet, Sparkles, BarChart3, Search, ExternalLink } from 'lucide-react';
 import KanbanBoard from '@/components/KanbanBoard';
 import TodoList from '@/components/TodoList';
 import PushNotificationCard from '@/components/PushNotificationCard';
@@ -178,6 +178,38 @@ export default function Dashboard() {
         <Button variant="outline" size="sm" onClick={() => setQuickReplyOpen(true)} className="gap-1.5">
           <Sparkles className="w-3.5 h-3.5" />
           빠른 견적 문의 답장
+        </Button>
+      </div>
+
+      {/* 홈페이지 트래킹 바로가기 */}
+      <div className="flex flex-wrap gap-2">
+        <Button asChild variant="outline" size="sm" className="gap-1.5">
+          <a href="https://analytics.google.com/" target="_blank" rel="noreferrer">
+            <BarChart3 className="w-3.5 h-3.5" />
+            GA4
+            <ExternalLink className="w-3 h-3 text-muted-foreground" />
+          </a>
+        </Button>
+        <Button asChild variant="outline" size="sm" className="gap-1.5">
+          <a href="https://analytics.naver.com/" target="_blank" rel="noreferrer">
+            <BarChart3 className="w-3.5 h-3.5" />
+            네이버 애널리틱스
+            <ExternalLink className="w-3 h-3 text-muted-foreground" />
+          </a>
+        </Button>
+        <Button asChild variant="outline" size="sm" className="gap-1.5">
+          <a href="https://search.google.com/search-console" target="_blank" rel="noreferrer">
+            <Search className="w-3.5 h-3.5" />
+            구글 서치 콘솔
+            <ExternalLink className="w-3 h-3 text-muted-foreground" />
+          </a>
+        </Button>
+        <Button asChild variant="outline" size="sm" className="gap-1.5">
+          <a href="https://searchadvisor.naver.com/" target="_blank" rel="noreferrer">
+            <Search className="w-3.5 h-3.5" />
+            네이버 서치어드바이저
+            <ExternalLink className="w-3 h-3 text-muted-foreground" />
+          </a>
         </Button>
       </div>
 
