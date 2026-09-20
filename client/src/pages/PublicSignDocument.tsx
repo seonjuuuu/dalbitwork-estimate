@@ -23,6 +23,7 @@ export default function PublicSignDocument({ token }: { token: string }) {
   const [signerName, setSignerName] = useState('');
   const [submitted, setSubmitted] = useState(false);
   const [pdfBlob, setPdfBlob] = useState<Blob | null>(null);
+  const [signedPdfBlob, setSignedPdfBlob] = useState<Blob | null>(null);
 
   useEffect(() => {
     if (!doc) return;
@@ -47,12 +48,24 @@ export default function PublicSignDocument({ token }: { token: string }) {
       toast.error('서명을 그려주세요.');
       return;
     }
+    const trimmedName = signerName.trim();
+    const signatureDataUrl = signaturePadRef.current.toDataUrl();
     try {
-      await submitMutation.mutateAsync({
-        token,
-        signerName: signerName.trim(),
-        signatureDataUrl: signaturePadRef.current.toDataUrl(),
-      });
+      await submitMutation.mutateAsync({ token, signerName: trimmedName, signatureDataUrl });
+
+      if (doc) {
+        const signedDoc = {
+          ...(doc as unknown as DocumentData),
+          signerName: trimmedName,
+          signatureDataUrl,
+          signedAt: new Date().toISOString(),
+        };
+        pdf(<PdfDocument doc={signedDoc} />)
+          .toBlob()
+          .then(setSignedPdfBlob)
+          .catch((err) => console.error('서명된 계약서 PDF 생성 오류:', err));
+      }
+
       setSubmitted(true);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : '제출에 실패했습니다.');
@@ -76,10 +89,15 @@ export default function PublicSignDocument({ token }: { token: string }) {
             <p className="text-sm text-muted-foreground">유효하지 않은 링크예요. 보내주신 분께 다시 확인해주세요.</p>
           </div>
         ) : doc.signedAt || submitted ? (
-          <div className="text-center py-16 flex flex-col items-center gap-3">
-            <CheckCircle2 className="w-10 h-10 text-emerald-500" />
-            <p className="text-sm font-medium text-foreground">서명이 완료됐어요. 감사합니다!</p>
-            <p className="text-xs text-muted-foreground">확인 후 곧 연락드릴게요.</p>
+          <div className="space-y-6">
+            <div className="flex flex-col items-center gap-2 py-4">
+              <CheckCircle2 className="w-10 h-10 text-emerald-500" />
+              <p className="text-sm font-medium text-foreground">서명이 완료됐어요. 감사합니다!</p>
+              <p className="text-xs text-muted-foreground">확인 후 곧 연락드릴게요.</p>
+            </div>
+            <div className="border border-border rounded-lg bg-muted/20 p-2">
+              <PdfViewer blob={signedPdfBlob || pdfBlob} />
+            </div>
           </div>
         ) : (
           <div className="space-y-6">

@@ -455,6 +455,14 @@ const s = StyleSheet.create({
     left: -28,
     top: -18,
   },
+  // 고객이 직접 그린 서명 — 의뢰인 서명란 밑줄 위에 겹쳐서 표시
+  clientSignatureImage: {
+    width: 92,
+    height: 36,
+    position: 'absolute',
+    bottom: -2,
+    alignSelf: 'center',
+  },
   // Footer logo
   footerLogoWrap: {
     marginTop: 14,
@@ -962,7 +970,9 @@ export default function PdfDocument({ doc }: PdfDocumentProps) {
           <>
             {/* 날짜 */}
             <Text style={s.signatureDateLine}>
-              {'            '}년{'          '}월{'          '}일
+              {doc.signedAt
+                ? `${new Date(doc.signedAt).getFullYear()}년  ${new Date(doc.signedAt).getMonth() + 1}월  ${new Date(doc.signedAt).getDate()}일`
+                : '            년          월          일'}
             </Text>
 
             {/* 의뢰인 / 공급인 */}
@@ -971,7 +981,12 @@ export default function PdfDocument({ doc }: PdfDocumentProps) {
               <View style={s.signatureItem}>
                 <Text style={s.signatureRoleLabel}>의뢰인</Text>
                 <View style={s.signatureUnderline}>
-                  <Text style={{ fontSize: 1, color: '#ffffff' }}>{'                              '}</Text>
+                  {doc.signerName ? (
+                    <Text style={s.signatureNameOnLine}>{doc.signerName}</Text>
+                  ) : (
+                    <Text style={{ fontSize: 1, color: '#ffffff' }}>{'                              '}</Text>
+                  )}
+                  {doc.signatureDataUrl && <Image src={doc.signatureDataUrl} style={s.clientSignatureImage} />}
                 </View>
                 <View style={s.signatureSealWrap}>
                   <Text style={s.signatureSealText}>(인)</Text>
